@@ -73,22 +73,7 @@ Do not create random styling decisions the color in  in individual pages.
 
 ## 4. Color Direction
 
-Use a restrained palette. 
-
-Primary:
-
-* Deep blue / indigo Dzuels-inspired brand color
-
-Supporting colors:
-
-* White
-* Very light neutral background
-* Dark charcoal text
-* Muted grey text
-* Green for success/available
-* Amber for warning/due soon
-* Red for overdue/error
-* Blue for information
+colors to be used is `SYSTEM_AUDIT_AND_REBUILD_SPECIFICATION.md`
 
 Color should communicate meaning.
 
