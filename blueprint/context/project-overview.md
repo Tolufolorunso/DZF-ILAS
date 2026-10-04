@@ -1,6 +1,6 @@
 # DZF-ILLS - Project Overview
 
-<!-- blueprint:source-hash c1b4f52d2dec60a7f4c8b4af812423880c63a94fb9aca81944ad456f40442742 -->
+<!-- blueprint:source-hash 6932dc877b22a0e5c8660660a8e0c162f810e4d52819f0e78d8729ee8288d19c -->
 
 > Centralized internal staff workspace and REST API backend for the Dzuels Educational Foundation (DZF), managing academic library cataloging, patron identity, circulation, and academy engagement.
 
