@@ -10,6 +10,8 @@ export interface DZFInputProps extends Omit<TextFieldProps, 'variant'> {
   label?: string;
   helperText?: string;
   errorText?: string;
+  startAdornment?: React.ReactNode;
+  endAdornment?: React.ReactNode;
 }
 
 export const DZFInput = React.forwardRef<HTMLDivElement, DZFInputProps>(function DZFInput(
@@ -20,7 +22,10 @@ export const DZFInput = React.forwardRef<HTMLDivElement, DZFInputProps>(function
     error,
     id,
     required,
+    startAdornment,
+    endAdornment,
     sx,
+    slotProps,
     ...props
   },
   ref
@@ -60,6 +65,14 @@ export const DZFInput = React.forwardRef<HTMLDivElement, DZFInputProps>(function
         helperText={activeHelper}
         size="small"
         fullWidth
+        slotProps={{
+          ...slotProps,
+          input: {
+            startAdornment,
+            endAdornment,
+            ...(slotProps?.input as object),
+          },
+        }}
         sx={[
           {
             '& .MuiOutlinedInput-root': {

@@ -28,6 +28,7 @@ import {
   LayersIcon,
   SettingsIcon,
   BarcodeIcon,
+  LogOutIcon,
 } from '@/components/ui/DZFIcons';
 import DZFBadge from '@/components/ui/DZFBadge';
 
@@ -54,6 +55,7 @@ export interface AppShellProps {
   onNavigate?: (id: string) => void;
   staffName?: string;
   staffRole?: string;
+  onLogout?: () => void;
 }
 
 export function AppShell({
@@ -62,6 +64,7 @@ export function AppShell({
   onNavigate,
   staffName = 'Sister Blessing',
   staffRole = 'Senior Librarian',
+  onLogout,
 }: AppShellProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -283,7 +286,7 @@ export function AppShell({
           {staffName.charAt(0)}
         </Avatar>
         {(!collapsed || isMobile) && (
-          <Box sx={{ overflow: 'hidden' }}>
+          <Box sx={{ overflow: 'hidden', flex: 1 }}>
             <Typography
               variant="body2"
               noWrap
@@ -298,6 +301,19 @@ export function AppShell({
               {staffRole}
             </Typography>
           </Box>
+        )}
+        {onLogout && (!collapsed || isMobile) && (
+          <IconButton
+            size="small"
+            onClick={onLogout}
+            title="Log out"
+            sx={{
+              color: 'rgba(255, 255, 255, 0.7)',
+              '&:hover': { color: '#ffffff', backgroundColor: 'rgba(255, 255, 255, 0.1)' },
+            }}
+          >
+            <LogOutIcon size={16} />
+          </IconButton>
         )}
       </Box>
     </Box>
@@ -396,6 +412,25 @@ export function AppShell({
                 {staffName.split(' ')[0]}
               </Typography>
             </Box>
+
+            {onLogout && (
+              <IconButton
+                size="small"
+                onClick={onLogout}
+                title="Log out"
+                sx={{
+                  p: 1,
+                  borderRadius: '8px',
+                  border: `1px solid ${dzfColors.surfaces.border}`,
+                  color: dzfColors.maroon[700],
+                  '&:hover': {
+                    backgroundColor: 'rgba(111, 17, 17, 0.05)',
+                  },
+                }}
+              >
+                <LogOutIcon size={18} />
+              </IconButton>
+            )}
           </Box>
         </Toolbar>
       </AppBar>
