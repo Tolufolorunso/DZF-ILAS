@@ -11,6 +11,8 @@ const PUBLIC_PATHS = [
   '/api/health',
   '/competitions/reading/result',
   '/api/competitions/results',
+  '/certificates/verify',
+  '/api/certificates/verify',
 ];
 
 export async function middleware(request: NextRequest) {

@@ -16,3 +16,4 @@ export * from './Requisition';
 export * from './Task';
 export * from './Event';
 export * from './Counter';
+export * from './Certificate';
