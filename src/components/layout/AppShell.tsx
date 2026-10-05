@@ -84,6 +84,8 @@ export function AppShell({
       ? 'catalog'
       : pathname.startsWith('/inventory')
       ? 'inventory'
+      : pathname.startsWith('/circulations')
+      ? 'circulations'
       : pathname.startsWith('/patrons')
       ? 'patrons'
       : pathname.startsWith('/dashboard')
@@ -134,6 +136,7 @@ export function AppShell({
       if (id === 'dashboard') router.push('/dashboard');
       else if (id === 'catalog') router.push('/catalog');
       else if (id === 'inventory') router.push('/inventory');
+      else if (id === 'circulations') router.push('/circulations');
       else if (id === 'patrons') router.push('/patrons');
       else if (id === 'attendance') router.push('/dashboard');
       else if (id === 'cohorts') router.push('/dashboard');

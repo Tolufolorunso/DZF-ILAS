@@ -1,0 +1,64 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getSessionUser } from '@/lib/auth/session';
+import { executeCheckIn } from '@/lib/circulation/loan';
+
+/**
+ * POST /api/circulations/check-in
+ * Processes book returns, updates copy counts, and awards return points.
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const auth = await getSessionUser(req);
+    if (!auth) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required.' },
+        { status: 401 }
+      );
+    }
+
+    const allowedRoles = ['admin', 'librarian', 'ict'];
+    if (!allowedRoles.includes(auth.role)) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. Staff privileges required for book check-in.' },
+        { status: 403 }
+      );
+    }
+
+    const body = await req.json().catch(() => null);
+    if (!body || (!body.bookBarcode && !body.patronBarcode)) {
+      return NextResponse.json(
+        { success: false, error: 'Either bookBarcode or patronBarcode is required for check-in.' },
+        { status: 400 }
+      );
+    }
+
+    const result = await executeCheckIn({
+      bookBarcode: body.bookBarcode ? String(body.bookBarcode) : undefined,
+      patronBarcode: body.patronBarcode ? String(body.patronBarcode) : undefined,
+      receivedByUserId: auth.userId,
+    });
+
+    if (!result.success) {
+      return NextResponse.json(
+        { success: false, error: result.error },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: 'Book returned successfully.',
+        pointsAwarded: result.pointsAwarded,
+        returnDate: result.returnDate,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('Error in /api/circulations/check-in:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error while processing check-in.' },
+      { status: 500 }
+    );
+  }
+}
