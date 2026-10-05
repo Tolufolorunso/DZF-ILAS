@@ -80,7 +80,11 @@ export function AppShell({
 
   const resolvedNavId =
     activeNavId ||
-    (pathname.startsWith('/patrons')
+    (pathname.startsWith('/catalog')
+      ? 'catalog'
+      : pathname.startsWith('/inventory')
+      ? 'inventory'
+      : pathname.startsWith('/patrons')
       ? 'patrons'
       : pathname.startsWith('/dashboard')
       ? 'dashboard'
@@ -97,6 +101,7 @@ export function AppShell({
       items: [
         { id: 'dashboard', label: 'Dashboard', icon: <LayersIcon size={20} /> },
         { id: 'catalog', label: 'Library Catalog', icon: <BookIcon size={20} />, badge: '1.3k' },
+        { id: 'inventory', label: 'Asset Inventory', icon: <LayersIcon size={20} /> },
         { id: 'patrons', label: 'Patron Directory', icon: <UsersIcon size={20} />, badge: '583' },
         { id: 'attendance', label: 'Barcode Scanner', icon: <BarcodeIcon size={20} /> },
         { id: 'analytics', label: 'Leaderboard & Stats', icon: <TrophyIcon size={20} /> },
@@ -127,8 +132,9 @@ export function AppShell({
       onNavigate(id);
     } else {
       if (id === 'dashboard') router.push('/dashboard');
+      else if (id === 'catalog') router.push('/catalog');
+      else if (id === 'inventory') router.push('/inventory');
       else if (id === 'patrons') router.push('/patrons');
-      else if (id === 'catalog') router.push('/dashboard');
       else if (id === 'attendance') router.push('/dashboard');
       else if (id === 'cohorts') router.push('/dashboard');
       else if (id === 'admin') router.push('/dashboard');
