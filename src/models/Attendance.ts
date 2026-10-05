@@ -1,6 +1,8 @@
 import mongoose, { Document, Model, Schema } from 'mongoose';
 
 export type ClassType =
+  | 'library'
+  | 'cohort'
   | 'literacy'
   | 'reading_club'
   | 'book_discussion'
@@ -50,6 +52,8 @@ const AttendanceSchema = new Schema<IAttendanceDocument>(
     classType: {
       type: String,
       enum: [
+        'library',
+        'cohort',
         'literacy',
         'reading_club',
         'book_discussion',
