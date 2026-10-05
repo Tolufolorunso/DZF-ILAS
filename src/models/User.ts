@@ -23,6 +23,7 @@ export interface IUser {
   phone: string;
   active: boolean;
   role: UserRole;
+  dateOfBirth?: Date;
   userImg?: IUserImage;
   createdAt: Date;
   updatedAt: Date;
@@ -74,6 +75,9 @@ const UserSchema = new Schema<IUserDocument>(
       ],
       default: 'librarian',
       index: true,
+    },
+    dateOfBirth: {
+      type: Date,
     },
     userImg: {
       secure_url: { type: String },

@@ -131,6 +131,7 @@ const PatronSchema = new Schema<IPatronDocument>(
       unique: true,
       trim: true,
       index: true,
+      match: [/^\d{8}$/, 'Patron barcode must be exactly 8 digits (YYYYNNNN).'],
     },
     registeredDate: {
       type: Date,

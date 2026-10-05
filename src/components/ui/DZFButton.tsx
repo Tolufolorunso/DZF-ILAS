@@ -36,11 +36,16 @@ export const DZFButton = React.forwardRef<HTMLButtonElement, DZFButtonProps>(fun
       '&:active': {
         backgroundColor: dzfColors.maroon[800],
       },
+      '&.Mui-disabled': {
+        backgroundColor: loading ? `${dzfColors.maroon[800]} !important` : '#64748b !important',
+        color: '#ffffff !important',
+        opacity: '1 !important',
+      },
     },
     secondary: {
       backgroundColor: '#ffffff',
-      color: dzfColors.surfaces.textPrimary,
-      border: `1px solid ${dzfColors.surfaces.border}`,
+      color: dzfColors.navy[700],
+      border: `1.5px solid ${dzfColors.surfaces.border}`,
       '&:hover': {
         borderColor: dzfColors.maroon[700],
         backgroundColor: dzfColors.maroon[50],
@@ -48,6 +53,12 @@ export const DZFButton = React.forwardRef<HTMLButtonElement, DZFButtonProps>(fun
       },
       '&:active': {
         backgroundColor: dzfColors.maroon[100],
+      },
+      '&.Mui-disabled': {
+        backgroundColor: '#f1f5f9 !important',
+        color: '#0f172a !important',
+        borderColor: '#94a3b8 !important',
+        opacity: '1 !important',
       },
     },
     danger: {
@@ -59,14 +70,25 @@ export const DZFButton = React.forwardRef<HTMLButtonElement, DZFButtonProps>(fun
       '&:active': {
         backgroundColor: dzfColors.status.error.text,
       },
+      '&.Mui-disabled': {
+        backgroundColor: loading ? '#991b1b !important' : '#b91c1c !important',
+        color: '#ffffff !important',
+        opacity: '1 !important',
+      },
     },
     soft: {
       backgroundColor: dzfColors.maroon[50],
       color: dzfColors.maroon[900],
-      border: `1px solid ${dzfColors.maroon[200]}`,
+      border: `1.5px solid ${dzfColors.maroon[200]}`,
       '&:hover': {
         backgroundColor: dzfColors.maroon[100],
         borderColor: dzfColors.maroon[400],
+      },
+      '&.Mui-disabled': {
+        backgroundColor: '#e2e8f0 !important',
+        color: '#0f172a !important',
+        borderColor: '#94a3b8 !important',
+        opacity: '1 !important',
       },
     },
   };
@@ -85,11 +107,14 @@ export const DZFButton = React.forwardRef<HTMLButtonElement, DZFButtonProps>(fun
           textTransform: 'none',
           position: 'relative',
           minHeight: '38px',
-          ...(disabled && {
-            opacity: 0.55,
-            cursor: 'not-allowed !important',
+          '&.Mui-disabled': {
+            cursor: loading ? 'wait !important' : 'not-allowed !important',
             pointerEvents: 'auto !important',
-          }),
+            opacity: '1 !important',
+            '& *': {
+              opacity: '1 !important',
+            },
+          },
         },
         variantStyles[variant],
         ...(Array.isArray(sx) ? sx : [sx]),
@@ -97,14 +122,23 @@ export const DZFButton = React.forwardRef<HTMLButtonElement, DZFButtonProps>(fun
       {...props}
     >
       {loading ? (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '8px',
+            color: 'inherit',
+            fontWeight: 600,
+            opacity: 1,
+          }}
+        >
           <CircularProgress
             size={16}
             color="inherit"
             thickness={4}
-            sx={{ display: 'inline-block' }}
+            sx={{ display: 'inline-block', color: 'inherit' }}
           />
-          <span>{children}</span>
+          <span style={{ color: 'inherit', opacity: 1 }}>{children}</span>
         </span>
       ) : (
         children

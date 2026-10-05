@@ -30,6 +30,12 @@ export const components: Components<Theme> = {
           outline: 'none',
           boxShadow: dzfColors.interactive.focusRing,
         },
+        '&.Mui-disabled': {
+          cursor: 'not-allowed !important',
+          pointerEvents: 'auto !important',
+          opacity: '1 !important',
+          color: '#475569 !important', // Slate 600 - crisp, high-contrast, fully legible
+        },
       },
       contained: {
         backgroundColor: dzfColors.maroon[900],
@@ -40,6 +46,11 @@ export const components: Components<Theme> = {
         '&:active': {
           backgroundColor: dzfColors.maroon[800],
         },
+        '&.Mui-disabled': {
+          backgroundColor: '#94a3b8 !important', // Slate 400 - distinct disabled fill
+          color: '#ffffff !important', // Crisp white text with 100% opacity
+          opacity: '1 !important',
+        },
       },
       outlined: {
         borderColor: dzfColors.surfaces.border,
@@ -49,6 +60,12 @@ export const components: Components<Theme> = {
           borderColor: dzfColors.maroon[900],
           backgroundColor: dzfColors.maroon[50],
           color: dzfColors.maroon[900],
+        },
+        '&.Mui-disabled': {
+          borderColor: '#94a3b8 !important',
+          color: '#0f172a !important', // Deep slate text - 100% legible
+          backgroundColor: '#f1f5f9 !important',
+          opacity: '1 !important',
         },
       },
     },

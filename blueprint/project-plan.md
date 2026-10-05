@@ -32,7 +32,7 @@ DZF-ILLS is a ground-up rewrite delivering:
 - **Dual-Mode Staff Auth & RBAC API:** Session authentication supporting both HTTP-only cookies (Web) and `Authorization: Bearer <token>` headers (Android), role-based route/action guards.
 
 ### Phase 2: Core Library Operations
-- **Patron Lifecycle & Barcode Identity API & Web:** Registration with photo capture & Cloudinary upload, printable 85mm x 54mm barcode ID cards, patron search endpoints.
+- **Patron Lifecycle & 60x40mm Thermal Barcode Studio (Web & API):** Registration with webcam photo capture & Cloudinary upload, barcode numbering sequence (4-digit current registration year + 4-digit incremental sequence continuing from the last registered member across the system, e.g. member #583 `20250583` -> next member in 2026 is `20260584`, validated to 8 numeric digits), printable 60mm x 40mm thermal label paper barcode studio (Organisation name on top, centered barcode + patron number, patron name at bottom with uniform vertical spacing), cohort enrollment privilege restricted to admin or delegated ICT staff, zero placeholders (querying live DB), and mobile patron lookup/search REST endpoints.
 - **Cataloging & Library Inventory API & Web:** Book acquisition wizard, Dewey Decimal classification, physical copy barcodes, shelf location mapping, mobile-friendly search API.
 - **Circulation Engine API & Web:** Barcode-driven loan checkout, checkin/return processing, renewals, hold reservations, overdue penalization, and transaction logs.
 
@@ -85,6 +85,11 @@ All 15 production domain entities:
 Follows `design.md` and Section 7 of the specification:
 - **Design Language:** Modern Academic SaaS / Digital Workspace.
 - **Aesthetic:** Calm, trustworthy, high information density, clean typography (Geist / Inter).
+- **Official Assets:** Uses official Foundation logos from `/images/logo.png` and favicons from `/public/`.
+- **Sidebar & Contrast Standards:** Midnight Navy (`#0b1d2e`) sidebar with high-contrast text (`#f1f5f9`), Academic Gold section headers (`#cca349`), Brand Maroon active items (`#6f1111`) with gold left border indicator, meeting WCAG AA contrast.
+- **Layout Integrity:** Rigid `<Box component="nav">` sidebar allocation preventing content overlap, with symmetric, generous margins on all main content canvases.
+- **Homepage Role (`/`):** Institutional welcome board featuring system overview, library operating rules/instructions, foundation bulletins, staff birthday greetings, and live database statistics.
+- **Data Policy:** Zero mock placeholders. All statistics, tables, and lists query active production collections (`dzuelsDB` with 583 patrons, 1,353 monographs, 121 cohorts, and 16 staff).
 - **Red Lines:** No Tailwind CSS, no frivolous animations, no decorative gradients except designated podium surfaces.
 - **List Views:** Custom status badges (Available, Checked Out, Overdue, Approved, Pending, Active, Inactive).
 

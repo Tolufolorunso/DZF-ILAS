@@ -239,7 +239,7 @@ function LoginForm() {
           loading={loading}
           id="login-submit-button"
         >
-          Sign In to Workspace
+          {loading ? 'Signing In...' : 'Sign In to Workspace'}
         </DZFButton>
       </Box>
 
@@ -260,14 +260,11 @@ function LoginForm() {
           variant="soft"
           size="small"
           onClick={handleSeedDefaults}
-          disabled={seeding || loading}
+          loading={seeding}
+          disabled={loading}
           id="seed-credentials-button"
         >
-          {seeding ? (
-            <CircularProgress size={16} sx={{ color: dzfColors.navy[700] }} />
-          ) : (
-            'Seed Default Accounts (admin / librarian)'
-          )}
+          {seeding ? 'Seeding Default Accounts...' : 'Seed Default Accounts (admin / librarian)'}
         </DZFButton>
       </Box>
     </Card>

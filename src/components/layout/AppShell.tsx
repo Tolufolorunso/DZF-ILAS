@@ -35,6 +35,9 @@ import DZFBadge from '@/components/ui/DZFBadge';
 const SIDEBAR_WIDTH = 260;
 const COLLAPSED_WIDTH = 72;
 
+import { useRouter, usePathname } from 'next/navigation';
+import type { ITokenPayload } from '@/lib/auth/jwt';
+
 export interface NavItem {
   id: string;
   label: string;
@@ -55,29 +58,46 @@ export interface AppShellProps {
   onNavigate?: (id: string) => void;
   staffName?: string;
   staffRole?: string;
+  user?: ITokenPayload | null;
   onLogout?: () => void;
 }
 
 export function AppShell({
   children,
-  activeNavId = 'dashboard',
+  activeNavId,
   onNavigate,
-  staffName = 'Sister Blessing',
-  staffRole = 'Senior Librarian',
+  staffName,
+  staffRole,
+  user,
   onLogout,
 }: AppShellProps) {
+  const router = useRouter();
+  const pathname = usePathname() || '';
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(false);
+
+  const resolvedNavId =
+    activeNavId ||
+    (pathname.startsWith('/patrons')
+      ? 'patrons'
+      : pathname.startsWith('/dashboard')
+      ? 'dashboard'
+      : 'dashboard');
+
+  const displayName = staffName || user?.name || 'Staff Member';
+  const displayRole =
+    staffRole ||
+    (user?.role ? user.role.replace('_', ' ').toUpperCase() : 'Librarian');
 
   const navSections: NavSection[] = [
     {
       title: 'WORKSPACE',
       items: [
         { id: 'dashboard', label: 'Dashboard', icon: <LayersIcon size={20} /> },
-        { id: 'catalog', label: 'Library Catalog', icon: <BookIcon size={20} />, badge: '2.3k' },
-        { id: 'patrons', label: 'Patron Directory', icon: <UsersIcon size={20} />, badge: '670+' },
+        { id: 'catalog', label: 'Library Catalog', icon: <BookIcon size={20} />, badge: '1.3k' },
+        { id: 'patrons', label: 'Patron Directory', icon: <UsersIcon size={20} />, badge: '583' },
         { id: 'attendance', label: 'Barcode Scanner', icon: <BarcodeIcon size={20} /> },
         { id: 'analytics', label: 'Leaderboard & Stats', icon: <TrophyIcon size={20} /> },
       ],
@@ -85,8 +105,8 @@ export function AppShell({
     {
       title: 'MANAGEMENT',
       items: [
-        { id: 'circulations', label: 'Loans & Returns', icon: <ClockIcon size={20} />, badge: '14 due', badgeVariant: 'warning' },
-        { id: 'summaries', label: 'Book Summaries', icon: <ActivityIcon size={20} />, badge: '3 new', badgeVariant: 'primary' },
+        { id: 'circulations', label: 'Loans & Returns', icon: <ClockIcon size={20} />, badge: 'Loans', badgeVariant: 'warning' },
+        { id: 'summaries', label: 'Book Summaries', icon: <ActivityIcon size={20} />, badge: 'Reviews', badgeVariant: 'primary' },
         { id: 'cohorts', label: 'Cohort Academy', icon: <UsersIcon size={20} /> },
       ],
     },
@@ -103,9 +123,31 @@ export function AppShell({
   };
 
   const handleItemClick = (id: string) => {
-    onNavigate?.(id);
+    if (onNavigate) {
+      onNavigate(id);
+    } else {
+      if (id === 'dashboard') router.push('/dashboard');
+      else if (id === 'patrons') router.push('/patrons');
+      else if (id === 'catalog') router.push('/dashboard');
+      else if (id === 'attendance') router.push('/dashboard');
+      else if (id === 'cohorts') router.push('/dashboard');
+      else if (id === 'admin') router.push('/dashboard');
+    }
     if (isMobile) {
       setMobileOpen(false);
+    }
+  };
+
+  const handleLogoutAction = async () => {
+    if (onLogout) {
+      onLogout();
+      return;
+    }
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } finally {
+      router.push('/auth/login');
+      router.refresh();
     }
   };
 
@@ -117,39 +159,35 @@ export function AppShell({
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        backgroundColor: dzfColors.navy[700],
+        backgroundColor: dzfColors.navy[950],
         color: '#ffffff',
       }}
     >
       {/* Brand Header */}
       <Box
         sx={{
-          p: 2.5,
+          p: 2,
           display: 'flex',
           alignItems: 'center',
           gap: 1.5,
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
         }}
       >
         <Box
+          component="img"
+          src="/images/logo.png"
+          alt="Dzuels Educational Foundation Logo"
           sx={{
             width: 38,
             height: 38,
-            borderRadius: '10px',
-            backgroundColor: dzfColors.maroon[900],
-            border: `1.5px solid ${dzfColors.gold[500]}`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#ffffff',
-            fontWeight: 800,
-            fontSize: '1rem',
+            borderRadius: '8px',
+            backgroundColor: '#ffffff',
+            p: 0.5,
+            objectFit: 'contain',
             flexShrink: 0,
-            boxShadow: '0 2px 8px rgba(111, 17, 17, 0.4)',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.35)',
           }}
-        >
-          DZF
-        </Box>
+        />
         {(!collapsed || isMobile) && (
           <Box sx={{ overflow: 'hidden' }}>
             <Typography
@@ -194,7 +232,7 @@ export function AppShell({
                   display: 'block',
                   fontSize: '0.6875rem',
                   fontWeight: 700,
-                  color: dzfColors.navy[200],
+                  color: dzfColors.gold[400],
                   letterSpacing: '0.08em',
                 }}
               >
@@ -203,7 +241,7 @@ export function AppShell({
             )}
             <List disablePadding>
               {section.items.map((item) => {
-                const isActive = activeNavId === item.id;
+                const isActive = resolvedNavId === item.id;
                 return (
                   <ListItem key={item.id} disablePadding sx={{ mb: 0.5 }}>
                     <ListItemButton
@@ -213,7 +251,9 @@ export function AppShell({
                         py: 1,
                         px: 1.5,
                         backgroundColor: isActive ? dzfColors.maroon[900] : 'transparent',
-                        color: isActive ? '#ffffff' : 'rgba(255, 255, 255, 0.82)',
+                        borderLeft: isActive ? `3px solid ${dzfColors.gold[400]}` : '3px solid transparent',
+                        color: isActive ? '#ffffff' : '#e2e8f0',
+                        boxShadow: isActive ? '0 2px 8px rgba(111, 17, 17, 0.45)' : 'none',
                         '&:hover': {
                           backgroundColor: isActive
                             ? dzfColors.maroon[800]
@@ -226,7 +266,7 @@ export function AppShell({
                       <ListItemIcon
                         sx={{
                           minWidth: collapsed && !isMobile ? 0 : 34,
-                          color: isActive ? dzfColors.gold[400] : 'inherit',
+                          color: isActive ? dzfColors.gold[400] : '#94a3b8',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -238,7 +278,7 @@ export function AppShell({
                         <>
                           <ListItemText
                             primary={
-                              <Typography sx={{ fontSize: '0.875rem', fontWeight: isActive ? 600 : 500 }}>
+                              <Typography sx={{ fontSize: '0.875rem', fontWeight: isActive ? 700 : 500, color: isActive ? '#ffffff' : '#f1f5f9' }}>
                                 {item.label}
                               </Typography>
                             }
@@ -246,8 +286,8 @@ export function AppShell({
                           {item.badge && (
                             <DZFBadge
                               label={item.badge}
-                              variant={item.badgeVariant || 'default'}
-                              solid
+                              variant={item.badgeVariant || (isActive ? 'top10' : 'default')}
+                              solid={isActive}
                               sx={{ height: 20, fontSize: '0.6875rem' }}
                             />
                           )}
@@ -266,11 +306,11 @@ export function AppShell({
       <Box
         sx={{
           p: 2,
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+          borderTop: '1px solid rgba(255, 255, 255, 0.12)',
           display: 'flex',
           alignItems: 'center',
           gap: 1.5,
-          backgroundColor: 'rgba(0, 0, 0, 0.15)',
+          backgroundColor: 'rgba(0, 0, 0, 0.25)',
         }}
       >
         <Avatar
@@ -281,9 +321,10 @@ export function AppShell({
             border: `1.5px solid ${dzfColors.gold[400]}`,
             fontSize: '0.875rem',
             fontWeight: 700,
+            color: '#ffffff',
           }}
         >
-          {staffName.charAt(0)}
+          {displayName.charAt(0)}
         </Avatar>
         {(!collapsed || isMobile) && (
           <Box sx={{ overflow: 'hidden', flex: 1 }}>
@@ -292,24 +333,24 @@ export function AppShell({
               noWrap
               sx={{ fontWeight: 600, color: '#ffffff', fontSize: '0.8125rem' }}
             >
-              {staffName}
+              {displayName}
             </Typography>
             <Typography
               variant="caption"
-              sx={{ color: dzfColors.gold[400], fontSize: '0.6875rem', display: 'block' }}
+              sx={{ color: dzfColors.gold[400], fontSize: '0.6875rem', display: 'block', fontWeight: 600 }}
             >
-              {staffRole}
+              {displayRole}
             </Typography>
           </Box>
         )}
-        {onLogout && (!collapsed || isMobile) && (
+        {(!collapsed || isMobile) && (
           <IconButton
             size="small"
-            onClick={onLogout}
+            onClick={handleLogoutAction}
             title="Log out"
             sx={{
-              color: 'rgba(255, 255, 255, 0.7)',
-              '&:hover': { color: '#ffffff', backgroundColor: 'rgba(255, 255, 255, 0.1)' },
+              color: '#cbd5e1',
+              '&:hover': { color: '#ffffff', backgroundColor: 'rgba(255, 255, 255, 0.15)' },
             }}
           >
             <LogOutIcon size={16} />
@@ -330,7 +371,7 @@ export function AppShell({
           backgroundColor: '#ffffff',
           color: dzfColors.surfaces.textPrimary,
           borderBottom: `1px solid ${dzfColors.surfaces.border}`,
-          boxShadow: 'none',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
           transition: 'width 0.2s ease, margin 0.2s ease',
           zIndex: (theme) => theme.zIndex.drawer + 1,
         }}
@@ -398,7 +439,7 @@ export function AppShell({
                   fontWeight: 700,
                 }}
               >
-                {staffName.charAt(0)}
+                {displayName.charAt(0)}
               </Avatar>
               <Typography
                 variant="body2"
@@ -409,77 +450,111 @@ export function AppShell({
                   display: { xs: 'none', sm: 'block' },
                 }}
               >
-                {staffName.split(' ')[0]}
+                {displayName.split(' ')[0]}
               </Typography>
             </Box>
 
-            {onLogout && (
-              <IconButton
-                size="small"
-                onClick={onLogout}
-                title="Log out"
-                sx={{
-                  p: 1,
-                  borderRadius: '8px',
-                  border: `1px solid ${dzfColors.surfaces.border}`,
-                  color: dzfColors.maroon[700],
-                  '&:hover': {
-                    backgroundColor: 'rgba(111, 17, 17, 0.05)',
-                  },
-                }}
-              >
-                <LogOutIcon size={18} />
-              </IconButton>
-            )}
+            <IconButton
+              size="small"
+              onClick={handleLogoutAction}
+              title="Log out"
+              sx={{
+                p: 1,
+                borderRadius: '8px',
+                border: `1px solid ${dzfColors.surfaces.border}`,
+                color: dzfColors.maroon[700],
+                '&:hover': {
+                  backgroundColor: 'rgba(111, 17, 17, 0.05)',
+                },
+              }}
+            >
+              <LogOutIcon size={18} />
+            </IconButton>
           </Box>
         </Toolbar>
       </AppBar>
 
-      {/* Mobile Drawer */}
-      <Drawer
-        variant="temporary"
-        open={mobileOpen}
-        onClose={handleDrawerToggle}
-        ModalProps={{ keepMounted: true }}
+      {/* Navigation Drawer Container (Allocates space in flex layout so main content never slips underneath) */}
+      <Box
+        component="nav"
         sx={{
-          display: { xs: 'block', md: 'none' },
-          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: SIDEBAR_WIDTH },
+          width: { md: sidebarWidth },
+          flexShrink: { md: 0 },
+          transition: 'width 0.2s ease',
         }}
+        aria-label="DZF-ILLS staff sidebar"
       >
-        {sidebarContent}
-      </Drawer>
+        {/* Mobile Drawer */}
+        <Drawer
+          variant="temporary"
+          open={mobileOpen}
+          onClose={handleDrawerToggle}
+          ModalProps={{ keepMounted: true }}
+          sx={{
+            display: { xs: 'block', md: 'none' },
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
+              width: SIDEBAR_WIDTH,
+              backgroundColor: dzfColors.navy[950],
+              color: '#ffffff',
+            },
+          }}
+        >
+          {sidebarContent}
+        </Drawer>
 
-      {/* Desktop Persistent Sidebar */}
-      <Drawer
-        variant="permanent"
-        sx={{
-          display: { xs: 'none', md: 'block' },
-          '& .MuiDrawer-paper': {
-            boxSizing: 'border-box',
-            width: sidebarWidth,
-            borderRight: 'none',
-            transition: 'width 0.2s ease',
-            overflowX: 'hidden',
-          },
-        }}
-        open
-      >
-        {sidebarContent}
-      </Drawer>
+        {/* Desktop Persistent Sidebar */}
+        <Drawer
+          variant="permanent"
+          sx={{
+            display: { xs: 'none', md: 'block' },
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
+              width: sidebarWidth,
+              borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+              backgroundColor: dzfColors.navy[950],
+              color: '#ffffff',
+              transition: 'width 0.2s ease',
+              overflowX: 'hidden',
+            },
+          }}
+          open
+        >
+          {sidebarContent}
+        </Drawer>
+      </Box>
 
       {/* Main Content Area */}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 2, sm: 3, md: 4 },
-          width: { md: `calc(100% - ${sidebarWidth}px)` },
-          mt: '64px',
-          minHeight: 'calc(100vh - 64px)',
+          width: { xs: '100%', md: `calc(100% - ${sidebarWidth}px)` },
+          minHeight: '100vh',
+          display: 'flex',
+          flexDirection: 'column',
+          backgroundColor: dzfColors.surfaces.canvas,
           transition: 'width 0.2s ease',
+          overflowX: 'hidden',
         }}
       >
-        {children}
+        {/* Spacer for fixed AppBar */}
+        <Toolbar sx={{ minHeight: '64px' }} />
+
+        {/* Content canvas with professional symmetric margins and padding */}
+        <Box
+          sx={{
+            flex: 1,
+            py: { xs: 2.5, sm: 3, md: 4 },
+            px: { xs: 2, sm: 3.5, md: 4, lg: 6 },
+            maxWidth: '1600px',
+            width: '100%',
+            mx: 'auto',
+            boxSizing: 'border-box',
+          }}
+        >
+          {children}
+        </Box>
       </Box>
     </Box>
   );

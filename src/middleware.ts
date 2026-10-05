@@ -34,13 +34,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // 4. Handle root path '/'
+  // 4. Handle root path '/' (Allow root homepage for all visitors and staff)
   if (pathname === '/') {
-    // If authenticated, forward to dashboard; otherwise allow workbench or redirect to login
-    if (user) {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-    // Allow root page (contains interactive workbench preview)
     return NextResponse.next();
   }
 

@@ -1,6 +1,6 @@
 # DZF-ILLS - Project Overview
 
-<!-- blueprint:source-hash 6932dc877b22a0e5c8660660a8e0c162f810e4d52819f0e78d8729ee8288d19c -->
+<!-- blueprint:source-hash aa9b253f1bffd08d50ad359c6358478828a505fc555ffaac99cb6d1e38f7fbbc -->
 
 > Centralized internal staff workspace and REST API backend for the Dzuels Educational Foundation (DZF), managing academic library cataloging, patron identity, circulation, and academy engagement.
 
@@ -30,7 +30,7 @@ The Dzuels Educational Foundation operates a high-volume academic library and le
 1. **Design System & Reusable UI Components** - Centralized Material UI theme (`src/theme/`) with DZF semantic brand tokens (Maroon `#6f1111`, Scholastic Navy `#17324d`, Academic Gold `#cca349`), buttons, inputs, barcode scanner auto-submit input, headers, typography, status badges, and data tables.
 2. **Complete Domain Data Models & Database Infrastructure** - Cached MongoDB connection pool (`src/lib/db.ts`) and TypeScript Mongoose models with validation, compound indexes, and relationship helpers for all 15 production schemas.
 3. **Staff Authentication, Session Management & Dual-Mode REST API** - Staff login, bcrypt password hashing, JWT generation, RBAC guards, and dual-auth middleware (cookies for web, bearer tokens for Android).
-4. **Patron Lifecycle, Photo Capture & Barcode Card Studio (Web & API)** - Patron registration with webcam capture & Cloudinary upload, printable 85mm x 54mm barcode ID cards, patron directory and search endpoints.
+4. **Patron Lifecycle, Photo Capture & 60x40 Thermal Barcode Studio (Web & API)** - Patron registration with webcam photo capture & Cloudinary upload, barcode numbering sequence (4-digit current registration year + 4-digit incremental sequence continuing from the last registered member across the system, e.g. member #583 `20250583` -> next member in 2026 is `20260584`, validated to 8 numeric digits), printable 60mm x 40mm thermal label paper studio (Organisation on top, barcode + number at center, patron name at bottom with uniform vertical spacing), cohort enrollment privilege restricted to admin or delegated ICT staff, zero placeholders (querying live DB), and mobile patron lookup/search REST endpoints.
 5. **Cataloging & Library Inventory Management (Web & API)** - Book acquisition wizard, Dewey Decimal classification, author/publisher indexing, barcode copy labeling, shelf location mapping, and catalog search REST endpoints.
 6. **Circulation Engine (Checkout, Return, Holds & Overdues API & Web)** - Barcode-driven loan checkout, checkin/return processing, renewal limits, hold reservations, overdue calculation, and circulation audit logs.
 7. **Book Summary Moderation & Gamification Scoring (Web & API)** - Patron summary submission, librarian moderation queue, feedback scoring (+2 to +10 points), and activity point crediting.
@@ -56,7 +56,7 @@ The Dzuels Educational Foundation operates a high-volume academic library and le
 
 ### Patron
 - `_id` (ObjectId)
-- `barcode` (string, unique, indexed, e.g. "20230001")
+- `barcode` (string, unique, indexed, regex `/^\d{8}$/`, format: `YYYY` + 4-digit sequence, e.g. "20260001", "20230001")
 - `firstname`, `surname` (string, required)
 - `gender` (enum: `'male' | 'female'`)
 - `patronType` (enum: `'student' | 'teacher' | 'staff' | 'guest'`, indexed)
@@ -196,13 +196,17 @@ Not applicable. DZF-ILLS is a 100% internal non-profit educational platform for 
 ## UI/UX
 
 - **Design Language:** Modern Academic SaaS / Digital Workspace.
-- **Palette:** DZF Brand Maroon (`#6f1111`), Scholastic Navy (`#17324d`), Academic Gold (`#cca349`), Slate neutrals (`#f8fafc`, `#e2e8f0`, `#475569`).
+- **Palette & Contrast:** Midnight Navy (`#0b1d2e`), Scholastic Navy (`#17324d`), Brand Maroon (`#6f1111`), Academic Gold (`#cca349`), crisp high-contrast text (`#ffffff`, `#f1f5f9`), meeting WCAG AA standards.
+- **Official Branding:** Uses official Foundation logo from `/images/logo.png` and favicons from `/public/`.
+- **Layout Architecture:** Dedicated `<Box component="nav">` sidebar allocation preventing content overlap, with symmetric, generous margins on all main content canvases.
+- **Data Policy:** Zero mock placeholders. All statistics, tables, and lists query active production collections (`dzuelsDB` with 583 patrons, 1,353 monographs, 121 cohorts, and 16 staff).
 - **Core Routes:**
+  - `/` - Institutional welcome board featuring system overview, library operating rules/instructions, foundation bulletins, staff birthday greetings, and live database statistics
   - `/auth/login` - Staff credential sign-in
   - `/dashboard` - Summary counters, circulation stats, gender ratios
   - `/catalog` & `/catalog/new` - Book inventory directory and acquisition wizard
   - `/patrons` & `/patrons/new` - Patron directory and registration with photo capture
-  - `/patrons/generate-barcode` - Printable 85mm x 54mm ID badge generation
+  - `/patrons/generate-barcode` - Printable 60mm x 40mm thermal label paper barcode studio
   - `/circulations/checkout` & `/circulations/checkin` - Barcode loan transactions
   - `/circulations/summaries` & `/circulations/summaries/review` - Patron reading summaries & grading queue
   - `/circulations/overdues`, `/circulations/holds`, `/circulations/renewal` - Circulation management
