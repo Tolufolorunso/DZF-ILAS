@@ -90,6 +90,8 @@ export function AppShell({
       ? 'summaries'
       : pathname.startsWith('/attendance')
       ? 'attendance'
+      : pathname.startsWith('/leaderboard')
+      ? 'analytics'
       : pathname.startsWith('/patrons')
       ? 'patrons'
       : pathname.startsWith('/dashboard')
@@ -144,6 +146,7 @@ export function AppShell({
       else if (id === 'summaries') router.push('/summaries');
       else if (id === 'patrons') router.push('/patrons');
       else if (id === 'attendance') router.push('/attendance');
+      else if (id === 'analytics') router.push('/leaderboard');
       else if (id === 'cohorts') router.push('/dashboard');
       else if (id === 'admin') router.push('/dashboard');
     }
