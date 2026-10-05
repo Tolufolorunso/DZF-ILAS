@@ -94,6 +94,8 @@ export function AppShell({
       ? 'analytics'
       : pathname.startsWith('/cohorts')
       ? 'cohorts'
+      : pathname.startsWith('/competitions')
+      ? 'competitions'
       : pathname.startsWith('/patrons')
       ? 'patrons'
       : pathname.startsWith('/dashboard')
@@ -123,6 +125,7 @@ export function AppShell({
         { id: 'circulations', label: 'Loans & Returns', icon: <ClockIcon size={20} />, badge: 'Loans', badgeVariant: 'warning' },
         { id: 'summaries', label: 'Book Summaries', icon: <ActivityIcon size={20} />, badge: 'Reviews', badgeVariant: 'primary' },
         { id: 'cohorts', label: 'Cohort Academy', icon: <UsersIcon size={20} />, badge: 'Academy' },
+        { id: 'competitions', label: 'Reading Competition', icon: <TrophyIcon size={20} />, badge: 'Contest', badgeVariant: 'warning' },
       ],
     },
     {
@@ -150,6 +153,7 @@ export function AppShell({
       else if (id === 'attendance') router.push('/attendance');
       else if (id === 'analytics') router.push('/leaderboard');
       else if (id === 'cohorts') router.push('/cohorts');
+      else if (id === 'competitions') router.push('/competitions/reading');
       else if (id === 'admin') router.push('/dashboard');
     }
     if (isMobile) {

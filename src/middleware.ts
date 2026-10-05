@@ -9,6 +9,8 @@ const PUBLIC_PATHS = [
   '/api/auth/logout',
   '/api/auth/seed',
   '/api/health',
+  '/competitions/reading/result',
+  '/api/competitions/results',
 ];
 
 export async function middleware(request: NextRequest) {

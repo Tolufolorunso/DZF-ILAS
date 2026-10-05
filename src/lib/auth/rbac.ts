@@ -15,6 +15,7 @@ export const ADMIN_ROLES: UserRole[] = ['admin', 'asst_admin'];
 export const CIRCULATION_ROLES: UserRole[] = ['admin', 'asst_admin', 'librarian'];
 export const COHORT_ROLES: UserRole[] = ['admin', 'asst_admin', 'cohort_lead', 'ict'];
 export const EDITORIAL_ROLES: UserRole[] = ['admin', 'asst_admin', 'transcomm_author'];
+export const COMPETITION_ROLES: UserRole[] = ['admin', 'asst_admin', 'librarian'];
 
 /**
  * Check if a given user role is included in a list of allowed roles
@@ -49,4 +50,11 @@ export function canManageCohorts(role: UserRole | string): boolean {
  */
 export function canPublishArticles(role: UserRole | string): boolean {
   return EDITORIAL_ROLES.includes(role as UserRole);
+}
+
+/**
+ * Check if role has competition management, check-in, and scoring privileges
+ */
+export function canManageCompetitions(role: UserRole | string): boolean {
+  return COMPETITION_ROLES.includes(role as UserRole);
 }
