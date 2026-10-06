@@ -11,6 +11,7 @@ import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
+import { TranscommPublicHeader } from '@/components/transcomm';
 import { dzfColors } from '@/theme/colors';
 import { canPublishArticles } from '@/lib/auth/rbac';
 import type { ITokenPayload } from '@/lib/auth/jwt';
@@ -115,11 +116,10 @@ export function KnowledgeHubClient({
   const featuredArticle = articles.length > 0 ? articles[0] : null;
   const remainingArticles = articles.length > 1 ? articles.slice(1) : [];
 
-  return (
-    <AppShell user={user} activeNavId="transcomm">
-      <Box sx={{ pb: 8, backgroundColor: '#ffffff', minHeight: '100vh' }}>
-        {/* Hero Header Section */}
-        <Box
+  const pageContent = (
+    <Box sx={{ pb: 8, backgroundColor: '#ffffff', minHeight: '100vh', flex: 1 }}>
+      {/* Hero Header Section */}
+      <Box
           sx={{
             py: { xs: 4, md: 6 },
             px: { xs: 2, md: 4 },
@@ -454,6 +454,20 @@ export function KnowledgeHubClient({
           )}
         </Container>
       </Box>
+    );
+
+  if (!user) {
+    return (
+      <Box sx={{ minHeight: '100vh', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column' }}>
+        <TranscommPublicHeader />
+        {pageContent}
+      </Box>
+    );
+  }
+
+  return (
+    <AppShell user={user} activeNavId="transcomm">
+      {pageContent}
     </AppShell>
   );
 }

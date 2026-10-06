@@ -13,6 +13,7 @@ import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
+import { TranscommPublicHeader } from '@/components/transcomm';
 import { dzfColors } from '@/theme/colors';
 import { canPublishArticles } from '@/lib/auth/rbac';
 import type { ITokenPayload } from '@/lib/auth/jwt';
@@ -293,11 +294,10 @@ export function ArticleReaderClient({
     return elements;
   };
 
-  return (
-    <AppShell user={user} activeNavId="transcomm">
-      <Box sx={{ pb: 10, backgroundColor: '#ffffff', minHeight: '100vh' }}>
-        {/* Navigation & Breadcrumbs Bar */}
-        <Box
+  const pageContent = (
+    <Box sx={{ pb: 10, backgroundColor: '#ffffff', minHeight: '100vh', flex: 1 }}>
+      {/* Navigation & Breadcrumbs Bar */}
+      <Box
           sx={{
             py: 2,
             borderBottom: `1px solid ${dzfColors.surfaces.border}`,
@@ -571,6 +571,20 @@ export function ArticleReaderClient({
           </Alert>
         </Snackbar>
       </Box>
+    );
+
+  if (!user) {
+    return (
+      <Box sx={{ minHeight: '100vh', backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column' }}>
+        <TranscommPublicHeader />
+        {pageContent}
+      </Box>
+    );
+  }
+
+  return (
+    <AppShell user={user} activeNavId="transcomm">
+      {pageContent}
     </AppShell>
   );
 }

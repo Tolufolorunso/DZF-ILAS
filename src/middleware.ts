@@ -13,16 +13,24 @@ const PUBLIC_PATHS = [
   '/api/competitions/results',
   '/certificates/verify',
   '/api/certificates/verify',
+  '/transcomm',
+  '/api/transcomm/articles',
+  '/api/public/stats',
 ];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Editorial management studio strictly requires authenticated staff session
+  const isProtectedManage = pathname.startsWith('/transcomm/manage');
+
   // 1. Allow public routes without authentication
-  const isPublic = PUBLIC_PATHS.some(
-    (publicPath) =>
-      pathname === publicPath || pathname.startsWith(`${publicPath}/`)
-  );
+  const isPublic =
+    !isProtectedManage &&
+    PUBLIC_PATHS.some(
+      (publicPath) =>
+        pathname === publicPath || pathname.startsWith(`${publicPath}/`)
+    );
 
   const rawToken = extractTokenFromRequest(request);
   const user = rawToken ? await verifyToken(rawToken) : null;

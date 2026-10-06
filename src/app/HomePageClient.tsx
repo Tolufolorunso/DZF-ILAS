@@ -70,22 +70,12 @@ export default function HomePageClient({
       sx={{
         width: '100%',
         minHeight: '100vh',
-        backgroundColor: '#071626',
+        backgroundColor: dzfColors.surfaces.canvas,
+        color: dzfColors.surfaces.textPrimary,
         display: 'flex',
-        justifyContent: 'center',
+        flexDirection: 'column',
       }}
     >
-      <Box
-        sx={{
-          width: '100%',
-          maxWidth: '1200px !important',
-          minHeight: '100vh',
-          backgroundColor: dzfColors.surfaces.canvas,
-          color: dzfColors.surfaces.textPrimary,
-          position: 'relative',
-          boxShadow: { lg: '0 0 50px rgba(0, 0, 0, 0.3)' },
-        }}
-      >
         {/* Top Academic Navigation Bar */}
         <Box
           component="header"
@@ -281,12 +271,19 @@ export default function HomePageClient({
                     variant="secondary"
                     size="large"
                     sx={{
-                      color: '#ffffff',
-                      borderColor: 'rgba(255, 255, 255, 0.4)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.12) !important',
+                      color: '#ffffff !important',
+                      border: `1.5px solid ${dzfColors.gold[400]} !important`,
+                      fontWeight: 700,
+                      fontSize: '0.9375rem',
+                      boxShadow: '0 2px 10px rgba(0, 0, 0, 0.25)',
                       '&:hover': {
-                        borderColor: '#ffffff',
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        backgroundColor: `${dzfColors.gold[500]} !important`,
+                        color: `${dzfColors.navy[950]} !important`,
+                        borderColor: `${dzfColors.gold[400]} !important`,
+                        boxShadow: '0 4px 14px rgba(204, 163, 73, 0.4)',
                       },
+                      transition: 'all 0.2s ease',
                     }}
                   >
                     View Operating Instructions
@@ -893,6 +890,5 @@ export default function HomePageClient({
         </Container>
       </Box>
     </Box>
-  </Box>
   );
 }

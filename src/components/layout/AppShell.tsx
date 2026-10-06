@@ -122,7 +122,7 @@ export function AppShell({
         { id: 'catalog', label: 'Library Catalog', icon: <BookIcon size={20} />, badge: '1.3k' },
         { id: 'inventory', label: 'Asset Inventory', icon: <LayersIcon size={20} /> },
         { id: 'patrons', label: 'Patron Directory', icon: <UsersIcon size={20} />, badge: '583' },
-        { id: 'attendance', label: 'Barcode Scanner', icon: <BarcodeIcon size={20} /> },
+        { id: 'attendance', label: 'Attendant', icon: <BarcodeIcon size={20} /> },
         { id: 'analytics', label: 'Leaderboard & Stats', icon: <TrophyIcon size={20} /> },
       ],
     },

@@ -8,3 +8,4 @@ export * from './DZFSearchInput';
 export * from './DZFBarcodeInput';
 export * from './DZFStatCard';
 export * from './DZFDataTable';
+export * from './DZFSkeletonLoader';
