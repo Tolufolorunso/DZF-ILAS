@@ -125,6 +125,8 @@ export async function GET(req: NextRequest) {
         status: isOverdue ? 'overdue' : l.status || 'borrowed',
         isOverdue,
         overdueDays,
+        eventTitle: l.eventTitle,
+        pointsAwarded: l.pointsAwarded || 0,
       };
     });
 

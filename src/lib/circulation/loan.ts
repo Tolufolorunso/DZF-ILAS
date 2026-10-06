@@ -5,6 +5,7 @@ import { Patron, IPatronDocument } from '@/models/Patron';
 import { Library, ILibraryDocument } from '@/models/Library';
 import { MonthlyActivity } from '@/models/MonthlyActivity';
 import { SystemSetting } from '@/models/SystemSetting';
+import { Hold } from '@/models/Hold';
 
 export interface CheckoutValidationResult {
   eligible: boolean;
@@ -21,6 +22,7 @@ export interface CheckoutResult {
   book?: ICatalogingDocument;
   dueDate?: Date;
   pointsAwarded?: number;
+  eventTitle?: string;
 }
 
 export interface CheckInResult {
@@ -30,6 +32,12 @@ export interface CheckInResult {
   book?: ICatalogingDocument;
   returnDate?: Date;
   pointsAwarded?: number;
+  daysLate?: number;
+  holdNotice?: {
+    holdId: string;
+    patronBarcode: string;
+    patronName: string;
+  } | null;
 }
 
 export interface RenewalResult {
@@ -58,6 +66,8 @@ export interface ActiveLoanDTO {
   status: 'borrowed' | 'returned' | 'overdue' | 'lost';
   isOverdue: boolean;
   overdueDays: number;
+  eventTitle?: string;
+  pointsAwarded?: number;
 }
 
 export function getBookTitleString(book: unknown): string {
@@ -124,22 +134,26 @@ export async function validateCheckoutEligibility(
     };
   }
 
-  // 4. Monthly Borrowing Quota (Max 4 books per calendar month)
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1; // 1-12
-  const monthActivity = await MonthlyActivity.findOne({
-    patronId: patron._id,
-    year: currentYear,
-    month: currentMonth,
-  }).lean();
+  // 4. Monthly Borrowing Quota (Max 4 books per calendar month strictly for students)
+  if (patron.patronType === 'student') {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
-  if (monthActivity && monthActivity.booksCheckedOut >= 4) {
-    return {
-      eligible: false,
-      error: `Patron has reached the monthly quota of 4 books for ${now.toLocaleString('default', { month: 'long', year: 'numeric' })}.`,
-      patron,
-    };
+    const monthlyLoansCount = await Library.countDocuments({
+      patronId: patron._id,
+      issueDate: { $gte: startOfMonth, $lt: endOfMonth },
+      status: { $in: ['borrowed', 'returned', 'overdue'] },
+    });
+
+    if (monthlyLoansCount >= 4) {
+      const monthName = now.toLocaleString('default', { month: 'long', year: 'numeric' });
+      return {
+        eligible: false,
+        error: `Monthly loan limit reached: Students are permitted a maximum of 4 book loans per calendar month. Patron has already borrowed ${monthlyLoansCount} books in ${monthName}.`,
+        patron,
+      };
+    }
   }
 
   // 5. Fetch Catalog Book
@@ -178,11 +192,13 @@ export async function executeCheckout({
   patronBarcode,
   bookBarcode,
   dueDays = 2,
+  eventTitle,
   issuedByUserId,
 }: {
   patronBarcode: string;
   bookBarcode: string;
   dueDays?: number;
+  eventTitle?: string;
   issuedByUserId?: string;
 }): Promise<CheckoutResult> {
   await connectDB();
@@ -223,10 +239,9 @@ export async function executeCheckout({
   });
   await book.save();
 
-  // 2. Update Patron
+  // 2. Update Patron (no points on checkout; points earned on timely return)
   const bookTitleStr = getBookTitleString(book);
   patron.hasBorrowedBook = true;
-  patron.points = (patron.points || 0) + 10;
   patron.lastBorrowedItem = {
     itemId: book._id,
     itemTitle: bookTitleStr,
@@ -237,6 +252,7 @@ export async function executeCheckout({
   await patron.save();
 
   // 3. Create Library Circulation Record
+  const cleanEventTitle = eventTitle?.trim() || undefined;
   const loan = await Library.create({
     patronId: patron._id,
     patronBarcode: patron.barcode,
@@ -247,10 +263,12 @@ export async function executeCheckout({
     dueDate,
     status: 'borrowed',
     renewalsCount: 0,
+    eventTitle: cleanEventTitle,
+    pointsAwarded: 0,
     issuedBy: issuedByObjectId,
   });
 
-  // 4. Upsert MonthlyActivity
+  // 4. Upsert MonthlyActivity (record checkout count without awarding points yet)
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
   const monthYear = `${currentYear}-${String(currentMonth).padStart(2, '0')}`;
@@ -274,11 +292,24 @@ export async function executeCheckout({
       },
       $inc: {
         booksCheckedOut: 1,
-        totalPoints: 10,
-        pointsFromBooks: 10,
       },
     },
     { upsert: true, new: true }
+  );
+
+  // 5. If this patron had an active hold on this book, fulfill it
+  await Hold.updateMany(
+    {
+      bookBarcode: book.barcode,
+      patronBarcode: patron.barcode,
+      status: { $in: ['waiting', 'ready'] },
+    },
+    {
+      $set: {
+        status: 'fulfilled',
+        fulfilledAt: now,
+      },
+    }
   );
 
   return {
@@ -287,7 +318,8 @@ export async function executeCheckout({
     patron,
     book,
     dueDate,
-    pointsAwarded: 10,
+    pointsAwarded: 0,
+    eventTitle: cleanEventTitle,
   };
 }
 
@@ -373,10 +405,38 @@ export async function executeCheckIn({
   }
   await book.save();
 
-  // 2. Update Patron
+  // 2. Update Library Circulation Record & Calculate Timely Return Points
+  const activeLoan = await Library.findOne({
+    bookBarcode: book.barcode,
+    status: 'borrowed',
+  }).sort({ createdAt: -1 });
+
+  const dueDate = activeLoan?.dueDate
+    ? new Date(activeLoan.dueDate)
+    : (book.lastBorrowedBy?.dueDate ? new Date(book.lastBorrowedBy.dueDate) : now);
+
+  const diffMs = now.getTime() - dueDate.getTime();
+  let daysLate = 0;
+  let pointsAwarded = 0;
+
+  if (now <= dueDate) {
+    // Returned on or before due date: +3 points
+    pointsAwarded = 3;
+    daysLate = 0;
+  } else {
+    // Returned late: 1-2 days = +1 point, 3+ days = 0 points
+    daysLate = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    if (daysLate <= 2) {
+      pointsAwarded = 1;
+    } else {
+      pointsAwarded = 0;
+    }
+  }
+
+  // 3. Update Patron & MonthlyActivity Points
   if (patron) {
     patron.hasBorrowedBook = false;
-    patron.points = (patron.points || 0) + 15;
+    patron.points = (patron.points || 0) + pointsAwarded;
     if (patron.lastBorrowedItem) {
       patron.lastBorrowedItem.returnedAt = now;
     }
@@ -407,25 +467,40 @@ export async function executeCheckIn({
         },
         $inc: {
           booksReturned: 1,
-          totalPoints: 15,
-          pointsFromBooks: 15,
+          totalPoints: pointsAwarded,
+          pointsFromBooks: pointsAwarded,
+          circulationPoints: pointsAwarded,
         },
       },
       { upsert: true, new: true }
     );
   }
 
-  // 3. Update Library Circulation Record
-  const activeLoan = await Library.findOne({
-    bookBarcode: book.barcode,
-    status: 'borrowed',
-  }).sort({ createdAt: -1 });
-
+  // 4. Update Library Circulation Record
   if (activeLoan) {
     activeLoan.status = 'returned';
     activeLoan.returnDate = now;
     activeLoan.receivedBy = receivedByObjectId;
+    activeLoan.pointsAwarded = pointsAwarded;
     await activeLoan.save();
+  }
+
+  // 5. Check for active waiting holds on this book
+  const waitingHold = await Hold.findOne({
+    bookBarcode: book.barcode,
+    status: 'waiting',
+  }).sort({ createdAt: 1 });
+
+  let holdNotice: CheckInResult['holdNotice'] = null;
+  if (waitingHold) {
+    waitingHold.status = 'ready';
+    waitingHold.notifiedAt = now;
+    await waitingHold.save();
+    holdNotice = {
+      holdId: String(waitingHold._id),
+      patronBarcode: waitingHold.patronBarcode,
+      patronName: waitingHold.patronName,
+    };
   }
 
   return {
@@ -433,7 +508,9 @@ export async function executeCheckIn({
     patron: patron || undefined,
     book,
     returnDate: now,
-    pointsAwarded: 15,
+    pointsAwarded,
+    daysLate,
+    holdNotice,
   };
 }
 
@@ -491,6 +568,19 @@ export async function executeRenewal({
   const currentRenewals = loan.renewalsCount || 0;
   if (currentRenewals >= 2) {
     return { success: false, error: 'Maximum 2 renewals allowed for this book loan.' };
+  }
+
+  // Verify if an active hold reservation exists for this book
+  const waitingHold = await Hold.findOne({
+    bookBarcode: loan.bookBarcode,
+    status: { $in: ['waiting', 'ready'] },
+  });
+
+  if (waitingHold) {
+    return {
+      success: false,
+      error: `Cannot renew: An active hold reservation is waiting for this book (${waitingHold.patronName}). Please return the book for the waiting patron.`,
+    };
   }
 
   const baseDate = loan.dueDate && loan.dueDate > new Date() ? loan.dueDate : new Date();
@@ -564,6 +654,8 @@ export async function getActiveLoans(): Promise<ActiveLoanDTO[]> {
       status: isOverdue ? 'overdue' : 'borrowed',
       isOverdue,
       overdueDays,
+      eventTitle: l.eventTitle,
+      pointsAwarded: l.pointsAwarded || 0,
     });
   }
 
@@ -591,6 +683,8 @@ export async function getActiveLoans(): Promise<ActiveLoanDTO[]> {
         status: isOverdue ? 'overdue' : 'borrowed',
         isOverdue,
         overdueDays,
+        eventTitle: undefined,
+        pointsAwarded: 0,
       });
     }
   }

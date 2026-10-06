@@ -92,7 +92,14 @@ export function ActiveLoansTable({ onDataChanged }: ActiveLoansTableProps) {
         return;
       }
 
-      setActionSuccess(`"${loan.bookTitle}" returned successfully! (+15 Pts awarded to ${loan.patronName}).`);
+      const pts = typeof data.pointsAwarded === 'number' ? data.pointsAwarded : 0;
+      let ptsLabel = '';
+      if (pts === 3) ptsLabel = ' (+3 Pts for timely return)';
+      else if (pts === 1) ptsLabel = ' (+1 Pt: returned late)';
+      else ptsLabel = ' (0 Pts: overdue return)';
+      const holdNote = data.holdNotice ? ` • ⚠️ Reserved for ${data.holdNotice.patronName}!` : '';
+
+      setActionSuccess(`"${loan.bookTitle}" returned successfully!${ptsLabel}${holdNote}`);
       setReloadKey((prev) => prev + 1);
       if (onDataChanged) onDataChanged();
     } catch (err) {
@@ -180,12 +187,15 @@ export function ActiveLoansTable({ onDataChanged }: ActiveLoansTableProps) {
             <Typography variant="body2" sx={{ fontWeight: 700, color: dzfColors.navy[950], lineHeight: 1.2 }}>
               {row.bookTitle}
             </Typography>
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 0.5 }}>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 0.5, flexWrap: 'wrap' }}>
               <Mono sx={{ fontSize: '0.75rem' }}>{row.bookBarcode}</Mono>
               {row.shelfLocation && (
                 <Typography variant="caption" sx={{ color: dzfColors.surfaces.textMuted }}>
                   • {row.shelfLocation}
                 </Typography>
+              )}
+              {row.eventTitle && (
+                <DZFBadge variant="primary" size="small" label={row.eventTitle} />
               )}
             </Box>
           </Box>

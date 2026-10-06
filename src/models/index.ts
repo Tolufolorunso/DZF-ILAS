@@ -19,3 +19,4 @@ export * from './Counter';
 export * from './Certificate';
 export * from './SystemSetting';
 export * from './AuditLog';
+export * from './Hold';

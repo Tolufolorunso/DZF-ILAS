@@ -76,6 +76,7 @@ export function ScannerTerminal({ onTransactionComplete }: ScannerTerminalProps)
   const [patron, setPatron] = React.useState<PatronData | null>(null);
   const [book, setBook] = React.useState<BookData | null>(null);
   const [dueDays, setDueDays] = React.useState<number>(2);
+  const [eventTitle, setEventTitle] = React.useState<string>('');
 
   const [feedback, setFeedback] = React.useState<{
     type: 'success' | 'error' | 'info';
@@ -161,6 +162,7 @@ export function ScannerTerminal({ onTransactionComplete }: ScannerTerminalProps)
           patronBarcode: patron.barcode,
           bookBarcode: book.barcode,
           dueDays,
+          eventTitle: eventTitle.trim() || undefined,
         }),
       });
 
@@ -174,14 +176,16 @@ export function ScannerTerminal({ onTransactionComplete }: ScannerTerminalProps)
         return;
       }
 
+      const eventNote = data.eventTitle ? ` • Tagged to "${data.eventTitle}"` : '';
       setFeedback({
         type: 'success',
-        message: `Checkout Confirmed! "${book.title}" loaned to ${patron.name}. Due on ${new Date(data.dueDate).toLocaleDateString()}. (+10 Points awarded)`,
+        message: `Checkout Confirmed! "${book.title}" loaned to ${patron.name}${eventNote}. Due on ${new Date(data.dueDate).toLocaleDateString()}.`,
       });
 
       // Clear terminal state for next patron
       setPatron(null);
       setBook(null);
+      setEventTitle('');
       if (onTransactionComplete) onTransactionComplete();
     } catch (err) {
       console.error('Checkout error:', err);
@@ -216,13 +220,28 @@ export function ScannerTerminal({ onTransactionComplete }: ScannerTerminalProps)
         return;
       }
 
+      const points = typeof data.pointsAwarded === 'number' ? data.pointsAwarded : 0;
+      let pointsDesc = '';
+      if (points === 3) {
+        pointsDesc = '(+3 Activity Points: Timely return on/before due date)';
+      } else if (points === 1) {
+        pointsDesc = `(+1 Activity Point: Returned ${data.daysLate || 1}d after due date)`;
+      } else {
+        pointsDesc = `(0 Activity Points: Overdue return - ${data.daysLate || 3}d late)`;
+      }
+
+      const holdAlert = data.holdNotice
+        ? ` • ⚠️ HOLD QUEUE ALERT: Reserved for ${data.holdNotice.patronName} (${data.holdNotice.patronBarcode})!`
+        : '';
+
       setFeedback({
         type: 'success',
-        message: `Book Returned Successfully! Stock replenished. (+15 Points credited to patron)`,
+        message: `Book Returned Successfully! Stock replenished. ${pointsDesc}${holdAlert}`,
       });
 
       setPatron(null);
       setBook(null);
+      setEventTitle('');
       if (onTransactionComplete) onTransactionComplete();
     } catch (err) {
       console.error('Check-in error:', err);
@@ -276,6 +295,8 @@ export function ScannerTerminal({ onTransactionComplete }: ScannerTerminalProps)
   const handleReset = () => {
     setPatron(null);
     setBook(null);
+    setEventTitle('');
+    setDueDays(2);
     setFeedback(null);
     setScanInput('');
     inputRef.current?.focus();
@@ -580,7 +601,7 @@ export function ScannerTerminal({ onTransactionComplete }: ScannerTerminalProps)
                           onClick={() => handleCheckIn(book.barcode)}
                           startIcon={<CheckCircleIcon size={16} />}
                         >
-                          Check In / Return (+15 Pts)
+                          Check In / Return
                         </DZFButton>
                         <DZFButton
                           variant="soft"
@@ -621,22 +642,35 @@ export function ScannerTerminal({ onTransactionComplete }: ScannerTerminalProps)
           gap: 2,
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Typography variant="body2" sx={{ fontWeight: 600, color: dzfColors.navy[900] }}>
-            Loan Duration:
-          </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', flex: 1 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="body2" sx={{ fontWeight: 600, color: dzfColors.navy[900], whiteSpace: 'nowrap' }}>
+              Loan Duration:
+            </Typography>
+            <TextField
+              select
+              size="small"
+              value={dueDays}
+              onChange={(e) => setDueDays(Number(e.target.value))}
+              sx={{ width: 140 }}
+            >
+              <MenuItem value={2}>2 Days (Default)</MenuItem>
+              <MenuItem value={5}>5 Days</MenuItem>
+              <MenuItem value={7}>7 Days (1 Wk)</MenuItem>
+              <MenuItem value={14}>14 Days (2 Wks)</MenuItem>
+              <MenuItem value={21}>21 Days (3 Wks)</MenuItem>
+              <MenuItem value={30}>30 Days (1 Mo)</MenuItem>
+            </TextField>
+          </Box>
+
           <TextField
-            select
             size="small"
-            value={dueDays}
-            onChange={(e) => setDueDays(Number(e.target.value))}
-            sx={{ width: 140 }}
-          >
-            <MenuItem value={2}>2 Days (Default)</MenuItem>
-            <MenuItem value={5}>5 Days</MenuItem>
-            <MenuItem value={7}>7 Days (1 Wk)</MenuItem>
-            <MenuItem value={14}>14 Days (2 Wks)</MenuItem>
-          </TextField>
+            placeholder="Optional Event / Competition Tag (e.g. Reading Competition 2026)"
+            value={eventTitle}
+            onChange={(e) => setEventTitle(e.target.value)}
+            disabled={!canCheckout || submitting}
+            sx={{ flex: 1, minWidth: { xs: '100%', sm: 260 } }}
+          />
         </Box>
 
         <Box sx={{ display: 'flex', gap: 1.5 }}>
@@ -647,9 +681,9 @@ export function ScannerTerminal({ onTransactionComplete }: ScannerTerminalProps)
             loading={submitting}
             onClick={handleCheckout}
             startIcon={<CheckCircleIcon size={20} />}
-            sx={{ px: 4 }}
+            sx={{ px: 4, whiteSpace: 'nowrap' }}
           >
-            Confirm Check-Out (+10 Pts)
+            Confirm Check-Out
           </DZFButton>
         </Box>
       </Box>

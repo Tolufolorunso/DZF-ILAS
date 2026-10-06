@@ -15,6 +15,7 @@ export interface IMonthlyActivity {
   summariesApproved: number;
   totalPoints: number;
   pointsFromBooks: number;
+  circulationPoints?: number;
   pointsFromAttendance: number;
   pointsFromSummaries: number;
   activityScore: number;
@@ -90,6 +91,10 @@ const MonthlyActivitySchema = new Schema<IMonthlyActivityDocument>(
       default: 0,
     },
     pointsFromBooks: {
+      type: Number,
+      default: 0,
+    },
+    circulationPoints: {
       type: Number,
       default: 0,
     },

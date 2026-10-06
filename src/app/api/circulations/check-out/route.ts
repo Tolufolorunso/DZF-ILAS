@@ -33,11 +33,13 @@ export async function POST(req: NextRequest) {
     }
 
     const dueDays = typeof body.dueDays === 'number' ? body.dueDays : 2;
+    const eventTitle = body.eventTitle ? String(body.eventTitle).trim() : undefined;
 
     const result = await executeCheckout({
       patronBarcode: String(body.patronBarcode),
       bookBarcode: String(body.bookBarcode),
       dueDays,
+      eventTitle,
       issuedByUserId: auth.userId,
     });
 
@@ -54,6 +56,7 @@ export async function POST(req: NextRequest) {
         message: 'Book checkout completed successfully.',
         dueDate: result.dueDate,
         pointsAwarded: result.pointsAwarded,
+        eventTitle: result.eventTitle,
         loan: result.loan,
       },
       { status: 201 }

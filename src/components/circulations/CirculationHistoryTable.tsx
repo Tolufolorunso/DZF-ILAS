@@ -72,7 +72,12 @@ export function CirculationHistoryTable() {
           <Typography variant="body2" sx={{ fontWeight: 700, color: dzfColors.navy[950] }}>
             {row.bookTitle}
           </Typography>
-          <Mono sx={{ fontSize: '0.75rem', mt: 0.5 }}>{row.bookBarcode}</Mono>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 0.5, flexWrap: 'wrap' }}>
+            <Mono sx={{ fontSize: '0.75rem' }}>{row.bookBarcode}</Mono>
+            {row.eventTitle && (
+              <DZFBadge variant="primary" size="small" label={row.eventTitle} />
+            )}
+          </Box>
         </Box>
       ),
     },
@@ -121,13 +126,23 @@ export function CirculationHistoryTable() {
     },
     {
       id: 'status',
-      label: 'Status',
-      minWidth: 130,
+      label: 'Status & Points',
+      minWidth: 160,
       align: 'right',
       render: (row) => {
         const isReturned = Boolean(row.returnDate) || row.status === 'returned';
         if (isReturned) {
-          return <DZFBadge variant="success" size="small" label="RETURNED" />;
+          const pts = row.pointsAwarded ?? 0;
+          return (
+            <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
+              <DZFBadge variant="success" size="small" label="RETURNED" />
+              <DZFBadge
+                variant={pts > 0 ? 'top10' : 'default'}
+                size="small"
+                label={pts > 0 ? `+${pts} pts` : '0 pts'}
+              />
+            </Box>
+          );
         }
         if (row.isOverdue || row.status === 'overdue') {
           return <DZFBadge variant="error" size="small" label={`OVERDUE (${row.overdueDays}d)`} solid />;

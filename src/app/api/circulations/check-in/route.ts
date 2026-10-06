@@ -50,7 +50,9 @@ export async function POST(req: NextRequest) {
         success: true,
         message: 'Book returned successfully.',
         pointsAwarded: result.pointsAwarded,
+        daysLate: result.daysLate,
         returnDate: result.returnDate,
+        holdNotice: result.holdNotice,
       },
       { status: 200 }
     );

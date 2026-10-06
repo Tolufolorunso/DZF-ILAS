@@ -39,6 +39,8 @@ export interface ILibrary {
   status?: LoanStatus;
   issuedBy?: mongoose.Types.ObjectId;
   receivedBy?: mongoose.Types.ObjectId;
+  eventTitle?: string;
+  pointsAwarded?: number;
   // Institutional configuration & library settings fields (profile compatibility)
   libraryName?: string;
   address?: ILibraryAddress;
@@ -104,6 +106,14 @@ const LibrarySchema = new Schema<ILibraryDocument>(
     receivedBy: {
       type: Schema.Types.ObjectId,
       ref: 'User',
+    },
+    eventTitle: {
+      type: String,
+      trim: true,
+    },
+    pointsAwarded: {
+      type: Number,
+      default: 0,
     },
     // Institutional library profile & settings fields (replaces legacy Library.js)
     libraryName: {
