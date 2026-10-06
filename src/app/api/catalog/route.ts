@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
-import { Cataloging } from '@/models/Cataloging';
+import { Cataloging, Inventory } from '@/models';
 import { getSessionUser } from '@/lib/auth/session';
+import { canManageCatalog } from '@/lib/auth/rbac';
 import { getNextControlNumber, generateDefaultBookBarcode } from '@/lib/catalog/accession';
 
 /**
@@ -100,8 +101,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Role check: Only admin, librarian, ict can acquire books
-    const allowedRoles = ['admin', 'librarian', 'ict'];
-    if (!allowedRoles.includes(auth.role)) {
+    if (!canManageCatalog(auth.role)) {
       return NextResponse.json(
         { success: false, error: 'Access denied. You do not have permission to catalog new books.' },
         { status: 403 }
@@ -210,6 +210,23 @@ export async function POST(req: NextRequest) {
       checkedOutHistory: [],
       patronsCheckedOutHistory: [],
     });
+
+    // Create corresponding Inventory copy tracking entry
+    try {
+      await Inventory.create({
+        name: newBook.title.mainTitle,
+        dept: 'Library',
+        quantity: copies,
+        barcode: newBook.barcode,
+        bookId: newBook._id,
+        condition: 'new',
+        status: 'available',
+        acquisitionDate: new Date(),
+        addedBy: auth.name || auth.username,
+      });
+    } catch (invErr) {
+      console.warn('Note: Could not create duplicate Inventory record:', invErr);
+    }
 
     return NextResponse.json({
       success: true,

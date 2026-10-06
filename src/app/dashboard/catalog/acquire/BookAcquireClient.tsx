@@ -24,7 +24,7 @@ import {
 } from '@/components';
 import { ITokenPayload } from '@/lib/auth/jwt';
 import { DEWEY_CLASSES } from '@/lib/catalog/constants';
-import { ThermalBookPrintDialog, ThermalBookLabelData } from '@/components/catalog';
+import { ThermalBookPrintDialog, ThermalBookLabel, ThermalBookLabelData } from '@/components/catalog';
 
 interface BookAcquireClientProps {
   user: ITokenPayload | null;
@@ -555,7 +555,7 @@ export default function BookAcquireClient({
                   <Grid size={{ xs: 12, sm: 6 }}>
                     <DZFInput
                       select
-                      label="Dewey Decimal Main Class"
+                      label="Dewey Decimal Class Preset"
                       required
                       value={classification}
                       onChange={(e) => setClassification(e.target.value)}
@@ -574,6 +574,18 @@ export default function BookAcquireClient({
                         </MenuItem>
                       ))}
                     </DZFInput>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <DZFInput
+                      label="Classification Code (or Custom Decimal)"
+                      required
+                      placeholder="e.g. 800, 510, 490.15"
+                      value={classification}
+                      onChange={(e) => setClassification(e.target.value)}
+                      helperText="Supports standard classes or decimal subcategory divisions (e.g. 490.15)."
+                      fullWidth
+                    />
                   </Grid>
 
                   <Grid size={{ xs: 12, sm: 6 }}>
@@ -598,13 +610,13 @@ export default function BookAcquireClient({
                     />
                   </Grid>
 
-                  <Grid size={{ xs: 12, sm: 6 }}>
+                  <Grid size={{ xs: 12 }}>
                     <DZFInput
-                      label="Custom Barcode (Optional)"
+                      label="Custom Scanned Barcode (Optional)"
                       placeholder="Leave blank to use auto-generated"
                       value={customBarcode}
                       onChange={(e) => setCustomBarcode(e.target.value)}
-                      helperText="Scan physical barcode copy or let the system auto-generate."
+                      helperText="Scan physical barcode label or let DZF-ILLS generate the institutional barcode sequence."
                       fullWidth
                     />
                   </Grid>
@@ -614,7 +626,7 @@ export default function BookAcquireClient({
 
             {/* Right 4 Cols: Live Preview, Cover Upload & Submit */}
             <Grid size={{ xs: 12, md: 4 }}>
-              {/* Accession Preview Card */}
+              {/* Accession & Real-Time Thermal Label Preview Card */}
               <Card
                 sx={{
                   p: 3,
@@ -625,39 +637,78 @@ export default function BookAcquireClient({
                   boxShadow: '0 4px 15px rgba(204, 163, 73, 0.08)',
                 }}
               >
-                <Typography variant="overline" sx={{ fontWeight: 800, color: dzfColors.gold[700], letterSpacing: '0.08em' }}>
-                  ACCESSION CONTROL PREVIEW
-                </Typography>
-
-                <Box sx={{ my: 1.5 }}>
-                  <Typography variant="caption" sx={{ color: dzfColors.surfaces.textMuted, display: 'block' }}>
-                    Next Control Number
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+                  <Typography variant="overline" sx={{ fontWeight: 800, color: dzfColors.gold[700], letterSpacing: '0.08em' }}>
+                    REAL-TIME LABEL PREVIEW (60×40MM)
                   </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Mono sx={{ fontSize: '1.25rem', fontWeight: 800, color: dzfColors.maroon[900] }}>
-                      {nextControlNumber}
-                    </Mono>
-                    {loadingAccession && <CircularProgress size={16} />}
-                  </Box>
+                  {loadingAccession && <CircularProgress size={16} sx={{ color: dzfColors.gold[700] }} />}
                 </Box>
 
-                <Box sx={{ my: 1.5 }}>
-                  <Typography variant="caption" sx={{ color: dzfColors.surfaces.textMuted, display: 'block' }}>
-                    Suggested Barcode
+                {/* Simulated Spine Label */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    p: 2,
+                    backgroundColor: '#f8fafc',
+                    borderRadius: 2,
+                    border: '1px dashed #cbd5e1',
+                    mb: 2,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <ThermalBookLabel
+                    data={{
+                      barcode: customBarcode.trim() || suggestedBarcode || '00000000',
+                      title: mainTitle.trim() || 'Book Title Preview',
+                      author: mainAuthor.trim(),
+                      controlNumber: nextControlNumber || '000.0',
+                      classification,
+                      shelfLocation: shelfLocation.trim() || 'Main Stacks',
+                    }}
+                    scale={0.9}
+                    showBorder={false}
+                  />
+                </Box>
+
+                {/* Control & Barcode Details */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="caption" sx={{ color: dzfColors.surfaces.textMuted }}>
+                    Next Control Number:
                   </Typography>
-                  <Mono sx={{ fontSize: '1.1rem', fontWeight: 700, color: dzfColors.navy[900] }}>
-                    {customBarcode || suggestedBarcode}
+                  <Mono sx={{ fontSize: '0.95rem', fontWeight: 800, color: dzfColors.maroon[900] }}>
+                    {nextControlNumber}
                   </Mono>
                 </Box>
 
-                <Box sx={{ my: 1.5, p: 1.5, backgroundColor: '#f8fafc', borderRadius: 2, border: `1px solid ${dzfColors.surfaces.border}` }}>
-                  <Typography variant="caption" sx={{ color: dzfColors.surfaces.textMuted, display: 'block' }}>
-                    Call Number on Label
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="caption" sx={{ color: dzfColors.surfaces.textMuted }}>
+                    Barcode Sequence:
                   </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 700, color: dzfColors.navy[900] }}>
-                    {nextControlNumber} • {shelfLocation || 'Main Stacks'}
-                  </Typography>
+                  <Mono sx={{ fontSize: '0.95rem', fontWeight: 700, color: dzfColors.navy[900] }}>
+                    {customBarcode.trim() || suggestedBarcode}
+                  </Mono>
                 </Box>
+
+                {parseInt(copiesTotal, 10) > 1 && (
+                  <Box
+                    sx={{
+                      mt: 1.5,
+                      p: 1.25,
+                      backgroundColor: 'rgba(204, 163, 73, 0.1)',
+                      border: `1px solid ${dzfColors.gold[400]}`,
+                      borderRadius: 2,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ fontWeight: 700, color: dzfColors.gold[700] }}>
+                      Multi-Copy Batch: {copiesTotal} volumes will be initialized in Inventory.
+                    </Typography>
+                  </Box>
+                )}
               </Card>
 
               {/* Book Cover Upload Card */}

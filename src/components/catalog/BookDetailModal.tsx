@@ -13,7 +13,7 @@ import Divider from '@mui/material/Divider';
 import { dzfColors } from '@/theme/colors';
 import DZFButton from '@/components/ui/DZFButton';
 import DZFBadge from '@/components/ui/DZFBadge';
-import { CloseIcon, PrinterIcon, BookIcon } from '@/components/ui/DZFIcons';
+import { CloseIcon, PrinterIcon, BookIcon, EditIcon, TrashIcon } from '@/components/ui/DZFIcons';
 import { ICataloging } from '@/models/Cataloging';
 
 interface BookDetailModalProps {
@@ -21,6 +21,10 @@ interface BookDetailModalProps {
   onClose: () => void;
   book: Partial<ICataloging> | null;
   onPrintLabel: (book: Partial<ICataloging>) => void;
+  onEdit?: (book: ICataloging) => void;
+  onDelete?: (book: ICataloging) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 export default function BookDetailModal({
@@ -28,6 +32,10 @@ export default function BookDetailModal({
   onClose,
   book,
   onPrintLabel,
+  onEdit,
+  onDelete,
+  canEdit = false,
+  canDelete = false,
 }: BookDetailModalProps) {
   if (!book) return null;
 
@@ -267,19 +275,51 @@ export default function BookDetailModal({
           py: 2,
           borderTop: `1px solid ${dzfColors.surfaces.border}`,
           justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: 1.5,
         }}
       >
-        <DZFButton variant="soft" onClick={onClose}>
-          Close Card
-        </DZFButton>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <DZFButton variant="soft" onClick={onClose}>
+            Close Card
+          </DZFButton>
 
-        <DZFButton
-          variant="primary"
-          startIcon={<PrinterIcon size={18} />}
-          onClick={() => onPrintLabel(book)}
-        >
-          Print 60×40mm Thermal Label
-        </DZFButton>
+          {canDelete && onDelete && (
+            <DZFButton
+              variant="danger"
+              startIcon={<TrashIcon size={16} />}
+              onClick={() => {
+                onClose();
+                onDelete(book as ICataloging);
+              }}
+            >
+              Delete Book
+            </DZFButton>
+          )}
+        </Box>
+
+        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+          {canEdit && onEdit && (
+            <DZFButton
+              variant="secondary"
+              startIcon={<EditIcon size={18} />}
+              onClick={() => {
+                onClose();
+                onEdit(book as ICataloging);
+              }}
+            >
+              Edit Book
+            </DZFButton>
+          )}
+
+          <DZFButton
+            variant="primary"
+            startIcon={<PrinterIcon size={18} />}
+            onClick={() => onPrintLabel(book)}
+          >
+            Print 60×40mm Thermal Label
+          </DZFButton>
+        </Box>
       </DialogActions>
     </Dialog>
   );

@@ -11,6 +11,12 @@ import Checkbox from '@mui/material/Checkbox';
 import Tooltip from '@mui/material/Tooltip';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Alert from '@mui/material/Alert';
+import CircularProgress from '@mui/material/CircularProgress';
 import Link from 'next/link';
 
 import { dzfColors } from '@/theme/colors';
@@ -24,11 +30,19 @@ import {
   BookIcon,
   PlusIcon,
   EyeIcon,
+  EditIcon,
+  TrashIcon,
 } from '@/components';
 import { DZFDataTable, Column } from '@/components/ui/DZFDataTable';
 import { ITokenPayload } from '@/lib/auth/jwt';
 import { ICataloging } from '@/models/Cataloging';
-import { ThermalBookPrintDialog, BookDetailModal, ThermalBookLabelData } from '@/components/catalog';
+import {
+  ThermalBookPrintDialog,
+  BookDetailModal,
+  BookEditModal,
+  ThermalBookLabelData,
+} from '@/components/catalog';
+import { canManageCatalog, canDeleteBook } from '@/lib/auth/rbac';
 
 interface CatalogListClientProps {
   initialBooks: ICataloging[];
@@ -39,7 +53,11 @@ interface CatalogListClientProps {
 export default function CatalogListClient({
   initialBooks,
   initialTotal,
+  user,
 }: CatalogListClientProps) {
+  const canEdit = user ? canManageCatalog(user.role) : false;
+  const canDelete = user ? canDeleteBook(user.role) : false;
+
   const [books, setBooks] = React.useState<ICataloging[]>(initialBooks);
   const [totalCount, setTotalCount] = React.useState<number>(initialTotal);
   const [loading, setLoading] = React.useState<boolean>(false);
@@ -55,6 +73,10 @@ export default function CatalogListClient({
   // Modal Dialogs
   const [detailBook, setDetailBook] = React.useState<ICataloging | null>(null);
   const [printLabels, setPrintLabels] = React.useState<ThermalBookLabelData[] | null>(null);
+  const [editBook, setEditBook] = React.useState<ICataloging | null>(null);
+  const [deleteBook, setDeleteBook] = React.useState<ICataloging | null>(null);
+  const [deleting, setDeleting] = React.useState<boolean>(false);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
 
   // Avoid synchronous setState inside initial effect
   const isFirstMount = React.useRef(true);
@@ -291,7 +313,7 @@ export default function CatalogListClient({
     {
       id: 'actions',
       label: 'Actions',
-      minWidth: 110,
+      minWidth: 150,
       align: 'right',
       render: (row) => (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
@@ -305,6 +327,18 @@ export default function CatalogListClient({
             </IconButton>
           </Tooltip>
 
+          {canEdit && (
+            <Tooltip title="Edit Catalog Record">
+              <IconButton
+                size="small"
+                onClick={() => setEditBook(row)}
+                sx={{ color: dzfColors.navy[700], '&:hover': { color: dzfColors.maroon[700] } }}
+              >
+                <EditIcon size={18} />
+              </IconButton>
+            </Tooltip>
+          )}
+
           <Tooltip title="Print 60×40mm Thermal Label">
             <IconButton
               size="small"
@@ -314,6 +348,21 @@ export default function CatalogListClient({
               <PrinterIcon size={18} />
             </IconButton>
           </Tooltip>
+
+          {canDelete && (
+            <Tooltip title="Delete Book">
+              <IconButton
+                size="small"
+                onClick={() => {
+                  setDeleteBook(row);
+                  setDeleteError(null);
+                }}
+                sx={{ color: dzfColors.surfaces.textMuted, '&:hover': { color: dzfColors.status.error.button } }}
+              >
+                <TrashIcon size={18} />
+              </IconButton>
+            </Tooltip>
+          )}
         </Box>
       ),
     },
@@ -542,7 +591,126 @@ export default function CatalogListClient({
           setDetailBook(null);
           handlePrintSingle(book);
         }}
+        onEdit={(book) => {
+          setDetailBook(null);
+          setEditBook(book);
+        }}
+        onDelete={(book) => {
+          setDetailBook(null);
+          setDeleteBook(book);
+          setDeleteError(null);
+        }}
+        canEdit={canEdit}
+        canDelete={canDelete}
       />
+
+      {/* Book Edit Modal */}
+      <BookEditModal
+        open={Boolean(editBook)}
+        onClose={() => setEditBook(null)}
+        book={editBook}
+        onSuccess={(updated) => {
+          setBooks((prev) =>
+            prev.map((b) =>
+              (b._id && updated._id && String(b._id) === String(updated._id)) || b.barcode === updated.barcode
+                ? updated
+                : b
+            )
+          );
+          if (
+            detailBook &&
+            ((detailBook._id && updated._id && String(detailBook._id) === String(updated._id)) ||
+              detailBook.barcode === updated.barcode)
+          ) {
+            setDetailBook(updated);
+          }
+        }}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={Boolean(deleteBook)}
+        onClose={deleting ? undefined : () => setDeleteBook(null)}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: 3,
+              p: 1,
+            },
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, color: dzfColors.navy[900] }}>
+          Delete Book Record
+        </DialogTitle>
+        <DialogContent>
+          {deleteError && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+              {deleteError}
+            </Alert>
+          )}
+          <Typography variant="body2" sx={{ color: dzfColors.surfaces.textMuted, lineHeight: 1.6 }}>
+            Are you sure you want to permanently delete{' '}
+            <strong style={{ color: dzfColors.navy[900] }}>
+              &ldquo;{deleteBook?.title?.mainTitle}&rdquo;
+            </strong>{' '}
+            (Barcode:{' '}
+            <Mono sx={{ fontSize: '0.85rem', color: dzfColors.maroon[900] }}>
+              {deleteBook?.barcode}
+            </Mono>
+            )?
+          </Typography>
+          <Typography variant="caption" sx={{ color: dzfColors.status.error.text, mt: 1, display: 'block' }}>
+            Warning: This action cannot be undone. Books on active loan or in the reservation queue cannot be deleted.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
+          <DZFButton
+            variant="soft"
+            onClick={() => setDeleteBook(null)}
+            disabled={deleting}
+          >
+            Cancel
+          </DZFButton>
+          <DZFButton
+            variant="danger"
+            disabled={deleting}
+            startIcon={deleting ? <CircularProgress size={16} color="inherit" /> : <TrashIcon size={16} />}
+            onClick={async () => {
+              if (!deleteBook) return;
+              setDeleting(true);
+              setDeleteError(null);
+              try {
+                const identifier = deleteBook._id ? String(deleteBook._id) : deleteBook.barcode;
+                const res = await fetch(`/api/catalog/${identifier}`, {
+                  method: 'DELETE',
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                  throw new Error(data.error || 'Failed to delete book');
+                }
+                setBooks((prev) =>
+                  prev.filter(
+                    (b) =>
+                      (b._id ? String(b._id) !== String(deleteBook._id) : b.barcode !== deleteBook.barcode)
+                  )
+                );
+                setTotalCount((prev) => Math.max(0, prev - 1));
+                setDeleteBook(null);
+              } catch (err) {
+                const e = err as Error;
+                setDeleteError(e.message || 'Failed to delete book');
+              } finally {
+                setDeleting(false);
+              }
+            }}
+          >
+            {deleting ? 'Deleting...' : 'Delete Book'}
+          </DZFButton>
+        </DialogActions>
+      </Dialog>
 
       {/* Thermal Print Dialog (60×40mm) */}
       <ThermalBookPrintDialog

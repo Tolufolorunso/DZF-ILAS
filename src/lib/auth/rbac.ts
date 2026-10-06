@@ -90,4 +90,22 @@ export function canDeletePatron(role: UserRole | string): boolean {
   return PATRON_DELETE_ROLES.includes(role as UserRole);
 }
 
+export const CATALOG_MANAGE_ROLES: UserRole[] = ['admin', 'asst_admin', 'librarian', 'ict'];
+export const BOOK_DELETE_ROLES: UserRole[] = ['admin', 'asst_admin'];
+
+/**
+ * Check if role has privileges to acquire or edit monograph catalog records
+ */
+export function canManageCatalog(role: UserRole | string): boolean {
+  return CATALOG_MANAGE_ROLES.includes(role as UserRole);
+}
+
+/**
+ * Check if role has privileges to permanently delete book records (Admin / Assistant Admin only)
+ */
+export function canDeleteBook(role: UserRole | string): boolean {
+  return BOOK_DELETE_ROLES.includes(role as UserRole);
+}
+
+
 

@@ -5,6 +5,7 @@ export {
   type DeweyClass,
   DEWEY_CLASSES,
   validateClassification,
+  getDeweyClassInfo,
 } from './constants';
 
 /**

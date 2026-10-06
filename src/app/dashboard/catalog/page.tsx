@@ -2,7 +2,6 @@ import { redirect } from 'next/navigation';
 import connectDB from '@/lib/db';
 import { Cataloging, ICataloging } from '@/models/Cataloging';
 import { getSessionUser } from '@/lib/auth/session';
-import AppShell from '@/components/layout/AppShell';
 import CatalogListClient from './CatalogListClient';
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +10,7 @@ export default async function CatalogPage() {
   const user = await getSessionUser();
 
   if (!user) {
-    redirect('/auth/login?from=/catalog');
+    redirect('/auth/login?redirect=/dashboard/catalog');
   }
 
   await connectDB();
@@ -28,12 +27,10 @@ export default async function CatalogPage() {
   const initialBooks = JSON.parse(JSON.stringify(rawBooks)) as ICataloging[];
 
   return (
-    <AppShell user={user}>
-      <CatalogListClient
-        initialBooks={initialBooks}
-        initialTotal={totalCount}
-        user={user}
-      />
-    </AppShell>
+    <CatalogListClient
+      initialBooks={initialBooks}
+      initialTotal={totalCount}
+      user={user}
+    />
   );
 }

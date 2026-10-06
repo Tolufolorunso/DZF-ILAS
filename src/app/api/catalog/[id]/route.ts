@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import connectDB from '@/lib/db';
-import { Cataloging } from '@/models/Cataloging';
+import { Cataloging, Library, Hold, Inventory } from '@/models';
 import { getSessionUser } from '@/lib/auth/session';
+import { canManageCatalog, canDeleteBook } from '@/lib/auth/rbac';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -71,8 +72,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
       );
     }
 
-    const allowedRoles = ['admin', 'librarian', 'ict'];
-    if (!allowedRoles.includes(auth.role)) {
+    if (!canManageCatalog(auth.role)) {
       return NextResponse.json(
         { success: false, error: 'Access denied. You do not have permission to edit books.' },
         { status: 403 }
@@ -161,7 +161,7 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
       );
     }
 
-    if (auth.role !== 'admin') {
+    if (!canDeleteBook(auth.role)) {
       return NextResponse.json(
         { success: false, error: 'Access denied. Only administrators can delete book records.' },
         { status: 403 }
@@ -185,14 +185,48 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
       );
     }
 
+    // 1. Guard against book marked isCheckedOut
     if (book.isCheckedOut) {
       return NextResponse.json(
-        { success: false, error: 'Cannot delete a book that is currently checked out on loan.' },
+        { success: false, error: 'Cannot delete book: At least one copy is currently checked out on active loan.' },
         { status: 400 }
       );
     }
 
+    // 2. Guard against active loans in the circulation ledger
+    const activeLoan = await Library.findOne({
+      $or: [{ bookId: book._id }, { bookBarcode: book.barcode }],
+      status: 'borrowed',
+    });
+    if (activeLoan) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Cannot delete book: Copy is currently checked out on loan to patron (${activeLoan.patronBarcode}). Please process return first.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // 3. Guard against active waiting or ready holds
+    const activeHold = await Hold.findOne({
+      $or: [{ bookId: book._id }, { bookBarcode: book.barcode }],
+      status: { $in: ['waiting', 'ready'] },
+    });
+    if (activeHold) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Cannot delete book: An active hold reservation exists for patron "${activeHold.patronName}" (${activeHold.patronBarcode}). Please cancel or fulfill the hold first.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Safe deletion: remove monograph and clean up associated inventory copies
     await Cataloging.deleteOne({ _id: book._id });
+    await Inventory.deleteMany({ $or: [{ bookId: book._id }, { barcode: book.barcode }] });
+    await Hold.deleteMany({ $or: [{ bookId: book._id }, { bookBarcode: book.barcode }] });
 
     return NextResponse.json({
       success: true,

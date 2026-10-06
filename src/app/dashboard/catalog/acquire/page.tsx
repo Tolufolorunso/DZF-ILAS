@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/auth/session';
-import AppShell from '@/components/layout/AppShell';
+import { canManageCatalog } from '@/lib/auth/rbac';
 import BookAcquireClient from './BookAcquireClient';
 
 export const dynamic = 'force-dynamic';
@@ -9,18 +9,13 @@ export default async function AcquireBookPage() {
   const user = await getSessionUser();
 
   if (!user) {
-    redirect('/auth/login?from=/catalog/acquire');
+    redirect('/auth/login?redirect=/dashboard/catalog/acquire');
   }
 
-  // Only admin, librarian, ict can acquire books
-  const allowedRoles = ['admin', 'librarian', 'ict'];
-  if (!allowedRoles.includes(user.role)) {
-    redirect('/catalog');
+  // Only authorized staff can acquire books
+  if (!canManageCatalog(user.role)) {
+    redirect('/dashboard/catalog');
   }
 
-  return (
-    <AppShell user={user}>
-      <BookAcquireClient user={user} />
-    </AppShell>
-  );
+  return <BookAcquireClient user={user} />;
 }
