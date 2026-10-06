@@ -17,7 +17,7 @@ export default async function PatronRegisterPage() {
   const user = await getSessionUser();
 
   if (!user) {
-    redirect('/auth/login?redirect=/patrons/register');
+    redirect('/auth/login?redirect=/dashboard/patrons/register');
   }
 
   let nextBarcode = '20260584';

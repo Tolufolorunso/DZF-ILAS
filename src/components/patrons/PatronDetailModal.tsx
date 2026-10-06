@@ -14,7 +14,7 @@ import Divider from '@mui/material/Divider';
 import { dzfColors } from '@/theme/colors';
 import DZFButton from '@/components/ui/DZFButton';
 import DZFBadge from '@/components/ui/DZFBadge';
-import { CloseIcon, PrinterIcon, IdCardIcon } from '@/components/ui/DZFIcons';
+import { CloseIcon, PrinterIcon, IdCardIcon, EditIcon } from '@/components/ui/DZFIcons';
 import { IPatron } from '@/models/Patron';
 
 interface PatronDetailModalProps {
@@ -22,6 +22,7 @@ interface PatronDetailModalProps {
   onClose: () => void;
   patron: Partial<IPatron> | null;
   onPrintLabel: (patron: Partial<IPatron>) => void;
+  onEdit?: (patron: Partial<IPatron>) => void;
 }
 
 export default function PatronDetailModal({
@@ -29,6 +30,7 @@ export default function PatronDetailModal({
   onClose,
   patron,
   onPrintLabel,
+  onEdit,
 }: PatronDetailModalProps) {
   if (!patron) return null;
 
@@ -280,15 +282,30 @@ export default function PatronDetailModal({
           Close
         </DZFButton>
 
-        <DZFButton
-          variant="primary"
-          startIcon={<PrinterIcon size={18} />}
-          onClick={() => {
-            onPrintLabel(patron);
-          }}
-        >
-          Print Thermal Label (60×40mm)
-        </DZFButton>
+        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+          {onEdit && (
+            <DZFButton
+              variant="secondary"
+              startIcon={<EditIcon size={18} />}
+              onClick={() => {
+                onClose();
+                onEdit(patron);
+              }}
+            >
+              Edit Profile
+            </DZFButton>
+          )}
+
+          <DZFButton
+            variant="primary"
+            startIcon={<PrinterIcon size={18} />}
+            onClick={() => {
+              onPrintLabel(patron);
+            }}
+          >
+            Print Thermal Label (60×40mm)
+          </DZFButton>
+        </Box>
       </DialogActions>
     </Dialog>
   );

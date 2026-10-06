@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import connectDB from '@/lib/db';
 import { Patron } from '@/models/Patron';
+import { Library } from '@/models/Library';
 import { getSessionUser } from '@/lib/auth/session';
+import { canUpdatePatron, canDeletePatron } from '@/lib/auth/rbac';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,6 +64,18 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // RBAC: Only admin, asst_admin, and ict can update patron profiles
+    if (!canUpdatePatron(sessionUser.role)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'Forbidden: Only administrators and ICT staff have permission to update patron profiles.',
+        },
+        { status: 403 }
+      );
+    }
+
     const { id } = await params;
     const body = await request.json();
 
@@ -70,7 +84,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const isObjectId = mongoose.Types.ObjectId.isValid(id);
     const query = isObjectId ? { _id: id } : { barcode: id };
 
-    // Prevent changing barcode through standard update
+    // Prevent mutating barcode or _id directly
     delete body.barcode;
     delete body._id;
 
@@ -109,9 +123,21 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const sessionUser = await getSessionUser(request);
 
-    if (!sessionUser || !['admin', 'asst_admin'].includes(sessionUser.role)) {
+    if (!sessionUser) {
       return NextResponse.json(
-        { success: false, error: 'Forbidden: Only administrators can deactivate or delete patrons.' },
+        { success: false, error: 'Unauthorized.' },
+        { status: 401 }
+      );
+    }
+
+    // RBAC: Only admin (and asst_admin) can delete patrons
+    if (!canDeletePatron(sessionUser.role)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'Forbidden: Only administrators have permission to delete patron records.',
+        },
         { status: 403 }
       );
     }
@@ -122,12 +148,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const isObjectId = mongoose.Types.ObjectId.isValid(id);
     const query = isObjectId ? { _id: id } : { barcode: id };
 
-    // Soft delete
-    const patron = await Patron.findOneAndUpdate(
-      query,
-      { $set: { isDeleted: true, active: false } },
-      { new: true }
-    );
+    const patron = await Patron.findOne(query);
 
     if (!patron) {
       return NextResponse.json(
@@ -136,9 +157,38 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    // Safety check: ensure patron does not have active unreturned loans
+    const activeLoans = await Library.countDocuments({
+      $or: [{ patronId: patron._id }, { patronBarcode: patron.barcode }],
+      status: { $in: ['borrowed', 'overdue'] },
+    });
+
+    if (activeLoans > 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Cannot delete patron ${patron.firstname} ${patron.surname}: They have ${activeLoans} active or overdue book loan(s) that must be returned first.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const isHard = request.nextUrl.searchParams.get('hard') === 'true';
+
+    if (isHard) {
+      await Patron.deleteOne({ _id: patron._id });
+    } else {
+      await Patron.updateOne(
+        { _id: patron._id },
+        { $set: { isDeleted: true, active: false } }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      message: 'Patron deactivated successfully.',
+      message: isHard
+        ? 'Patron record permanently removed.'
+        : 'Patron deactivated successfully.',
     });
   } catch (error) {
     const err = error as Error;

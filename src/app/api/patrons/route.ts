@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
       registeredDate: new Date(),
       studentSchoolInfo: patronType === 'student' ? studentSchoolInfo : undefined,
       parentInfo: patronType === 'student' ? parentInfo : undefined,
-      employerInfo: ['teacher', 'staff'].includes(patronType) ? employerInfo : undefined,
+      employerInfo: ['teacher', 'staff', 'guest'].includes(patronType) ? employerInfo : undefined,
       image_url: image_url?.secure_url
         ? {
             secure_url: image_url.secure_url,

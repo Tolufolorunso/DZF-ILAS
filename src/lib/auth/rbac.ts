@@ -73,3 +73,21 @@ export function canManageCertificates(role: UserRole | string): boolean {
   return CERTIFICATE_ROLES.includes(role as UserRole);
 }
 
+export const PATRON_UPDATE_ROLES: UserRole[] = ['admin', 'asst_admin', 'ict'];
+export const PATRON_DELETE_ROLES: UserRole[] = ['admin'];
+
+/**
+ * Check if role has privileges to update/edit patron profiles (Admin and ICT only)
+ */
+export function canUpdatePatron(role: UserRole | string): boolean {
+  return PATRON_UPDATE_ROLES.includes(role as UserRole);
+}
+
+/**
+ * Check if role has privileges to delete patrons (Admin only)
+ */
+export function canDeletePatron(role: UserRole | string): boolean {
+  return PATRON_DELETE_ROLES.includes(role as UserRole);
+}
+
+

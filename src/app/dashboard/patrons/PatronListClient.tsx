@@ -10,6 +10,12 @@ import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Alert from '@mui/material/Alert';
+import Snackbar from '@mui/material/Snackbar';
 import Link from 'next/link';
 
 import { dzfColors } from '@/theme/colors';
@@ -22,13 +28,17 @@ import {
   PrinterIcon,
   IdCardIcon,
   EyeIcon,
+  EditIcon,
+  TrashIcon,
 } from '@/components';
 import { DZFDataTable, Column } from '@/components/ui/DZFDataTable';
 import { ITokenPayload } from '@/lib/auth/jwt';
 import { IPatron } from '@/models/Patron';
 import ThermalPrintDialog from '@/components/patrons/ThermalPrintDialog';
 import PatronDetailModal from '@/components/patrons/PatronDetailModal';
+import PatronEditModal from '@/components/patrons/PatronEditModal';
 import { ThermalLabelData } from '@/components/patrons/ThermalBarcodeLabel';
+import { canUpdatePatron, canDeletePatron } from '@/lib/auth/rbac';
 
 interface PatronListClientProps {
   initialPatrons: IPatron[];
@@ -39,6 +49,7 @@ interface PatronListClientProps {
 export default function PatronListClient({
   initialPatrons,
   initialTotal,
+  user,
 }: PatronListClientProps) {
   const [patrons, setPatrons] = React.useState<IPatron[]>(initialPatrons);
   const [totalCount, setTotalCount] = React.useState<number>(initialTotal);
@@ -54,6 +65,46 @@ export default function PatronListClient({
   // Modal Dialogs
   const [detailPatron, setDetailPatron] = React.useState<IPatron | null>(null);
   const [printLabels, setPrintLabels] = React.useState<ThermalLabelData[] | null>(null);
+
+  // RBAC Privileges
+  const canEdit = user ? canUpdatePatron(user.role) : false;
+  const canDelete = user ? canDeletePatron(user.role) : false;
+
+  // Edit & Delete Modal States
+  const [editPatron, setEditPatron] = React.useState<IPatron | null>(null);
+  const [deleteTarget, setDeleteTarget] = React.useState<IPatron | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
+  const [deleteError, setDeleteError] = React.useState<string | null>(null);
+  const [feedbackMessage, setFeedbackMessage] = React.useState<string | null>(null);
+
+  const handlePatronUpdated = (updated: IPatron) => {
+    setPatrons((prev) =>
+      prev.map((p) => (String(p._id) === String(updated._id) ? updated : p))
+    );
+    setFeedbackMessage(`Patron ${updated.firstname} ${updated.surname} updated successfully.`);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const res = await fetch(`/api/patrons/${deleteTarget._id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to delete patron.');
+      }
+      setPatrons((prev) => prev.filter((p) => String(p._id) !== String(deleteTarget._id)));
+      setTotalCount((prev) => Math.max(0, prev - 1));
+      setFeedbackMessage(`Patron ${deleteTarget.firstname} ${deleteTarget.surname} removed successfully.`);
+      setDeleteTarget(null);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error deleting patron';
+      setDeleteError(msg);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   // Avoid synchronous setState inside initial effect
   const isFirstMount = React.useRef(true);
@@ -167,22 +218,31 @@ export default function PatronListClient({
     {
       id: 'patron',
       label: 'Patron',
-      minWidth: 220,
+      minWidth: 230,
       render: (row) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Avatar
             src={row.image_url?.secure_url}
+            alt={`${row.firstname} ${row.surname}`}
             sx={{
-              width: 36,
-              height: 36,
+              width: 40,
+              height: 40,
+              borderRadius: '10px',
               fontSize: '0.875rem',
-              fontWeight: 700,
+              fontWeight: 800,
               backgroundColor: dzfColors.maroon[900],
               color: '#ffffff',
-              border: `1.5px solid ${dzfColors.gold[400]}`,
+              border: `2px solid ${dzfColors.gold[400]}`,
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)',
+              transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease',
+              '&:hover': {
+                transform: 'scale(1.18)',
+                boxShadow: '0 6px 14px rgba(184, 134, 11, 0.4)',
+                zIndex: 2,
+              },
             }}
           >
-            {row.firstname?.charAt(0)}
+            {row.firstname?.charAt(0)}{row.surname?.charAt(0)}
           </Avatar>
           <Box>
             <Typography variant="body2" sx={{ fontWeight: 700, color: dzfColors.navy[900], lineHeight: 1.2 }}>
@@ -277,7 +337,7 @@ export default function PatronListClient({
     {
       id: 'actions',
       label: 'Actions',
-      minWidth: 130,
+      minWidth: 170,
       align: 'right',
       render: (row) => (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5 }}>
@@ -300,6 +360,39 @@ export default function PatronListClient({
               <PrinterIcon size={18} />
             </IconButton>
           </Tooltip>
+
+          {canEdit && (
+            <Tooltip title="Edit Patron Profile (Admin / ICT)">
+              <IconButton
+                size="small"
+                onClick={() => setEditPatron(row)}
+                sx={{
+                  color: '#2563eb',
+                  '&:hover': { color: '#1d4ed8', backgroundColor: 'rgba(37, 99, 235, 0.08)' },
+                }}
+              >
+                <EditIcon size={18} />
+              </IconButton>
+            </Tooltip>
+          )}
+
+          {canDelete && (
+            <Tooltip title="Delete Patron Record (Admin Only)">
+              <IconButton
+                size="small"
+                onClick={() => {
+                  setDeleteError(null);
+                  setDeleteTarget(row);
+                }}
+                sx={{
+                  color: '#dc2626',
+                  '&:hover': { color: '#b91c1c', backgroundColor: 'rgba(220, 38, 38, 0.08)' },
+                }}
+              >
+                <TrashIcon size={18} />
+              </IconButton>
+            </Tooltip>
+          )}
         </Box>
       ),
     },
@@ -324,7 +417,7 @@ export default function PatronListClient({
               </DZFButton>
             )}
 
-            <Link href="/patrons/register" style={{ textDecoration: 'none' }}>
+            <Link href="/dashboard/patrons/register" style={{ textDecoration: 'none' }}>
               <DZFButton variant="primary" startIcon={<IdCardIcon size={18} />}>
                 Register New Patron
               </DZFButton>
@@ -495,7 +588,68 @@ export default function PatronListClient({
         onPrintLabel={(p) => {
           handlePrintSingle(p);
         }}
+        onEdit={canEdit ? (p) => setEditPatron(p as IPatron) : undefined}
       />
+
+      {/* Patron Edit Profile Modal (Admin/ICT Only) */}
+      <PatronEditModal
+        open={Boolean(editPatron)}
+        patron={editPatron}
+        onClose={() => setEditPatron(null)}
+        onPatronUpdated={handlePatronUpdated}
+      />
+
+      {/* Patron Deletion Confirmation Dialog (Admin Only) */}
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={() => !deleting && setDeleteTarget(null)}
+        maxWidth="xs"
+        fullWidth
+        sx={{
+          '& .MuiDialog-paper': { borderRadius: 3, p: 1 },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: dzfColors.navy[900], pb: 1 }}>
+          Confirm Patron Deletion
+        </DialogTitle>
+        <DialogContent>
+          {deleteError && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+              {deleteError}
+            </Alert>
+          )}
+          <Typography variant="body2" sx={{ color: dzfColors.surfaces.textSecondary, mb: 2 }}>
+            Are you sure you want to delete patron{' '}
+            <strong>
+              {deleteTarget?.firstname} {deleteTarget?.surname}
+            </strong>{' '}
+            (<Mono sx={{ color: dzfColors.maroon[900], fontWeight: 700 }}>{deleteTarget?.barcode}</Mono>)?
+          </Typography>
+          <Alert severity="warning" sx={{ borderRadius: 2, fontSize: '0.8125rem' }}>
+            Active loan protection: Deletion will be blocked if this patron has any unreturned borrowed books in the library ledger.
+          </Alert>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+          <DZFButton
+            variant="secondary"
+            onClick={() => setDeleteTarget(null)}
+            disabled={deleting}
+          >
+            Cancel
+          </DZFButton>
+          <DZFButton
+            variant="primary"
+            onClick={handleConfirmDelete}
+            loading={deleting}
+            sx={{
+              backgroundColor: '#dc2626 !important',
+              '&:hover': { backgroundColor: '#b91c1c !important' },
+            }}
+          >
+            Delete Patron
+          </DZFButton>
+        </DialogActions>
+      </Dialog>
 
       {/* 60x40mm Thermal Barcode Print Studio Modal */}
       {printLabels && (
@@ -505,6 +659,22 @@ export default function PatronListClient({
           labels={printLabels}
         />
       )}
+
+      {/* Feedback Notification Snackbar */}
+      <Snackbar
+        open={Boolean(feedbackMessage)}
+        autoHideDuration={5000}
+        onClose={() => setFeedbackMessage(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setFeedbackMessage(null)}
+          severity="success"
+          sx={{ width: '100%', borderRadius: 2, fontWeight: 600, boxShadow: '0 4px 14px rgba(0,0,0,0.15)' }}
+        >
+          {feedbackMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

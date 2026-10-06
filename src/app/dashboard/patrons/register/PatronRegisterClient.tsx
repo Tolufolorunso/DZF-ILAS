@@ -60,13 +60,19 @@ export default function PatronRegisterClient({
   // Student specific
   const [schoolName, setSchoolName] = React.useState('');
   const [schoolClass, setSchoolClass] = React.useState('SS2');
+  const [schoolAddress, setSchoolAddress] = React.useState('');
   const [parentName, setParentName] = React.useState('');
   const [parentPhone, setParentPhone] = React.useState('');
+  const [relationshipToPatron, setRelationshipToPatron] = React.useState('Parent');
+  const [parentEmail, setParentEmail] = React.useState('');
   const [cohortType, setCohortType] = React.useState('');
 
   // Teacher / Staff specific
   const [employerName, setEmployerName] = React.useState('');
   const [department, setDepartment] = React.useState('');
+
+  // Guest specific
+  const [guestAffiliation, setGuestAffiliation] = React.useState('');
 
   // Photo
   const [photoData, setPhotoData] = React.useState<PhotoCaptureResult | null>(null);
@@ -118,12 +124,14 @@ export default function PatronRegisterClient({
       if (patronType === 'student') {
         payload.studentSchoolInfo = {
           schoolName: schoolName.trim() || undefined,
-          schoolClass: schoolClass || 'SS2',
-          schoolCategory: 'Secondary',
+          currentClass: schoolClass || 'SS2',
+          schoolAddress: schoolAddress.trim() || undefined,
         };
         payload.parentInfo = {
           parentName: parentName.trim() || undefined,
           parentPhoneNumber: parentPhone.trim() || undefined,
+          relationshipToPatron: relationshipToPatron || 'Parent',
+          parentEmail: parentEmail.trim() || undefined,
         };
         if (canAssignCohort && cohortType) {
           payload.cohortId = cohortType;
@@ -131,7 +139,11 @@ export default function PatronRegisterClient({
       } else if (['teacher', 'staff'].includes(patronType)) {
         payload.employerInfo = {
           employerName: employerName.trim() || undefined,
-          department: department.trim() || undefined,
+          schoolAddress: department.trim() || undefined,
+        };
+      } else if (patronType === 'guest') {
+        payload.employerInfo = {
+          employerName: guestAffiliation.trim() || 'Community Guest',
         };
       }
 
@@ -180,10 +192,16 @@ export default function PatronRegisterClient({
     setAddress('');
     setDateOfBirth('');
     setSchoolName('');
+    setSchoolClass('SS2');
+    setSchoolAddress('');
     setParentName('');
     setParentPhone('');
+    setRelationshipToPatron('Parent');
+    setParentEmail('');
+    setCohortType('');
     setEmployerName('');
     setDepartment('');
+    setGuestAffiliation('');
     setPhotoData(null);
     setRegisteredPatron(null);
     setError(null);
@@ -204,7 +222,7 @@ export default function PatronRegisterClient({
     <Box sx={{ p: { xs: 2, sm: 3 }, maxWidth: 1000, mx: 'auto' }}>
       {/* Page Header */}
       <Box sx={{ mb: 3 }}>
-        <Link href="/patrons" style={{ textDecoration: 'none' }}>
+        <Link href="/dashboard/patrons" style={{ textDecoration: 'none' }}>
           <Box
             sx={{
               display: 'inline-flex',
@@ -313,7 +331,7 @@ export default function PatronRegisterClient({
               Register Another Patron
             </DZFButton>
 
-            <Link href="/patrons" style={{ textDecoration: 'none' }}>
+            <Link href="/dashboard/patrons" style={{ textDecoration: 'none' }}>
               <DZFButton variant="soft" size="large">
                 Go to Patron Directory
               </DZFButton>
@@ -516,6 +534,16 @@ export default function PatronRegisterClient({
                     />
                   </Grid>
 
+                  <Grid size={{ xs: 12 }}>
+                    <DZFInput
+                      label="School Address / Location"
+                      placeholder="e.g. Ibeju-Lekki, Lagos"
+                      value={schoolAddress}
+                      onChange={(e) => setSchoolAddress(e.target.value)}
+                      fullWidth
+                    />
+                  </Grid>
+
                   {/* RBAC: Only Admin and ICT can assign active Cohort on registration */}
                   {canAssignCohort && (
                     <Grid size={{ xs: 12, sm: 6 }}>
@@ -555,6 +583,33 @@ export default function PatronRegisterClient({
                       fullWidth
                     />
                   </Grid>
+
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <DZFInput
+                      label="Relationship to Patron"
+                      select
+                      value={relationshipToPatron}
+                      onChange={(e) => setRelationshipToPatron(e.target.value)}
+                      fullWidth
+                    >
+                      <MenuItem value="Mother">Mother</MenuItem>
+                      <MenuItem value="Father">Father</MenuItem>
+                      <MenuItem value="Guardian">Guardian</MenuItem>
+                      <MenuItem value="Sibling">Sibling</MenuItem>
+                      <MenuItem value="Other">Other</MenuItem>
+                    </DZFInput>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <DZFInput
+                      label="Parent Email Address (Optional)"
+                      type="email"
+                      placeholder="parent@example.com"
+                      value={parentEmail}
+                      onChange={(e) => setParentEmail(e.target.value)}
+                      fullWidth
+                    />
+                  </Grid>
                 </>
               )}
 
@@ -582,12 +637,25 @@ export default function PatronRegisterClient({
                   </Grid>
                 </>
               )}
+
+              {/* Conditional: Guest Details */}
+              {patronType === 'guest' && (
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <DZFInput
+                    label="Community Affiliation / Organization"
+                    placeholder="e.g. Community Leader, Alumni, Independent Researcher"
+                    value={guestAffiliation}
+                    onChange={(e) => setGuestAffiliation(e.target.value)}
+                    fullWidth
+                  />
+                </Grid>
+              )}
             </Grid>
           </Card>
 
           {/* Form Actions */}
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mb: 4 }}>
-            <Link href="/patrons" style={{ textDecoration: 'none' }}>
+            <Link href="/dashboard/patrons" style={{ textDecoration: 'none' }}>
               <DZFButton variant="secondary" size="large" disabled={submitting}>
                 Cancel
               </DZFButton>

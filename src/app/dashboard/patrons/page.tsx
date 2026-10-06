@@ -16,7 +16,7 @@ export default async function PatronsPage() {
   const user = await getSessionUser();
 
   if (!user) {
-    redirect('/auth/login?redirect=/patrons');
+    redirect('/auth/login?redirect=/dashboard/patrons');
   }
 
   let initialPatrons: IPatron[] = [];
