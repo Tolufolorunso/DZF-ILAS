@@ -76,6 +76,8 @@ export default function PatronRegisterClient({
   const [error, setError] = React.useState<string | null>(null);
   const [registeredPatron, setRegisteredPatron] = React.useState<{
     barcode: string;
+    firstname?: string;
+    surname?: string;
     name: string;
     patronType: string;
   } | null>(null);
@@ -153,6 +155,8 @@ export default function PatronRegisterClient({
 
       setRegisteredPatron({
         barcode: assignedBarcode,
+        firstname,
+        surname,
         name: fullName,
         patronType,
       });
@@ -202,8 +206,11 @@ export default function PatronRegisterClient({
     setPrintLabels([
       {
         barcode: registeredPatron.barcode,
+        firstname: registeredPatron.firstname,
+        surname: registeredPatron.surname,
         name: registeredPatron.name,
         patronType: registeredPatron.patronType,
+        orgName: 'Dzuels Foundation',
       },
     ]);
   };

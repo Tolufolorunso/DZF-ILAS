@@ -27,6 +27,7 @@ import {
   PageHeader,
   Mono,
   PrinterIcon,
+  CalendarIcon,
   IdCardIcon,
   EyeIcon,
   EditIcon,
@@ -36,6 +37,7 @@ import { DZFDataTable, Column } from '@/components/ui/DZFDataTable';
 import { ITokenPayload } from '@/lib/auth/jwt';
 import { IPatron } from '@/models/Patron';
 import ThermalPrintDialog from '@/components/patrons/ThermalPrintDialog';
+import DateRangePrintModal from '@/components/patrons/DateRangePrintModal';
 import PatronDetailModal from '@/components/patrons/PatronDetailModal';
 import PatronEditModal from '@/components/patrons/PatronEditModal';
 import { ThermalLabelData } from '@/components/patrons/ThermalBarcodeLabel';
@@ -70,6 +72,7 @@ export default function PatronListClient({
   // Modal Dialogs
   const [detailPatron, setDetailPatron] = React.useState<IPatron | null>(null);
   const [printLabels, setPrintLabels] = React.useState<ThermalLabelData[] | null>(null);
+  const [dateRangeModalOpen, setDateRangeModalOpen] = React.useState<boolean>(false);
 
   // RBAC Privileges
   const canEdit = user ? canUpdatePatron(user.role) : false;
@@ -228,12 +231,14 @@ export default function PatronListClient({
 
   // Thermal Print Handlers
   const handlePrintSingle = (patron: Partial<IPatron>) => {
-    const fullName = `${patron.firstname || ''} ${patron.surname || ''}`.trim();
     setPrintLabels([
       {
         barcode: patron.barcode || '00000000',
-        name: fullName,
+        firstname: patron.firstname || '',
+        surname: patron.surname || '',
+        name: `${patron.firstname || ''} ${patron.surname || ''}`.trim(),
         patronType: patron.patronType,
+        orgName: 'Dzuels Foundation',
       },
     ]);
   };
@@ -244,8 +249,11 @@ export default function PatronListClient({
 
     const labels: ThermalLabelData[] = selected.map((p) => ({
       barcode: p.barcode,
+      firstname: p.firstname,
+      surname: p.surname,
       name: `${p.firstname} ${p.surname}`,
       patronType: p.patronType,
+      orgName: 'Dzuels Foundation',
     }));
 
     setPrintLabels(labels);
@@ -479,6 +487,14 @@ export default function PatronListClient({
         subtitle="Manage student, teacher, staff, and guest memberships. Print high-density 60×40mm thermal roll labels and capture live webcam passport identity photos."
         actionSlot={
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
+            <DZFButton
+              variant="secondary"
+              startIcon={<CalendarIcon size={18} />}
+              onClick={() => setDateRangeModalOpen(true)}
+            >
+              Print by Date Range
+            </DZFButton>
+
             {selectedPatronIds.size > 0 && (
               <DZFButton
                 variant="secondary"
@@ -852,6 +868,13 @@ export default function PatronListClient({
           </DZFButton>
         </DialogActions>
       </Dialog>
+
+      {/* Date-Range Bulk Print Studio Modal */}
+      <DateRangePrintModal
+        open={dateRangeModalOpen}
+        onClose={() => setDateRangeModalOpen(false)}
+        onLaunchPrint={(labels) => setPrintLabels(labels)}
+      />
 
       {/* 60x40mm Thermal Barcode Print Studio Modal */}
       {printLabels && (

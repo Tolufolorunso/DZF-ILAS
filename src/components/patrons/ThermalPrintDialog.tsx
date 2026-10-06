@@ -37,15 +37,21 @@ export default function ThermalPrintDialog({
       <style jsx global>{`
         @media print {
           @page {
-            size: 60mm 40mm;
-            margin: 0 !important;
+            size: 60mm 40mm !important;
+            margin: 0mm !important;
+          }
+          *, *::before, *::after {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
           html,
           body {
             width: 60mm !important;
+            height: auto !important;
             margin: 0 !important;
             padding: 0 !important;
             background: #ffffff !important;
+            overflow: visible !important;
           }
           /* Hide everything in the page except the thermal print area */
           body > *:not(.thermal-print-container) {
@@ -54,14 +60,11 @@ export default function ThermalPrintDialog({
           /* Ensure modal backdrop and layout shells do not appear in print */
           .MuiDialog-root,
           .MuiBackdrop-root {
-            position: static !important;
-            background: transparent !important;
+            display: none !important;
           }
           .thermal-print-container {
             display: block !important;
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
+            position: static !important;
             width: 60mm !important;
             margin: 0 !important;
             padding: 0 !important;
@@ -69,11 +72,17 @@ export default function ThermalPrintDialog({
           .thermal-label-card {
             width: 60mm !important;
             height: 40mm !important;
+            min-height: 40mm !important;
+            max-height: 40mm !important;
             page-break-after: always !important;
             break-after: page !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
             margin: 0 !important;
+            padding: 2.5mm 2mm !important;
             box-shadow: none !important;
             border: none !important;
+            box-sizing: border-box !important;
           }
           .no-print {
             display: none !important;

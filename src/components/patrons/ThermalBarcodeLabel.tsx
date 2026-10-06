@@ -7,9 +7,33 @@ import JsBarcode from 'jsbarcode';
 
 export interface ThermalLabelData {
   barcode: string;
-  name: string;
+  firstname?: string;
+  surname?: string;
+  name?: string; // Fallback
   patronType?: string;
   orgName?: string;
+}
+
+/**
+ * Format patron name into the required "Name: firstname, Surname" label format.
+ */
+export function formatThermalPatronName(data: ThermalLabelData): string {
+  if (data.firstname && data.surname) {
+    return `Name: ${data.firstname}, ${data.surname}`;
+  }
+  if (data.name) {
+    if (data.name.startsWith('Name:')) {
+      return data.name;
+    }
+    const parts = data.name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      const first = parts.slice(0, -1).join(' ');
+      const last = parts[parts.length - 1];
+      return `Name: ${first}, ${last}`;
+    }
+    return `Name: ${data.name}`;
+  }
+  return 'Name: —';
 }
 
 interface ThermalBarcodeLabelProps {
@@ -47,7 +71,8 @@ export default function ThermalBarcodeLabel({
     }
   }, [data.barcode]);
 
-  const orgTitle = data.orgName || 'DZUELS EDUCATIONAL FOUNDATION';
+  const orgTitle = data.orgName || 'Dzuels Foundation';
+  const displayName = formatThermalPatronName(data);
 
   return (
     <Box
@@ -68,7 +93,7 @@ export default function ThermalBarcodeLabel({
         justifyContent: 'space-between',
         alignItems: 'center',
         textAlign: 'center',
-        padding: '3mm 2.5mm',
+        padding: '2.5mm 2.5mm',
         position: 'relative',
         transform: scale !== 1 ? `scale(${scale})` : undefined,
         transformOrigin: 'top center',
@@ -87,16 +112,15 @@ export default function ThermalBarcodeLabel({
         },
       }}
     >
-      {/* 1. TOP: Organisation Name */}
-      <Box sx={{ width: '100%', pt: 0.2 }}>
+      {/* 1. TOP: Dzuels Foundation */}
+      <Box sx={{ width: '100%', pt: 0.3 }}>
         <Typography
           variant="caption"
           component="div"
           sx={{
-            fontSize: '8pt',
+            fontSize: '9pt',
             fontWeight: 800,
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
+            letterSpacing: '0.02em',
             color: '#000000',
             lineHeight: 1.1,
             whiteSpace: 'nowrap',
@@ -106,23 +130,9 @@ export default function ThermalBarcodeLabel({
         >
           {orgTitle}
         </Typography>
-        <Typography
-          variant="caption"
-          component="div"
-          sx={{
-            fontSize: '6.5pt',
-            fontWeight: 600,
-            letterSpacing: '0.02em',
-            color: '#333333',
-            lineHeight: 1,
-            mt: 0.2,
-          }}
-        >
-          ILLS • Patron Identity Card
-        </Typography>
       </Box>
 
-      {/* 2. CENTER: Barcode Graphic & Number with uniform gap */}
+      {/* 2. CENTER: Barcode Graphic & Numeric Value */}
       <Box
         sx={{
           display: 'flex',
@@ -137,21 +147,20 @@ export default function ThermalBarcodeLabel({
           ref={svgRef}
           style={{
             maxWidth: '54mm',
-            height: '18mm',
+            height: '19mm',
             display: 'block',
           }}
         />
       </Box>
 
-      {/* 3. BOTTOM: Patron Name with equal bottom gap */}
-      <Box sx={{ width: '100%', pb: 0.2 }}>
+      {/* 3. BOTTOM: Name: firstname, Surname */}
+      <Box sx={{ width: '100%', pb: 0.3 }}>
         <Typography
           variant="body2"
           component="div"
           sx={{
-            fontSize: '8.5pt',
-            fontWeight: 800,
-            textTransform: 'uppercase',
+            fontSize: '8pt',
+            fontWeight: 700,
             color: '#000000',
             lineHeight: 1.1,
             whiteSpace: 'nowrap',
@@ -159,23 +168,8 @@ export default function ThermalBarcodeLabel({
             textOverflow: 'ellipsis',
           }}
         >
-          {data.name}
+          {displayName}
         </Typography>
-        {data.patronType && (
-          <Typography
-            variant="caption"
-            component="div"
-            sx={{
-              fontSize: '6pt',
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              color: '#555555',
-              letterSpacing: '0.05em',
-            }}
-          >
-            {data.patronType}
-          </Typography>
-        )}
       </Box>
     </Box>
   );

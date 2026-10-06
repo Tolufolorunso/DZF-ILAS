@@ -11,10 +11,12 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
-    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20', 10)));
+    const limit = Math.min(1000, Math.max(1, parseInt(searchParams.get('limit') || '20', 10)));
     const search = searchParams.get('search')?.trim() || '';
     const patronType = searchParams.get('patronType')?.trim() || '';
     const status = searchParams.get('status')?.trim() || '';
+    const startDate = searchParams.get('startDate')?.trim() || '';
+    const endDate = searchParams.get('endDate')?.trim() || '';
 
     await connectDB();
 
@@ -42,6 +44,36 @@ export async function GET(request: NextRequest) {
         { phoneNumber: searchRegex },
         { 'studentSchoolInfo.schoolName': searchRegex },
       ];
+    }
+
+    if (startDate || endDate) {
+      const dateFilter: Record<string, Date> = {};
+      if (startDate) {
+        const start = new Date(startDate);
+        if (!isNaN(start.getTime())) {
+          start.setHours(0, 0, 0, 0);
+          dateFilter.$gte = start;
+        }
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        if (!isNaN(end.getTime())) {
+          end.setHours(23, 59, 59, 999);
+          dateFilter.$lte = end;
+        }
+      }
+      if (Object.keys(dateFilter).length > 0) {
+        const dateCondition = [
+          { registeredDate: dateFilter },
+          { createdAt: dateFilter },
+        ];
+        if (query.$or) {
+          query.$and = [{ $or: query.$or }, { $or: dateCondition }];
+          delete query.$or;
+        } else {
+          query.$or = dateCondition;
+        }
+      }
     }
 
     const sortBy = searchParams.get('sortBy') || 'barcode';
