@@ -21,6 +21,7 @@ import Link from 'next/link';
 import { dzfColors } from '@/theme/colors';
 import {
   DZFButton,
+  DZFInput,
   DZFBadge,
   DZFSearchInput,
   PageHeader,
@@ -59,7 +60,11 @@ export default function PatronListClient({
   const [page, setPage] = React.useState<number>(0);
   const [pageSize, setPageSize] = React.useState<number>(10);
 
-  // Selection for Batch Thermal Label Printing
+  // Sorting State (default: barcode ascending)
+  const [sortColumn, setSortColumn] = React.useState<string>('barcode');
+  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('asc');
+
+  // Selection for Batch Thermal Label Printing and Bulk Actions
   const [selectedPatronIds, setSelectedPatronIds] = React.useState<Set<string>>(new Set());
 
   // Modal Dialogs
@@ -75,6 +80,14 @@ export default function PatronListClient({
   const [deleteTarget, setDeleteTarget] = React.useState<IPatron | null>(null);
   const [deleting, setDeleting] = React.useState(false);
   const [deleteError, setDeleteError] = React.useState<string | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = React.useState<string>('');
+
+  // Bulk Delete Modal States (Admin Only)
+  const [bulkDeleteOpen, setBulkDeleteOpen] = React.useState<boolean>(false);
+  const [bulkDeleteConfirmText, setBulkDeleteConfirmText] = React.useState<string>('');
+  const [bulkDeleting, setBulkDeleting] = React.useState<boolean>(false);
+  const [bulkDeleteError, setBulkDeleteError] = React.useState<string | null>(null);
+
   const [feedbackMessage, setFeedbackMessage] = React.useState<string | null>(null);
 
   const handlePatronUpdated = (updated: IPatron) => {
@@ -85,7 +98,7 @@ export default function PatronListClient({
   };
 
   const handleConfirmDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget || deleteConfirmText.trim() !== 'DELETE') return;
     setDeleting(true);
     setDeleteError(null);
     try {
@@ -98,12 +111,53 @@ export default function PatronListClient({
       setTotalCount((prev) => Math.max(0, prev - 1));
       setFeedbackMessage(`Patron ${deleteTarget.firstname} ${deleteTarget.surname} removed successfully.`);
       setDeleteTarget(null);
+      setDeleteConfirmText('');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error deleting patron';
       setDeleteError(msg);
     } finally {
       setDeleting(false);
     }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedPatronIds.size === 0 || bulkDeleteConfirmText.trim() !== 'DELETE') return;
+    setBulkDeleting(true);
+    setBulkDeleteError(null);
+    try {
+      const res = await fetch('/api/patrons/bulk', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patronIds: Array.from(selectedPatronIds) }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to delete selected patrons.');
+      }
+      const count = data.deletedCount || selectedPatronIds.size;
+      setPatrons((prev) => prev.filter((p) => !selectedPatronIds.has(String(p._id))));
+      setTotalCount((prev) => Math.max(0, prev - count));
+      setSelectedPatronIds(new Set());
+      setFeedbackMessage(`Successfully deleted ${count} patron record${count > 1 ? 's' : ''}.`);
+      setBulkDeleteOpen(false);
+      setBulkDeleteConfirmText('');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error in bulk deletion';
+      setBulkDeleteError(msg);
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
+  const handleSort = (columnId: string) => {
+    if (sortColumn === columnId) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortColumn(columnId);
+      setSortDirection('asc');
+    }
+    setPage(0);
+    setLoading(true);
   };
 
   // Avoid synchronous setState inside initial effect
@@ -124,6 +178,8 @@ export default function PatronListClient({
         params.set('limit', String(pageSize));
         if (search.trim()) params.set('search', search.trim());
         if (patronTypeFilter !== 'all') params.set('patronType', patronTypeFilter);
+        params.set('sortBy', sortColumn);
+        params.set('sortOrder', sortDirection);
 
         const res = await fetch(`/api/patrons?${params.toString()}`);
         const data = await res.json();
@@ -146,7 +202,7 @@ export default function PatronListClient({
     return () => {
       active = false;
     };
-  }, [page, pageSize, search, patronTypeFilter]);
+  }, [page, pageSize, search, patronTypeFilter, sortColumn, sortDirection]);
 
   // Selection Handlers
   const handleSelectAll = (checked: boolean) => {
@@ -219,6 +275,7 @@ export default function PatronListClient({
       id: 'patron',
       label: 'Patron',
       minWidth: 230,
+      sortable: true,
       render: (row) => (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Avatar
@@ -259,6 +316,7 @@ export default function PatronListClient({
       id: 'barcode',
       label: 'Barcode ID',
       minWidth: 140,
+      sortable: true,
       render: (row) => (
         <Mono
           sx={{
@@ -301,6 +359,7 @@ export default function PatronListClient({
       id: 'academic',
       label: 'School / Level',
       minWidth: 160,
+      sortable: true,
       render: (row) => {
         if (row.patronType === 'student' && row.studentSchoolInfo) {
           return (
@@ -322,9 +381,21 @@ export default function PatronListClient({
       },
     },
     {
+      id: 'gender',
+      label: 'Gender',
+      minWidth: 100,
+      sortable: true,
+      render: (row) => (
+        <Typography variant="body2" sx={{ color: dzfColors.navy[700], textTransform: 'capitalize', fontWeight: 500 }}>
+          {row.gender || '—'}
+        </Typography>
+      ),
+    },
+    {
       id: 'status',
       label: 'Status',
       minWidth: 100,
+      sortable: true,
       render: (row) => (
         <DZFBadge
           variant={row.active ? 'success' : 'default'}
@@ -382,6 +453,7 @@ export default function PatronListClient({
                 size="small"
                 onClick={() => {
                   setDeleteError(null);
+                  setDeleteConfirmText('');
                   setDeleteTarget(row);
                 }}
                 sx={{
@@ -414,6 +486,20 @@ export default function PatronListClient({
                 onClick={handlePrintBatch}
               >
                 Print Selected ({selectedPatronIds.size}) Labels
+              </DZFButton>
+            )}
+
+            {canDelete && selectedPatronIds.size > 0 && (
+              <DZFButton
+                variant="danger"
+                startIcon={<TrashIcon size={18} />}
+                onClick={() => {
+                  setBulkDeleteError(null);
+                  setBulkDeleteConfirmText('');
+                  setBulkDeleteOpen(true);
+                }}
+              >
+                Delete Selected ({selectedPatronIds.size})
               </DZFButton>
             )}
 
@@ -533,14 +619,30 @@ export default function PatronListClient({
           </Typography>
         </Box>
         {selectedPatronIds.size > 0 && (
-          <DZFButton
-            variant="secondary"
-            size="small"
-            startIcon={<PrinterIcon size={16} />}
-            onClick={handlePrintBatch}
-          >
-            Print Thermal Labels ({selectedPatronIds.size})
-          </DZFButton>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+            <DZFButton
+              variant="secondary"
+              size="small"
+              startIcon={<PrinterIcon size={16} />}
+              onClick={handlePrintBatch}
+            >
+              Print Thermal Labels ({selectedPatronIds.size})
+            </DZFButton>
+            {canDelete && (
+              <DZFButton
+                variant="danger"
+                size="small"
+                startIcon={<TrashIcon size={16} />}
+                onClick={() => {
+                  setBulkDeleteError(null);
+                  setBulkDeleteConfirmText('');
+                  setBulkDeleteOpen(true);
+                }}
+              >
+                Delete Selected ({selectedPatronIds.size})
+              </DZFButton>
+            )}
+          </Box>
         )}
       </Box>
 
@@ -561,6 +663,9 @@ export default function PatronListClient({
           page={page}
           pageSize={pageSize}
           totalCount={totalCount}
+          sortColumn={sortColumn}
+          sortDirection={sortDirection}
+          onSort={handleSort}
           onPageChange={(newPage) => {
             setPage(newPage);
             setLoading(true);
@@ -602,7 +707,12 @@ export default function PatronListClient({
       {/* Patron Deletion Confirmation Dialog (Admin Only) */}
       <Dialog
         open={Boolean(deleteTarget)}
-        onClose={() => !deleting && setDeleteTarget(null)}
+        onClose={() => {
+          if (!deleting) {
+            setDeleteTarget(null);
+            setDeleteConfirmText('');
+          }
+        }}
         maxWidth="xs"
         fullWidth
         sx={{
@@ -628,11 +738,28 @@ export default function PatronListClient({
           <Alert severity="warning" sx={{ borderRadius: 2, fontSize: '0.8125rem' }}>
             Active loan protection: Deletion will be blocked if this patron has any unreturned borrowed books in the library ledger.
           </Alert>
+
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="caption" sx={{ fontWeight: 700, color: dzfColors.navy[900], mb: 0.5, display: 'block' }}>
+              To confirm deletion, type <Mono sx={{ color: '#dc2626', fontWeight: 800 }}>DELETE</Mono> in the box below:
+            </Typography>
+            <DZFInput
+              placeholder='Type "DELETE" to confirm'
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              fullWidth
+              size="small"
+              autoFocus
+            />
+          </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
           <DZFButton
             variant="secondary"
-            onClick={() => setDeleteTarget(null)}
+            onClick={() => {
+              setDeleteTarget(null);
+              setDeleteConfirmText('');
+            }}
             disabled={deleting}
           >
             Cancel
@@ -641,12 +768,87 @@ export default function PatronListClient({
             variant="primary"
             onClick={handleConfirmDelete}
             loading={deleting}
+            disabled={deleting || deleteConfirmText.trim() !== 'DELETE'}
             sx={{
               backgroundColor: '#dc2626 !important',
               '&:hover': { backgroundColor: '#b91c1c !important' },
             }}
           >
             Delete Patron
+          </DZFButton>
+        </DialogActions>
+      </Dialog>
+
+      {/* Bulk Patron Deletion Confirmation Dialog (Admin Only) */}
+      <Dialog
+        open={bulkDeleteOpen}
+        onClose={() => {
+          if (!bulkDeleting) {
+            setBulkDeleteOpen(false);
+            setBulkDeleteConfirmText('');
+          }
+        }}
+        maxWidth="xs"
+        fullWidth
+        sx={{
+          '& .MuiDialog-paper': { borderRadius: 3, p: 1 },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: dzfColors.navy[900], pb: 1 }}>
+          Confirm Bulk Patron Deletion
+        </DialogTitle>
+        <DialogContent>
+          {bulkDeleteError && (
+            <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>
+              {bulkDeleteError}
+            </Alert>
+          )}
+          <Typography variant="body2" sx={{ color: dzfColors.surfaces.textSecondary, mb: 2 }}>
+            Are you sure you want to permanently delete{' '}
+            <strong style={{ color: dzfColors.navy[900] }}>
+              {selectedPatronIds.size} selected patron{selectedPatronIds.size > 1 ? 's' : ''}
+            </strong>?
+          </Typography>
+          <Alert severity="warning" sx={{ borderRadius: 2, fontSize: '0.8125rem', mb: 2 }}>
+            Active loan protection: If any selected patron has active unreturned borrowed books, the bulk deletion will be safely aborted.
+          </Alert>
+
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="caption" sx={{ fontWeight: 700, color: dzfColors.navy[900], mb: 0.5, display: 'block' }}>
+              To confirm bulk deletion, type <Mono sx={{ color: '#dc2626', fontWeight: 800 }}>DELETE</Mono> in the box below:
+            </Typography>
+            <DZFInput
+              placeholder='Type "DELETE" to confirm'
+              value={bulkDeleteConfirmText}
+              onChange={(e) => setBulkDeleteConfirmText(e.target.value)}
+              fullWidth
+              size="small"
+              autoFocus
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+          <DZFButton
+            variant="secondary"
+            onClick={() => {
+              setBulkDeleteOpen(false);
+              setBulkDeleteConfirmText('');
+            }}
+            disabled={bulkDeleting}
+          >
+            Cancel
+          </DZFButton>
+          <DZFButton
+            variant="primary"
+            onClick={handleBulkDelete}
+            loading={bulkDeleting}
+            disabled={bulkDeleting || bulkDeleteConfirmText.trim() !== 'DELETE'}
+            sx={{
+              backgroundColor: '#dc2626 !important',
+              '&:hover': { backgroundColor: '#b91c1c !important' },
+            }}
+          >
+            Delete {selectedPatronIds.size} Patrons
           </DZFButton>
         </DialogActions>
       </Dialog>

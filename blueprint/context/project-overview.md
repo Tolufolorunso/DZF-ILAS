@@ -1,21 +1,21 @@
 # DZF-ILLS - Project Overview
 
-<!-- blueprint:source-hash 46af433319e5d9a00f3af9c670a3711c47c47f85388fc4fe3c74b6e520fee14d -->
+<!-- blueprint:source-hash 333b6bddcbf5d3985ee4fa3d7187c7906f178b517e92b0b9561dabd8f3b970cb -->
 
 > Centralized internal staff workspace and REST API backend for the Dzuels Educational Foundation (DZF), managing academic library cataloging, patron identity, circulation, and academy engagement.
 
 ## Problem
 
-The Dzuels Educational Foundation operates a high-volume academic library and learning center in Nigeria, managing 2,300+ catalog items, 670+ patrons, active book circulation, student digital literacy cohorts, reading competitions, and values publication. The legacy system suffered from fragmented auth patterns, unindexed database schemas, transaction desynchronization during circulations, and edge runtime failures. DZF-ILLS provides a clean, unified, resilient Next.js web application and first-class REST API backend for an upcoming companion Android mobile client. Phase 5 refines operational UX with modern skeleton screen loading, public leadership knowledge sharing, strict RBAC, and gamified circulation incentives.
+The Dzuels Educational Foundation operates a high-volume academic library and learning center in Nigeria, managing 2,300+ catalog items, 670+ patrons, active book circulation, student digital literacy cohorts, reading competitions, and values publication. The legacy system suffered from fragmented auth patterns, unindexed database schemas, transaction desynchronization during circulations, and edge runtime failures. DZF-ILLS provides a clean, unified, resilient Next.js web application and first-class REST API backend for an upcoming companion Android mobile client. Phase 5 delivered operational shell modernizations, `/dashboard/*` reorganization, dynamic registration, monthly loan caps, and catalog acquisition studios. Phase 6 enhances patron workflows with streamlined registration, an official Ijero Ekiti school directory, typed deletion security guards for patrons and monographs, interactive table sorting, precision Xprinter XP-365B 60×40mm thermal label formatting, and date-range bulk barcode printing.
 
 ## Users
 
-- **Librarians & Desk Staff:** Monograph cataloging (Dewey Decimal), circulation checkouts/returns/renewals, hold reservations, overdue penalization, book updates/deletions, patron registration with webcam passport photo capture.
+- **Librarians & Desk Staff:** Monograph cataloging (Dewey Decimal), circulation checkouts/returns/renewals, hold reservations, overdue penalization, book updates/deletions, patron registration with webcam passport photo capture, Xprinter XP-365B thermal barcode printing.
 - **Mobile / Android Users (Staff & Proctors):** Floor attendants and proctors using Android devices for fast camera barcode scanning, attendance check-ins ("Attendant"), and roving circulation verification.
 - **Cohort Leads & Instructors:** Run digital literacy cohorts, mark daily attendance with hardware scanners, manage student rosters, and sync records to Google Sheets.
 - **Competition Judges & Evaluators:** Grade multi-category student reading competitions (SS1-3, JSS1-3, P1-6) using criteria rubrics with live leaderboard broadcast.
 - **Transcomm Authors & Public Readers:** Staff publish and review DRNICER leadership values articles; students, educators, and the public read leadership articles freely without login.
-- **Super Administrators & ICT Officers:** Staff RBAC accounts, patron edit/delete authority, emergency circulation overrides, system audit logs, and cloud synchronizations.
+- **Super Administrators & ICT Officers:** Staff RBAC accounts, patron and catalog edit/delete authority with typed safeguards, emergency circulation overrides, system audit logs, and cloud synchronizations.
 - **Patrons (Beneficiaries):** Students (Primary to Senior Secondary), Teachers, Staff, and Community Guests.
 
 ## Usage model
@@ -23,7 +23,7 @@ The Dzuels Educational Foundation operates a high-volume academic library and le
 - **Scale & Performance:** 670+ registered patrons, 2,300+ catalog items, daily attendance batches, and real-time competition leaderboards.
 - **Reachability & Trust:** Authenticated internal staff platform (`/dashboard/*`). Staff identities verified via JWT sessions. Public marketing/reading routes (`/`, `/transcomm`).
 - **Dual-Mode API Interoperability:** Consumed concurrently by the Next.js web frontend (HTTP-only `ils_token` cookies) and the Android mobile app (`Authorization: Bearer <token>`).
-- **Hardware Integration:** Instant input support for physical USB/Bluetooth barcode scanners with automatic submit triggers.
+- **Hardware Integration:** Instant input support for physical USB/Bluetooth barcode scanners with automatic submit triggers; continuous 60mm × 40mm roll printing on Xprinter XP-365B thermal label printers.
 
 ## Features
 
@@ -46,6 +46,8 @@ The Dzuels Educational Foundation operates a high-volume academic library and le
 17. **Patron Lifecycle Enhancements, Dynamic Registration & Strict RBAC** - Display passport photo thumbnails in patron lists, dynamic registration form conditioning on `patronType` (school details and parent/guardian info for students), Mongoose schema updates, and strict RBAC allowing only `admin`/`ict` to edit and `admin` to delete.
 18. **Circulation Gamification, Monthly Student Loan Caps & Competition Event Tagging** - Checkout workflow supporting optional Event Title and custom due days, hard limit of 4 borrowed books per month for students, timely return activity points on check-in (+3 on/before due date, +1 within 2 days late, 0 after), and enhanced Holds/Overdues/Renewal controls.
 19. **Catalog Acquisition Studio & Monograph Lifecycle Management** - Redesigned book acquisition studio with Dewey Decimal selector, real-time barcode copy preview, and staff book update and deletion capabilities with active loan protection.
+20. **Patron Registration Streamlining, School Directory, Deletion Safeguards & Table Sorting** - Remove cohort assignment from registration, implement 22 predefined Ijero Ekiti schools dropdown with manual entry fallback and auto-address fill, add typed confirmation security guards (`DELETE`) for single/bulk patron and monograph deletions with active loan protection, and enable interactive column sorting with up/down arrows (defaulting to barcode).
+21. **Xprinter XP-365B Thermal Barcode Studio & Date-Range Bulk Print Pipeline** - Redesign 60mm × 40mm thermal label layout (Top: "Dzuels Foundation", Middle: barcode, Bottom: "Name: <firstname>, <Surname>") with zero browser margin/header/footer CSS targeting Xprinter XP-365B, and add date-range bulk generation and continuous roll printing studio in `/dashboard/patrons`.
 
 ## Data model
 
@@ -70,7 +72,7 @@ The Dzuels Educational Foundation operates a high-volume academic library and le
 - `points` (number, default: 0)
 - `image_url` (object: `{ secure_url: string, public_id: string }`)
 - `parentGuardian` (object, optional: `{ name: string, phone: string, relationship: string, address: string }`)
-- `schoolInfo` (object, optional: `{ schoolName: string, classGrade: string }`)
+- `schoolInfo` (object, optional: `{ schoolName: string, classGrade: string, schoolAddress?: string }`)
 - `createdAt`, `updatedAt` (Date)
 
 ### Cataloging
@@ -221,7 +223,7 @@ Not applicable. DZF-ILLS is a 100% internal non-profit educational platform for 
   - `/auth/login` - Staff credential sign-in
   - `/dashboard` - Summary counters, circulation stats, gender ratios
   - `/dashboard/catalog` & `/dashboard/catalog/acquire` - Book inventory directory and acquisition studio
-  - `/dashboard/patrons` & `/dashboard/patrons/register` - Patron directory and dynamic registration
+  - `/dashboard/patrons` & `/dashboard/patrons/register` - Patron directory, dynamic registration, Xprinter XP-365B 60×40mm thermal bulk printing studio
   - `/dashboard/circulations` - Barcode loan transactions, checkout, return, holds, overdues
   - `/dashboard/attendance` - Barcode scanner interface ("Attendant")
   - `/dashboard/leaderboard` - Activity metrics and patron leaderboard

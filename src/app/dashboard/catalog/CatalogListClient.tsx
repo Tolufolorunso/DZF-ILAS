@@ -22,6 +22,7 @@ import Link from 'next/link';
 import { dzfColors } from '@/theme/colors';
 import {
   DZFButton,
+  DZFInput,
   DZFSearchInput,
   DZFBadge,
   PageHeader,
@@ -77,6 +78,7 @@ export default function CatalogListClient({
   const [deleteBook, setDeleteBook] = React.useState<ICataloging | null>(null);
   const [deleting, setDeleting] = React.useState<boolean>(false);
   const [deleteError, setDeleteError] = React.useState<string | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = React.useState<string>('');
 
   // Avoid synchronous setState inside initial effect
   const isFirstMount = React.useRef(true);
@@ -356,6 +358,7 @@ export default function CatalogListClient({
                 onClick={() => {
                   setDeleteBook(row);
                   setDeleteError(null);
+                  setDeleteConfirmText('');
                 }}
                 sx={{ color: dzfColors.surfaces.textMuted, '&:hover': { color: dzfColors.status.error.button } }}
               >
@@ -599,6 +602,7 @@ export default function CatalogListClient({
           setDetailBook(null);
           setDeleteBook(book);
           setDeleteError(null);
+          setDeleteConfirmText('');
         }}
         canEdit={canEdit}
         canDelete={canDelete}
@@ -630,7 +634,10 @@ export default function CatalogListClient({
       {/* Delete Confirmation Dialog */}
       <Dialog
         open={Boolean(deleteBook)}
-        onClose={deleting ? undefined : () => setDeleteBook(null)}
+        onClose={deleting ? undefined : () => {
+          setDeleteBook(null);
+          setDeleteConfirmText('');
+        }}
         maxWidth="xs"
         fullWidth
         slotProps={{
@@ -665,18 +672,35 @@ export default function CatalogListClient({
           <Typography variant="caption" sx={{ color: dzfColors.status.error.text, mt: 1, display: 'block' }}>
             Warning: This action cannot be undone. Books on active loan or in the reservation queue cannot be deleted.
           </Typography>
+
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="caption" sx={{ fontWeight: 700, color: dzfColors.navy[900], mb: 0.5, display: 'block' }}>
+              To confirm deletion, type <Mono sx={{ color: '#dc2626', fontWeight: 800 }}>DELETE</Mono> in the box below:
+            </Typography>
+            <DZFInput
+              placeholder='Type "DELETE" to confirm'
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              fullWidth
+              size="small"
+              autoFocus
+            />
+          </Box>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2, pt: 1 }}>
           <DZFButton
             variant="soft"
-            onClick={() => setDeleteBook(null)}
+            onClick={() => {
+              setDeleteBook(null);
+              setDeleteConfirmText('');
+            }}
             disabled={deleting}
           >
             Cancel
           </DZFButton>
           <DZFButton
             variant="danger"
-            disabled={deleting}
+            disabled={deleting || deleteConfirmText.trim() !== 'DELETE'}
             startIcon={deleting ? <CircularProgress size={16} color="inherit" /> : <TrashIcon size={16} />}
             onClick={async () => {
               if (!deleteBook) return;
@@ -699,6 +723,7 @@ export default function CatalogListClient({
                 );
                 setTotalCount((prev) => Math.max(0, prev - 1));
                 setDeleteBook(null);
+                setDeleteConfirmText('');
               } catch (err) {
                 const e = err as Error;
                 setDeleteError(e.message || 'Failed to delete book');

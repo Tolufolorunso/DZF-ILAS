@@ -24,6 +24,7 @@ import {
   CheckIcon,
 } from '@/components';
 import { IPatron, PatronType, Gender } from '@/models/Patron';
+import { IJERO_SCHOOL_OPTIONS, getSchoolAddress, isPredefinedSchool } from '@/lib/patron/schools';
 
 interface PatronEditModalProps {
   open: boolean;
@@ -60,7 +61,15 @@ function PatronEditForm({
   const [active, setActive] = React.useState(patron.active !== false);
 
   // Student details
-  const [schoolName, setSchoolName] = React.useState(patron.studentSchoolInfo?.schoolName || '');
+  const initialSchool = patron.studentSchoolInfo?.schoolName || '';
+  const initialIsPredefined = isPredefinedSchool(initialSchool);
+  const [schoolSelect, setSchoolSelect] = React.useState(
+    initialIsPredefined ? initialSchool : initialSchool ? 'others' : ''
+  );
+  const [customSchoolName, setCustomSchoolName] = React.useState(
+    !initialIsPredefined && initialSchool ? initialSchool : ''
+  );
+  const [schoolName, setSchoolName] = React.useState(initialSchool);
   const [currentClass, setCurrentClass] = React.useState(patron.studentSchoolInfo?.currentClass || 'SS2');
   const [schoolAddress, setSchoolAddress] = React.useState(patron.studentSchoolInfo?.schoolAddress || '');
   const [parentName, setParentName] = React.useState(patron.parentInfo?.parentName || '');
@@ -338,15 +347,48 @@ function PatronEditForm({
                   3. Student School Details
                 </Typography>
                 <Grid container spacing={2}>
-                  <Grid size={{ xs: 12, sm: 6 }}>
+                  <Grid size={{ xs: 12, sm: schoolSelect === 'others' ? 6 : 12 }}>
                     <DZFInput
                       label="School Name"
-                      placeholder="e.g. Community Secondary School"
-                      value={schoolName}
-                      onChange={(e) => setSchoolName(e.target.value)}
+                      select
+                      value={schoolSelect}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSchoolSelect(val);
+                        if (val === 'others') {
+                          setSchoolName(customSchoolName);
+                        } else {
+                          setSchoolName(val);
+                          const addr = getSchoolAddress(val);
+                          if (addr) setSchoolAddress(addr);
+                        }
+                      }}
                       fullWidth
-                    />
+                    >
+                      {IJERO_SCHOOL_OPTIONS.map((opt) => (
+                        <MenuItem key={opt.label} value={opt.value}>
+                          {opt.label}
+                        </MenuItem>
+                      ))}
+                    </DZFInput>
                   </Grid>
+
+                  {schoolSelect === 'others' && (
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <DZFInput
+                        label="Enter School Name (Other)"
+                        placeholder="Type school name manually"
+                        value={customSchoolName}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCustomSchoolName(val);
+                          setSchoolName(val);
+                        }}
+                        fullWidth
+                        required
+                      />
+                    </Grid>
+                  )}
 
                   <Grid size={{ xs: 12, sm: 6 }}>
                     <DZFInput

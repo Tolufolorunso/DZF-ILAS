@@ -25,22 +25,15 @@ import { ITokenPayload } from '@/lib/auth/jwt';
 import PatronPhotoCapture, { PhotoCaptureResult } from '@/components/patrons/PatronPhotoCapture';
 import ThermalPrintDialog from '@/components/patrons/ThermalPrintDialog';
 import { ThermalLabelData } from '@/components/patrons/ThermalBarcodeLabel';
-
-export interface CohortGroupItem {
-  cohortType: string;
-  displayName?: string;
-}
+import { IJERO_SCHOOL_OPTIONS, getSchoolAddress } from '@/lib/patron/schools';
 
 interface PatronRegisterClientProps {
-  user: ITokenPayload | null;
+  user?: ITokenPayload | null;
   initialNextBarcode: string;
-  cohortGroups: CohortGroupItem[];
 }
 
 export default function PatronRegisterClient({
-  user,
   initialNextBarcode,
-  cohortGroups,
 }: PatronRegisterClientProps) {
 
   // Next allocated barcode
@@ -58,6 +51,8 @@ export default function PatronRegisterClient({
   const [patronType, setPatronType] = React.useState<'student' | 'teacher' | 'staff' | 'guest'>('student');
 
   // Student specific
+  const [schoolSelect, setSchoolSelect] = React.useState('');
+  const [customSchoolName, setCustomSchoolName] = React.useState('');
   const [schoolName, setSchoolName] = React.useState('');
   const [schoolClass, setSchoolClass] = React.useState('SS2');
   const [schoolAddress, setSchoolAddress] = React.useState('');
@@ -65,7 +60,6 @@ export default function PatronRegisterClient({
   const [parentPhone, setParentPhone] = React.useState('');
   const [relationshipToPatron, setRelationshipToPatron] = React.useState('Parent');
   const [parentEmail, setParentEmail] = React.useState('');
-  const [cohortType, setCohortType] = React.useState('');
 
   // Teacher / Staff specific
   const [employerName, setEmployerName] = React.useState('');
@@ -88,8 +82,6 @@ export default function PatronRegisterClient({
 
   // Thermal Print Dialog Trigger
   const [printLabels, setPrintLabels] = React.useState<ThermalLabelData[] | null>(null);
-
-  const canAssignCohort = user?.role === 'admin' || user?.role === 'ict';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,9 +125,6 @@ export default function PatronRegisterClient({
           relationshipToPatron: relationshipToPatron || 'Parent',
           parentEmail: parentEmail.trim() || undefined,
         };
-        if (canAssignCohort && cohortType) {
-          payload.cohortId = cohortType;
-        }
       } else if (['teacher', 'staff'].includes(patronType)) {
         payload.employerInfo = {
           employerName: employerName.trim() || undefined,
@@ -198,7 +187,8 @@ export default function PatronRegisterClient({
     setParentPhone('');
     setRelationshipToPatron('Parent');
     setParentEmail('');
-    setCohortType('');
+    setSchoolSelect('');
+    setCustomSchoolName('');
     setEmployerName('');
     setDepartment('');
     setGuestAffiliation('');
@@ -524,45 +514,58 @@ export default function PatronRegisterClient({
                     </DZFInput>
                   </Grid>
 
-                  <Grid size={{ xs: 12, sm: 6 }}>
+                  <Grid size={{ xs: 12, sm: schoolSelect === 'others' ? 6 : 12 }}>
                     <DZFInput
                       label="School Name"
-                      placeholder="e.g. Community High School"
-                      value={schoolName}
-                      onChange={(e) => setSchoolName(e.target.value)}
+                      select
+                      value={schoolSelect}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSchoolSelect(val);
+                        if (val === 'others') {
+                          setSchoolName(customSchoolName);
+                        } else {
+                          setSchoolName(val);
+                          const addr = getSchoolAddress(val);
+                          if (addr) setSchoolAddress(addr);
+                        }
+                      }}
                       fullWidth
-                    />
+                    >
+                      {IJERO_SCHOOL_OPTIONS.map((opt) => (
+                        <MenuItem key={opt.label} value={opt.value}>
+                          {opt.label}
+                        </MenuItem>
+                      ))}
+                    </DZFInput>
                   </Grid>
+
+                  {schoolSelect === 'others' && (
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <DZFInput
+                        label="Enter School Name (Other)"
+                        placeholder="Type school name manually"
+                        value={customSchoolName}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setCustomSchoolName(val);
+                          setSchoolName(val);
+                        }}
+                        fullWidth
+                        required
+                      />
+                    </Grid>
+                  )}
 
                   <Grid size={{ xs: 12 }}>
                     <DZFInput
                       label="School Address / Location"
-                      placeholder="e.g. Ibeju-Lekki, Lagos"
+                      placeholder="e.g. Doherty Road, Ijero Ekiti"
                       value={schoolAddress}
                       onChange={(e) => setSchoolAddress(e.target.value)}
                       fullWidth
                     />
                   </Grid>
-
-                  {/* RBAC: Only Admin and ICT can assign active Cohort on registration */}
-                  {canAssignCohort && (
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                      <DZFInput
-                        label="Assign Academy Cohort (Admin/ICT Only)"
-                        select
-                        value={cohortType}
-                        onChange={(e) => setCohortType(e.target.value)}
-                        fullWidth
-                      >
-                        <MenuItem value="">-- No Cohort Assignment --</MenuItem>
-                        {cohortGroups.map((cg) => (
-                          <MenuItem key={cg.cohortType} value={cg.cohortType}>
-                            {cg.displayName || cg.cohortType}
-                          </MenuItem>
-                        ))}
-                      </DZFInput>
-                    </Grid>
-                  )}
 
                   <Grid size={{ xs: 12, sm: 6 }}>
                     <DZFInput

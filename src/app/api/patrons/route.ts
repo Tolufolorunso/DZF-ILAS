@@ -44,12 +44,30 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+    const sortBy = searchParams.get('sortBy') || 'barcode';
+    const sortOrder = searchParams.get('sortOrder') === 'desc' ? -1 : 1;
+
+    let sortOptions: Record<string, 1 | -1> = {};
+    if (sortBy === 'barcode') {
+      sortOptions = { barcode: sortOrder };
+    } else if (sortBy === 'name' || sortBy === 'patron') {
+      sortOptions = { firstname: sortOrder, surname: sortOrder };
+    } else if (sortBy === 'academic') {
+      sortOptions = { 'studentSchoolInfo.currentClass': sortOrder, 'studentSchoolInfo.schoolName': sortOrder };
+    } else if (sortBy === 'status') {
+      sortOptions = { active: sortOrder };
+    } else if (sortBy === 'gender') {
+      sortOptions = { gender: sortOrder };
+    } else {
+      sortOptions = { barcode: sortOrder };
+    }
+
     const skip = (page - 1) * limit;
 
     const [total, patrons] = await Promise.all([
       Patron.countDocuments(query),
       Patron.find(query)
-        .sort({ registeredDate: -1, _id: -1 })
+        .sort(sortOptions)
         .skip(skip)
         .limit(limit)
         .lean(),

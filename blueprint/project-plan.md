@@ -79,6 +79,58 @@ DZF-ILLS is a ground-up rewrite delivering:
   - Redesigned Book Acquisition studio (`/dashboard/catalog/acquire`) with Dewey Decimal selector, live barcode copy label preview, and batch copy generation.
   - Staff capabilities to edit and delete books, protected by active loan checks.
 
+### Phase 6: Patron Workspace Refinements, School Directory & Xprinter XP-365B Thermal Studio (New)
+
+- **Patron Registration Streamlining, School Directory, Deletion Safeguards & Interactive Table Sorting:**
+  - **Cohort Field Removal:** Eliminate the *"Assign Academy cohort"* field completely from the patron registration workflow (`/dashboard/patrons/register`).
+  - **Predefined School Directory:** Replace the open text input for School Name with a curated dropdown containing 22 Ijero Ekiti educational institutions + an `"others"` option:
+    1. Doherty Memorial Grammar School
+    2. Doherty Memorial N/P School
+    3. Emmanuel Innovation Academy
+    4. Emmanuel Innovation Academy N/P
+    5. CAC High school
+    6. St. David CAC N/P school
+    7. Sure Foundation Model College
+    8. Sure Foundation N/P School
+    9. St. Gabriel's Catholic secondary school
+    10. Jolad Model College
+    11. Jolad Model N/P School
+    12. Mercy Model N/P School
+    13. Dayo Abe Model College
+    14. Faith Royal College
+    15. St. Peter Catholic School
+    16. The Apostelic Pilot N/P School
+    17. Pillar of Success School Secondary School
+    18. Pillar of Success School N/P School
+    19. Everlead Secondary School
+    20. Everlead N/P School
+    21. Prime Success Model School
+    22. Christ Our Partner And Shepherd COPAS
+    23. Others (triggers a dedicated text field for manual school name entry)
+  - **Auto-Populate Address:** Selecting any predefined school automatically populates the school address/location field with its known street address in Ijero Ekiti.
+  - **Accidental Deletion Protection (Typed Safeguard):**
+    - Require staff to type `DELETE` into a confirmation input before single deletion of any patron or catalog monograph is enabled.
+    - Admin bulk deletion capability for patrons via table row checkboxes, requiring the same typed confirmation (`DELETE`) and verifying that no selected patron has active borrowed books before deleting.
+  - **Interactive Column Sorting in Patron Table:**
+    - Default table ordering set to `barcode`.
+    - Prominent up/down arrow indicators (▲ / ▼) in the table header allowing one-click sorting by:
+      - Patron Name
+      - Barcode ID
+      - School / Level
+      - Status
+      - Gender
+
+- **Xprinter XP-365B Thermal Barcode Studio & Date-Range Bulk Print Pipeline:**
+  - **Xprinter XP-365B Thermal Label Format (Standard 60mm × 40mm / 6cm × 4cm):**
+    - **Top:** `Dzuels Foundation` (bold, clean typography).
+    - **Middle:** Code 128 barcode SVG with clean human-readable barcode numbers.
+    - **Bottom:** `Name: <firstname>, <Surname>` (strictly formatted, omitting patron type and extra lines).
+    - **Zero Browser Header/Footer:** Strict CSS `@page { size: 60mm 40mm; margin: 0; }` ensuring no browser URLs, page numbers, or dates appear on continuous thermal adhesive rolls.
+  - **Date-Range Bulk Label Generation & Printing:**
+    - Dedicated date range selector controls (`From Date` – `To Date`, e.g. `10/10/2026 - 12/20/2026`) in `/dashboard/patrons` filtering by registration date (`createdAt`).
+    - Bulk preview displaying matching patron count and barcode cards.
+    - One-click bulk printing dispatching continuous 60×40mm thermal roll print dialog with individual page breaks (`break-after: page; page-break-after: always;`).
+
 ## 4. Data - What are we storing?
 
 All 15 core production entities plus Phase 5 model extensions:

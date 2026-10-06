@@ -12,7 +12,6 @@ import TablePagination from '@mui/material/TablePagination';
 import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
 import { dzfColors } from '@/theme/colors';
-import { ChevronDownIcon } from './DZFIcons';
 import DZFEmptyState from './DZFEmptyState';
 
 export interface Column<T> {
@@ -136,7 +135,7 @@ export function DZFDataTable<T extends object = Record<string, unknown>>({
                       sx={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: 0.5,
+                        gap: 0.75,
                         justifyContent:
                           column.align === 'right'
                             ? 'flex-end'
@@ -145,21 +144,46 @@ export function DZFDataTable<T extends object = Record<string, unknown>>({
                             : 'flex-start',
                       }}
                     >
-                      <span>{column.label}</span>
                       {column.sortable && (
                         <Box
                           sx={{
                             display: 'inline-flex',
+                            flexDirection: 'column',
                             alignItems: 'center',
-                            opacity: isSorted ? 1 : 0.35,
-                            transform: isSorted && sortDirection === 'desc' ? 'rotate(180deg)' : 'none',
-                            transition: 'transform 0.15s ease',
-                            color: isSorted ? dzfColors.maroon[900] : 'inherit',
+                            justifyContent: 'center',
+                            lineHeight: 0.9,
+                            fontSize: '8px',
+                            fontWeight: 900,
+                            userSelect: 'none',
+                            color: isSorted ? dzfColors.maroon[900] : dzfColors.surfaces.textMuted,
                           }}
                         >
-                          <ChevronDownIcon size={14} />
+                          <Box
+                            component="span"
+                            sx={{
+                              opacity: isSorted && sortDirection === 'asc' ? 1 : 0.35,
+                              transform: 'scale(0.85)',
+                              transition: 'opacity 0.15s ease, color 0.15s ease',
+                              color: isSorted && sortDirection === 'asc' ? dzfColors.maroon[900] : 'inherit',
+                            }}
+                          >
+                            ▲
+                          </Box>
+                          <Box
+                            component="span"
+                            sx={{
+                              opacity: isSorted && sortDirection === 'desc' ? 1 : 0.35,
+                              transform: 'scale(0.85)',
+                              mt: '-2px',
+                              transition: 'opacity 0.15s ease, color 0.15s ease',
+                              color: isSorted && sortDirection === 'desc' ? dzfColors.maroon[900] : 'inherit',
+                            }}
+                          >
+                            ▼
+                          </Box>
                         </Box>
                       )}
+                      <span>{column.label}</span>
                     </Box>
                   </TableCell>
                 );
