@@ -16,7 +16,7 @@ export default async function NewArticlePage() {
   const user = await getSessionUser();
 
   if (!user) {
-    redirect('/auth/login?redirect=/transcomm/manage/new');
+    redirect('/auth/login?redirect=/dashboard/transcomm/new');
   }
 
   if (!canPublishArticles(user.role)) {

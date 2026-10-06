@@ -295,7 +295,7 @@ export function TranscommManageClient({
           <Tooltip title="Edit Article">
             <IconButton
               component={Link}
-              href={`/transcomm/manage/${row._id}`}
+              href={`/dashboard/transcomm/${row._id}`}
               size="small"
               sx={{ color: dzfColors.navy[700] }}
             >
@@ -393,7 +393,7 @@ export function TranscommManageClient({
 
                 <Button
                   component={Link}
-                  href="/transcomm/manage/new"
+                  href="/dashboard/transcomm/new"
                   variant="contained"
                   startIcon={<PlusIcon size={18} />}
                   sx={{

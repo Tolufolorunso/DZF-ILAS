@@ -160,7 +160,7 @@ export function ArticleFormClient({
         throw new Error(json.error || 'Failed to save article.');
       }
 
-      router.push('/transcomm/manage');
+      router.push('/dashboard/transcomm');
       router.refresh();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -192,7 +192,7 @@ export function ArticleFormClient({
             >
               <Button
                 component={Link}
-                href="/transcomm/manage"
+                href="/dashboard/transcomm"
                 startIcon={<ArrowLeftIcon size={16} />}
                 sx={{
                   textTransform: 'none',
@@ -405,7 +405,7 @@ export function ArticleFormClient({
                 <Box sx={{ display: 'flex', gap: 1.5 }}>
                   <Button
                     component={Link}
-                    href="/transcomm/manage"
+                    href="/dashboard/transcomm"
                     variant="outlined"
                     disabled={submitting}
                     sx={{ textTransform: 'none' }}

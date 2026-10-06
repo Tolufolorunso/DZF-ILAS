@@ -30,7 +30,7 @@ export default async function EditArticlePage({ params }: PageProps) {
   const user = await getSessionUser();
 
   if (!user) {
-    redirect(`/auth/login?redirect=/transcomm/manage/${id}`);
+    redirect(`/auth/login?redirect=/dashboard/transcomm/${id}`);
   }
 
   if (!canPublishArticles(user.role)) {

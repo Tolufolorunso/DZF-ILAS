@@ -194,7 +194,7 @@ export function KnowledgeHubClient({
               {canEdit && (
                 <Button
                   component={Link}
-                  href="/transcomm/manage"
+                  href="/dashboard/transcomm"
                   variant="contained"
                   startIcon={<EditIcon size={18} />}
                   sx={{

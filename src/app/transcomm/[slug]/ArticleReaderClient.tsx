@@ -340,7 +340,7 @@ export function ArticleReaderClient({
                 {canEdit && (
                   <Button
                     component={Link}
-                    href={`/transcomm/manage/${article._id}`}
+                    href={`/dashboard/transcomm/${article._id}`}
                     size="small"
                     variant="contained"
                     startIcon={<EditIcon size={14} />}

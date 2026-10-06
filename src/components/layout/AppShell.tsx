@@ -63,6 +63,8 @@ export interface AppShellProps {
   onLogout?: () => void;
 }
 
+const AppShellContext = React.createContext<boolean>(false);
+
 export function AppShell({
   children,
   activeNavId,
@@ -72,6 +74,7 @@ export function AppShell({
   user,
   onLogout,
 }: AppShellProps) {
+  const isInsideShell = React.useContext(AppShellContext);
   const router = useRouter();
   const pathname = usePathname() || '';
   const theme = useTheme();
@@ -79,34 +82,38 @@ export function AppShell({
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(false);
 
+  if (isInsideShell) {
+    return <>{children}</>;
+  }
+
   const resolvedNavId =
     activeNavId ||
-    (pathname.startsWith('/catalog')
-      ? 'catalog'
-      : pathname.startsWith('/inventory')
-      ? 'inventory'
-      : pathname.startsWith('/circulations')
-      ? 'circulations'
-      : pathname.startsWith('/summaries')
-      ? 'summaries'
-      : pathname.startsWith('/attendance')
-      ? 'attendance'
-      : pathname.startsWith('/leaderboard')
-      ? 'analytics'
-      : pathname.startsWith('/cohorts')
-      ? 'cohorts'
-      : pathname.startsWith('/competitions')
-      ? 'competitions'
-      : pathname.startsWith('/certificates')
-      ? 'certificates'
-      : pathname.startsWith('/transcomm')
-      ? 'transcomm'
-      : pathname.startsWith('/admin')
-      ? 'admin'
-      : pathname.startsWith('/patrons')
-      ? 'patrons'
-      : pathname.startsWith('/dashboard')
+    (pathname === '/dashboard'
       ? 'dashboard'
+      : pathname.startsWith('/dashboard/catalog') || pathname.startsWith('/catalog')
+      ? 'catalog'
+      : pathname.startsWith('/dashboard/inventory') || pathname.startsWith('/inventory')
+      ? 'inventory'
+      : pathname.startsWith('/dashboard/circulations') || pathname.startsWith('/circulations')
+      ? 'circulations'
+      : pathname.startsWith('/dashboard/summaries') || pathname.startsWith('/summaries')
+      ? 'summaries'
+      : pathname.startsWith('/dashboard/attendance') || pathname.startsWith('/attendance')
+      ? 'attendance'
+      : pathname.startsWith('/dashboard/leaderboard') || pathname.startsWith('/leaderboard')
+      ? 'analytics'
+      : pathname.startsWith('/dashboard/cohorts') || pathname.startsWith('/cohorts')
+      ? 'cohorts'
+      : pathname.startsWith('/dashboard/competitions') || pathname.startsWith('/competitions')
+      ? 'competitions'
+      : pathname.startsWith('/dashboard/certificates') || pathname.startsWith('/certificates')
+      ? 'certificates'
+      : pathname.startsWith('/dashboard/transcomm') || pathname.startsWith('/transcomm/manage')
+      ? 'transcomm'
+      : pathname.startsWith('/dashboard/admin') || pathname.startsWith('/admin')
+      ? 'admin'
+      : pathname.startsWith('/dashboard/patrons') || pathname.startsWith('/patrons')
+      ? 'patrons'
       : 'dashboard');
 
   const displayName = staffName || user?.name || 'Staff Member';
@@ -154,18 +161,18 @@ export function AppShell({
       onNavigate(id);
     } else {
       if (id === 'dashboard') router.push('/dashboard');
-      else if (id === 'catalog') router.push('/catalog');
-      else if (id === 'inventory') router.push('/inventory');
-      else if (id === 'circulations') router.push('/circulations');
-      else if (id === 'summaries') router.push('/summaries');
-      else if (id === 'patrons') router.push('/patrons');
-      else if (id === 'attendance') router.push('/attendance');
-      else if (id === 'analytics') router.push('/leaderboard');
-      else if (id === 'cohorts') router.push('/cohorts');
-      else if (id === 'competitions') router.push('/competitions/reading');
-      else if (id === 'certificates') router.push('/certificates');
-      else if (id === 'transcomm') router.push('/transcomm');
-      else if (id === 'admin') router.push('/admin');
+      else if (id === 'catalog') router.push('/dashboard/catalog');
+      else if (id === 'inventory') router.push('/dashboard/inventory');
+      else if (id === 'circulations') router.push('/dashboard/circulations');
+      else if (id === 'summaries') router.push('/dashboard/summaries');
+      else if (id === 'patrons') router.push('/dashboard/patrons');
+      else if (id === 'attendance') router.push('/dashboard/attendance');
+      else if (id === 'analytics') router.push('/dashboard/leaderboard');
+      else if (id === 'cohorts') router.push('/dashboard/cohorts');
+      else if (id === 'competitions') router.push('/dashboard/competitions/reading');
+      else if (id === 'certificates') router.push('/dashboard/certificates');
+      else if (id === 'transcomm') router.push('/dashboard/transcomm');
+      else if (id === 'admin') router.push('/dashboard/admin');
     }
     if (isMobile) {
       setMobileOpen(false);
@@ -395,7 +402,8 @@ export function AppShell({
   );
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', backgroundColor: dzfColors.surfaces.canvas }}>
+    <AppShellContext.Provider value={true}>
+      <Box sx={{ display: 'flex', minHeight: '100vh', backgroundColor: dzfColors.surfaces.canvas }}>
       {/* Top Header */}
       <AppBar
         position="fixed"
@@ -591,7 +599,8 @@ export function AppShell({
         </Box>
       </Box>
     </Box>
-  );
+  </AppShellContext.Provider>
+);
 }
 
 export default AppShell;
