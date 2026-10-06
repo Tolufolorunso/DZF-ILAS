@@ -17,3 +17,5 @@ export * from './Task';
 export * from './Event';
 export * from './Counter';
 export * from './Certificate';
+export * from './SystemSetting';
+export * from './AuditLog';

@@ -4,6 +4,7 @@ import { Cataloging, ICatalogingDocument } from '@/models/Cataloging';
 import { Patron, IPatronDocument } from '@/models/Patron';
 import { Library, ILibraryDocument } from '@/models/Library';
 import { MonthlyActivity } from '@/models/MonthlyActivity';
+import { SystemSetting } from '@/models/SystemSetting';
 
 export interface CheckoutValidationResult {
   eligible: boolean;
@@ -75,6 +76,16 @@ export async function validateCheckoutEligibility(
   bookBarcode: string
 ): Promise<CheckoutValidationResult> {
   await connectDB();
+
+  // 0. Check Global Emergency Circulation Lock
+  const setting = await SystemSetting.findById('default');
+  if (setting?.emergencyCirculationLock) {
+    const reason = setting.circulationLockReason || 'Emergency circulation lock is currently active across the library system.';
+    return {
+      eligible: false,
+      error: `Circulation Paused: ${reason}`,
+    };
+  }
 
   const cleanPatronBarcode = patronBarcode.trim();
   const cleanBookBarcode = bookBarcode.trim();

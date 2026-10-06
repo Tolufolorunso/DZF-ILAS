@@ -101,6 +101,8 @@ export function AppShell({
       ? 'certificates'
       : pathname.startsWith('/transcomm')
       ? 'transcomm'
+      : pathname.startsWith('/admin')
+      ? 'admin'
       : pathname.startsWith('/patrons')
       ? 'patrons'
       : pathname.startsWith('/dashboard')
@@ -163,7 +165,7 @@ export function AppShell({
       else if (id === 'competitions') router.push('/competitions/reading');
       else if (id === 'certificates') router.push('/certificates');
       else if (id === 'transcomm') router.push('/transcomm');
-      else if (id === 'admin') router.push('/dashboard');
+      else if (id === 'admin') router.push('/admin');
     }
     if (isMobile) {
       setMobileOpen(false);
