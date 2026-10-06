@@ -99,6 +99,8 @@ export function AppShell({
       ? 'competitions'
       : pathname.startsWith('/certificates')
       ? 'certificates'
+      : pathname.startsWith('/transcomm')
+      ? 'transcomm'
       : pathname.startsWith('/patrons')
       ? 'patrons'
       : pathname.startsWith('/dashboard')
@@ -130,6 +132,7 @@ export function AppShell({
         { id: 'cohorts', label: 'Cohort Academy', icon: <UsersIcon size={20} />, badge: 'Academy' },
         { id: 'competitions', label: 'Reading Competition', icon: <TrophyIcon size={20} />, badge: 'Contest', badgeVariant: 'warning' },
         { id: 'certificates', label: 'Certificate Studio', icon: <AwardIcon size={20} />, badge: 'Studio', badgeVariant: 'primary' },
+        { id: 'transcomm', label: 'Transcomm Hub', icon: <BookIcon size={20} />, badge: 'Values', badgeVariant: 'primary' },
       ],
     },
     {
@@ -159,6 +162,7 @@ export function AppShell({
       else if (id === 'cohorts') router.push('/cohorts');
       else if (id === 'competitions') router.push('/competitions/reading');
       else if (id === 'certificates') router.push('/certificates');
+      else if (id === 'transcomm') router.push('/transcomm');
       else if (id === 'admin') router.push('/dashboard');
     }
     if (isMobile) {

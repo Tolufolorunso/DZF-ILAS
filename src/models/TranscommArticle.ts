@@ -9,11 +9,21 @@ export type TranscommCategory =
   | 'confidence'
   | 'inspiration';
 
+export type DRNICERValue =
+  | 'Discipline'
+  | 'Respect'
+  | 'Nobility'
+  | 'Integrity'
+  | 'Compassion'
+  | 'Excellence'
+  | 'Responsibility';
+
 export interface ITranscommArticle {
   _id: mongoose.Types.ObjectId;
   title: string;
   slug: string;
   category: TranscommCategory;
+  drnicerValue?: DRNICERValue;
   readTime?: string;
   excerpt: string;
   content: string;
@@ -56,6 +66,19 @@ const TranscommArticleSchema = new Schema<ITranscommArticleDocument>(
         'problem-solving',
         'confidence',
         'inspiration',
+      ],
+      index: true,
+    },
+    drnicerValue: {
+      type: String,
+      enum: [
+        'Discipline',
+        'Respect',
+        'Nobility',
+        'Integrity',
+        'Compassion',
+        'Excellence',
+        'Responsibility',
       ],
       index: true,
     },
@@ -119,6 +142,7 @@ TranscommArticleSchema.pre(
 
 // Performance and full-text search indexes
 TranscommArticleSchema.index({ category: 1, isActive: 1 });
+TranscommArticleSchema.index({ drnicerValue: 1, isActive: 1 });
 TranscommArticleSchema.index({ createdAt: -1 });
 TranscommArticleSchema.index({
   title: 'text',
