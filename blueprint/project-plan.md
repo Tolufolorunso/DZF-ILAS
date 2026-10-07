@@ -1,4 +1,4 @@
-# Project Plan: DZF-ILLS (Dzuels Integrated Library & Learning System)
+# Project Plan: DZF-ILAS (Dzuels Integrated Library & Administrative System)
 
 > Ground-truth architecture, domain rules, and functional specifications for the Dzuels Educational Foundation (DZF) internal staff platform and Android API backend.
 
@@ -163,6 +163,21 @@ DZF-ILLS is a ground-up rewrite delivering:
   - Complete overhaul of the thermal printing execution in `ThermalPrintDialog.tsx`.
   - Replace fragile `@media print` ancestor-hiding CSS with an isolated hidden `<iframe>` print pipeline populated with pure 60mm × 40mm thermal HTML, Barcode SVGs, and zero-margin page styles.
   - Resolves print preview blank screens permanently on Xprinter XP-365B and standard thermal roll printers.
+
+### Phase 8: Calendar CSV Engine, Workspace Route, Platform Rebranding & System Hardening (New)
+
+- **Operational Calendar CSV Ingestion & Staff Workspace Route:**
+  - **CSV Ingestion Engine:** Support uploading calendar milestones via CSV with standard columns: `Date`, `Event`, `Participants`, `Focal Person`, `Remarks`.
+  - **Smart Multi-Date Extraction:** Intelligently extract single dates, date ranges (e.g. `Oct 12-14, 2026`), and multi-stage milestones grouped within single cells (e.g. `Feb 6 – Stage 1; Feb 9 – Stage 2; Feb 17 – Finale`) into distinct calendar milestones linked to the event. Handle empty event titles gracefully by defaulting to Remarks summary or "Foundation Milestone".
+  - **Interactive Import Preview Table:** Allow staff to edit, add, or discard parsed CSV rows before committing to MongoDB.
+  - **Event Schema Enrichment:** Extend `Event` model with `participants`, `focalPerson`, and `remarks` fields.
+  - **Staff Operational Calendar Workspace Route (`/dashboard/calendar`):** New dedicated page positioned directly under Leaderboard in the AppShell navigation. Displays the 12-month calendar matrix and agenda stream in read-only mode for all staff roles (setup/upload tools remain exclusively in `/dashboard/admin`).
+
+- **DZF-ILAS Platform Rebranding, SEO Privacy Rules, Staff Birthdays & Data Cleanup:**
+  - **Platform Rebranding:** Update branding across the application from ILLS to **DZF-ILAS** (*Dzuels Integrated Library & Administrative System*) in UI headers, footers, page titles, login screens, and metadata.
+  - **Strict SEO & Search Indexing:** Configure `src/app/robots.ts` and metadata tags ensuring only `/transcomm` and `/transcomm/*` are indexable by search engines (`index, follow`). All other internal and administrative routes (`/`, `/dashboard/*`, `/auth/*`, `/api/*`) are strictly `noindex, nofollow`.
+  - **Staff Birthdays:** Add `birthMonth` (1–12) and `birthDay` (1–31) dropdowns (month & day only, no birth year required) to the staff registration form (`/auth/register`), User schema, and Admin staff directory.
+  - **Purge Hardcoded Data:** Remove static/mock fallback calendar fixtures, ensuring all views query live MongoDB collections with clean empty states.
 
 ## 4. Data - What are we storing?
 

@@ -691,6 +691,9 @@ export async function listEvents(options: {
     category: (e.category as IEventItemDTO['category']) || 'general',
     eventDetail: e.eventDetail,
     description: e.description,
+    participants: e.participants,
+    focalPerson: e.focalPerson,
+    remarks: e.remarks,
     location: e.location || 'DZF Learning Center',
     targetAudience: e.targetAudience || 'All Patrons',
     arrivalTime: e.arrivalTime || '09:00 AM',
@@ -710,6 +713,9 @@ export async function createEvent(params: {
   targetAudience?: string;
   arrivalTime?: string;
   description?: string;
+  participants?: string;
+  focalPerson?: string;
+  remarks?: string;
   staffUsername: string;
   staffRole: string;
 }): Promise<IEventItemDTO> {
@@ -725,6 +731,9 @@ export async function createEvent(params: {
     targetAudience: params.targetAudience?.trim() || 'All Patrons',
     arrivalTime: params.arrivalTime?.trim() || '09:00 AM',
     description: params.description?.trim(),
+    participants: params.participants?.trim(),
+    focalPerson: params.focalPerson?.trim(),
+    remarks: params.remarks?.trim(),
   });
 
   await logAuditEvent({
@@ -751,6 +760,9 @@ export async function createEvent(params: {
     targetAudience: event.targetAudience,
     arrivalTime: event.arrivalTime,
     description: event.description,
+    participants: event.participants,
+    focalPerson: event.focalPerson,
+    remarks: event.remarks,
     alertsSent: event.alertsSent,
     createdAt: event.createdAt.toISOString(),
   };
@@ -767,6 +779,9 @@ export async function updateEventDetails(params: {
   targetAudience?: string;
   arrivalTime?: string;
   description?: string;
+  participants?: string;
+  focalPerson?: string;
+  remarks?: string;
   staffUsername: string;
   staffRole: string;
 }): Promise<IEventItemDTO> {
@@ -789,6 +804,9 @@ export async function updateEventDetails(params: {
   if (params.targetAudience !== undefined) event.targetAudience = params.targetAudience.trim();
   if (params.arrivalTime !== undefined) event.arrivalTime = params.arrivalTime.trim();
   if (params.description !== undefined) event.description = params.description.trim();
+  if (params.participants !== undefined) event.participants = params.participants.trim();
+  if (params.focalPerson !== undefined) event.focalPerson = params.focalPerson.trim();
+  if (params.remarks !== undefined) event.remarks = params.remarks.trim();
 
   await event.save();
 
@@ -815,6 +833,9 @@ export async function updateEventDetails(params: {
     targetAudience: event.targetAudience,
     arrivalTime: event.arrivalTime,
     description: event.description,
+    participants: event.participants,
+    focalPerson: event.focalPerson,
+    remarks: event.remarks,
     alertsSent: event.alertsSent,
     createdAt: event.createdAt.toISOString(),
     updatedAt: event.updatedAt.toISOString(),
@@ -832,6 +853,9 @@ export async function createEventsBatch(params: {
     targetAudience?: string;
     arrivalTime?: string;
     description?: string;
+    participants?: string;
+    focalPerson?: string;
+    remarks?: string;
   }>;
   staffUsername: string;
   staffRole: string;
@@ -851,6 +875,9 @@ export async function createEventsBatch(params: {
     targetAudience: e.targetAudience?.trim() || 'All Patrons',
     arrivalTime: e.arrivalTime?.trim() || '09:00 AM',
     description: e.description?.trim(),
+    participants: e.participants?.trim(),
+    focalPerson: e.focalPerson?.trim(),
+    remarks: e.remarks?.trim(),
     alertsSent: { oneMonth: false, twoWeeks: false, oneWeek: false },
   }));
 
@@ -878,6 +905,9 @@ export async function createEventsBatch(params: {
     targetAudience: doc.targetAudience,
     arrivalTime: doc.arrivalTime,
     description: doc.description,
+    participants: doc.participants,
+    focalPerson: doc.focalPerson,
+    remarks: doc.remarks,
     alertsSent: doc.alertsSent,
     createdAt: doc.createdAt.toISOString(),
   }));

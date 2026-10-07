@@ -34,6 +34,7 @@ import {
   BarcodeIcon,
   LogOutIcon,
   AwardIcon,
+  CalendarIcon,
 } from '@/components/ui/DZFIcons';
 import DZFBadge from '@/components/ui/DZFBadge';
 
@@ -203,6 +204,8 @@ export function AppShell({
       ? 'attendance'
       : pathname.startsWith('/dashboard/leaderboard') || pathname.startsWith('/leaderboard')
       ? 'analytics'
+      : pathname.startsWith('/dashboard/calendar')
+      ? 'calendar'
       : pathname.startsWith('/dashboard/cohorts') || pathname.startsWith('/cohorts')
       ? 'cohorts'
       : pathname.startsWith('/dashboard/competitions') || pathname.startsWith('/competitions')
@@ -232,6 +235,7 @@ export function AppShell({
     { id: 'patrons', label: 'Patron Directory', icon: <UsersIcon size={20} />, badge: '583' },
     { id: 'attendance', label: 'Attendant', icon: <BarcodeIcon size={20} /> },
     { id: 'analytics', label: 'Leaderboard & Stats', icon: <TrophyIcon size={20} /> },
+    { id: 'calendar', label: 'Operational Calendar', icon: <CalendarIcon size={20} /> },
   ];
 
   const managementItems: NavItem[] = [];
@@ -296,6 +300,7 @@ export function AppShell({
       else if (id === 'patrons') router.push('/dashboard/patrons');
       else if (id === 'attendance') router.push('/dashboard/attendance');
       else if (id === 'analytics') router.push('/dashboard/leaderboard');
+      else if (id === 'calendar') router.push('/dashboard/calendar');
       else if (id === 'cohorts') router.push('/dashboard/cohorts');
       else if (id === 'competitions') router.push('/dashboard/competitions/reading');
       else if (id === 'certificates') router.push('/dashboard/certificates');

@@ -22,6 +22,9 @@ export interface IEvent {
   targetAudience?: string;
   arrivalTime?: string;
   alertsSent?: IEventAlertsSent;
+  participants?: string;
+  focalPerson?: string;
+  remarks?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -73,6 +76,18 @@ const EventSchema = new Schema<IEventDocument>(
       trim: true,
     },
     description: {
+      type: String,
+      trim: true,
+    },
+    participants: {
+      type: String,
+      trim: true,
+    },
+    focalPerson: {
+      type: String,
+      trim: true,
+    },
+    remarks: {
       type: String,
       trim: true,
     },

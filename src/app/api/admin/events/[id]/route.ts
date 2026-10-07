@@ -41,6 +41,9 @@ export async function PATCH(
       targetAudience: body.targetAudience !== undefined ? String(body.targetAudience).trim() : undefined,
       arrivalTime: body.arrivalTime !== undefined ? String(body.arrivalTime).trim() : undefined,
       description: body.description !== undefined ? String(body.description).trim() : undefined,
+      participants: body.participants !== undefined ? String(body.participants).trim() : undefined,
+      focalPerson: body.focalPerson !== undefined ? String(body.focalPerson).trim() : undefined,
+      remarks: body.remarks !== undefined ? String(body.remarks).trim() : undefined,
       staffUsername: user.username,
       staffRole: user.role,
     });

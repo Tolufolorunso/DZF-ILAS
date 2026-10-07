@@ -90,6 +90,9 @@ export interface IEventItemDTO {
   location?: string;
   targetAudience?: string;
   arrivalTime?: string;
+  participants?: string;
+  focalPerson?: string;
+  remarks?: string;
   alertsSent?: {
     oneMonth?: boolean;
     twoWeeks?: boolean;

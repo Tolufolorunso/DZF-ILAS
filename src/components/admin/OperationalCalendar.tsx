@@ -16,12 +16,14 @@ import { dzfColors } from '@/theme/colors';
 import DZFButton from '@/components/ui/DZFButton';
 import { IEventItemDTO } from '@/lib/admin/types';
 import CalendarPdfUploadDialog from './CalendarPdfUploadDialog';
+import CalendarCsvUploadDialog from './CalendarCsvUploadDialog';
 import EventEditDialog from './EventEditDialog';
 import EventFormDialog from './EventFormDialog';
 
 interface OperationalCalendarProps {
   initialEvents?: IEventItemDTO[];
   onRefreshParent?: () => void;
+  readOnly?: boolean;
 }
 
 const CATEGORY_MAP: Record<string, { label: string; bg: string; text: string; dot: string }> = {
@@ -40,7 +42,11 @@ const MONTH_NAMES = [
 
 const DAYS_SHORT = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
-export default function OperationalCalendar({ initialEvents, onRefreshParent }: OperationalCalendarProps) {
+export default function OperationalCalendar({
+  initialEvents,
+  onRefreshParent,
+  readOnly = false,
+}: OperationalCalendarProps) {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = React.useState<number>(currentYear);
   const [viewMode, setViewMode] = React.useState<'matrix' | 'agenda'>('agenda');
@@ -51,6 +57,7 @@ export default function OperationalCalendar({ initialEvents, onRefreshParent }: 
   const [notificationMsg, setNotificationMsg] = React.useState<{ type: 'success' | 'info' | 'error'; text: string } | null>(null);
 
   // Dialog states
+  const [csvDialogOpen, setCsvDialogOpen] = React.useState<boolean>(false);
   const [pdfDialogOpen, setPdfDialogOpen] = React.useState<boolean>(false);
   const [createDialogOpen, setCreateDialogOpen] = React.useState<boolean>(false);
   const [editEvent, setEditEvent] = React.useState<IEventItemDTO | null>(null);
@@ -248,63 +255,80 @@ export default function OperationalCalendar({ initialEvents, onRefreshParent }: 
                 />
               </Box>
               <Typography variant="body2" sx={{ color: '#94A3B8', mt: 0.5, maxWidth: 680 }}>
-                Master administrative schedule and timeline. Upload annual calendar PDFs for instant milestone
-                extraction, inspect matrix or agenda views, and manage automated 30d, 14d, and 7d advance staff alerts.
+                {readOnly
+                  ? 'Official foundation operational timeline and milestone schedule for academic, library, and institutional activities.'
+                  : 'Master administrative schedule and timeline. Upload annual calendar CSVs or PDFs for instant milestone extraction, inspect matrix or agenda views, and manage automated 30d, 14d, and 7d advance staff alerts.'}
               </Typography>
             </Box>
 
-            {/* Action Buttons */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-              <DZFButton
-                variant="secondary"
-                size="small"
-                onClick={handleEvaluateAlerts}
-                disabled={evaluatingAlerts}
-                sx={{
-                  bgcolor: 'rgba(255, 255, 255, 0.1)',
-                  color: '#FFFFFF',
-                  borderColor: 'rgba(255, 255, 255, 0.2)',
-                  '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
-                }}
-              >
-                {evaluatingAlerts ? (
-                  <>
-                    <CircularProgress size={14} sx={{ color: '#FFFFFF', mr: 1 }} />
-                    Checking Alerts...
-                  </>
-                ) : (
-                  '🔔 Run Alert Check'
-                )}
-              </DZFButton>
+            {/* Action Buttons (Admin Only) */}
+            {!readOnly && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                <DZFButton
+                  variant="secondary"
+                  size="small"
+                  onClick={handleEvaluateAlerts}
+                  disabled={evaluatingAlerts}
+                  sx={{
+                    bgcolor: 'rgba(255, 255, 255, 0.1)',
+                    color: '#FFFFFF',
+                    borderColor: 'rgba(255, 255, 255, 0.2)',
+                    '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.2)' },
+                  }}
+                >
+                  {evaluatingAlerts ? (
+                    <>
+                      <CircularProgress size={14} sx={{ color: '#FFFFFF', mr: 1 }} />
+                      Checking Alerts...
+                    </>
+                  ) : (
+                    '🔔 Run Alert Check'
+                  )}
+                </DZFButton>
 
-              <DZFButton
-                variant="secondary"
-                size="small"
-                onClick={() => setPdfDialogOpen(true)}
-                sx={{
-                  bgcolor: 'rgba(245, 158, 11, 0.15)',
-                  color: '#FDE68A',
-                  borderColor: 'rgba(245, 158, 11, 0.4)',
-                  '&:hover': { bgcolor: 'rgba(245, 158, 11, 0.25)' },
-                }}
-              >
-                📄 Import Calendar PDF
-              </DZFButton>
+                <DZFButton
+                  variant="secondary"
+                  size="small"
+                  onClick={() => setCsvDialogOpen(true)}
+                  sx={{
+                    bgcolor: 'rgba(16, 185, 129, 0.15)',
+                    color: '#A7F3D0',
+                    borderColor: 'rgba(16, 185, 129, 0.4)',
+                    '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.25)' },
+                  }}
+                >
+                  📊 Import Calendar CSV
+                </DZFButton>
 
-              <DZFButton
-                variant="primary"
-                size="small"
-                onClick={() => setCreateDialogOpen(true)}
-                sx={{
-                  background: `linear-gradient(135deg, ${dzfColors.gold[500]}, ${dzfColors.gold[700]})`,
-                  color: '#1E293B',
-                  fontWeight: 800,
-                  boxShadow: '0 4px 14px rgba(217, 119, 6, 0.3)',
-                }}
-              >
-                + Schedule Event
-              </DZFButton>
-            </Box>
+                <DZFButton
+                  variant="secondary"
+                  size="small"
+                  onClick={() => setPdfDialogOpen(true)}
+                  sx={{
+                    bgcolor: 'rgba(245, 158, 11, 0.15)',
+                    color: '#FDE68A',
+                    borderColor: 'rgba(245, 158, 11, 0.4)',
+                    '&:hover': { bgcolor: 'rgba(245, 158, 11, 0.25)' },
+                  }}
+                >
+                  📄 Import Calendar PDF
+                </DZFButton>
+
+                <DZFButton
+                  variant="primary"
+                  size="small"
+                  onClick={() => setCreateDialogOpen(true)}
+                  sx={{
+                    background: `linear-gradient(135deg, ${dzfColors.gold[500]}, ${dzfColors.gold[700]})`,
+                    color: '#1E293B',
+                    fontWeight: 800,
+                    boxShadow: '0 4px 14px rgba(217, 119, 6, 0.3)',
+                  }}
+                >
+                  + Schedule Event
+                </DZFButton>
+              </Box>
+            )}
           </Box>
 
           {/* Next Upcoming Milestone Countdown Strip */}
@@ -517,12 +541,26 @@ export default function OperationalCalendar({ initialEvents, onRefreshParent }: 
                 No Events Scheduled for {selectedYear}
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 460, mx: 'auto', mt: 0.5, mb: 2 }}>
-                Import the institutional calendar PDF using the button above or schedule single events to build the
-                operational timeline.
+                {readOnly
+                  ? 'No institutional milestones are scheduled for this academic session yet. Contact administrators for schedule updates.'
+                  : 'Import the institutional calendar CSV or PDF using the buttons below or schedule single events to build the operational timeline.'}
               </Typography>
-              <DZFButton variant="primary" onClick={() => setPdfDialogOpen(true)}>
-                📄 Import {selectedYear} Calendar PDF
-              </DZFButton>
+              {!readOnly && (
+                <Box sx={{ display: 'flex', gap: 1.5, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <DZFButton
+                    variant="primary"
+                    onClick={() => setCsvDialogOpen(true)}
+                    sx={{
+                      background: `linear-gradient(135deg, ${dzfColors.navy[900]}, ${dzfColors.maroon[800]})`,
+                    }}
+                  >
+                    📊 Import {selectedYear} Calendar CSV
+                  </DZFButton>
+                  <DZFButton variant="secondary" onClick={() => setPdfDialogOpen(true)}>
+                    📄 Import Calendar PDF
+                  </DZFButton>
+                </Box>
+              )}
             </Card>
           ) : (
             MONTH_NAMES.map((monthName, monthIndex) => {
@@ -637,27 +675,29 @@ export default function OperationalCalendar({ initialEvents, onRefreshParent }: 
                                 {ev.eventName || ev.title}
                               </Typography>
 
-                              {/* Action Buttons */}
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <Tooltip title="Edit Milestone">
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => setEditEvent(ev)}
-                                    sx={{ color: '#64748B', '&:hover': { color: dzfColors.navy[900] } }}
-                                  >
-                                    ✏️
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Delete Milestone">
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => handleDeleteEvent(ev.id, ev.eventName || ev.title || 'Event')}
-                                    sx={{ color: '#64748B', '&:hover': { color: '#EF4444' } }}
-                                  >
-                                    🗑️
-                                  </IconButton>
-                                </Tooltip>
-                              </Box>
+                              {/* Action Buttons (Admin Only) */}
+                              {!readOnly && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  <Tooltip title="Edit Milestone">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => setEditEvent(ev)}
+                                      sx={{ color: '#64748B', '&:hover': { color: dzfColors.navy[900] } }}
+                                    >
+                                      ✏️
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Delete Milestone">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => handleDeleteEvent(ev.id, ev.eventName || ev.title || 'Event')}
+                                      sx={{ color: '#64748B', '&:hover': { color: '#EF4444' } }}
+                                    >
+                                      🗑️
+                                    </IconButton>
+                                  </Tooltip>
+                                </Box>
+                              )}
                             </Box>
 
                             {/* Tags & Category */}
@@ -724,14 +764,25 @@ export default function OperationalCalendar({ initialEvents, onRefreshParent }: 
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: '0.8rem', color: '#64748B' }}>
                                 <Typography sx={{ fontSize: '0.85rem' }}>👥</Typography>
                                 <Typography variant="caption" sx={{ color: '#64748B' }}>
-                                  Audience: {ev.targetAudience || 'All Registered Staff & Patrons'}
+                                  Participants: {ev.participants || ev.targetAudience || 'All Registered Staff & Patrons'}
                                 </Typography>
                               </Box>
 
-                              {ev.description && (
-                                <Typography variant="caption" sx={{ color: '#64748B', fontStyle: 'italic', mt: 0.5 }}>
-                                  {ev.description}
-                                </Typography>
+                              {ev.focalPerson && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: '0.8rem', color: '#64748B' }}>
+                                  <Typography sx={{ fontSize: '0.85rem' }}>👤</Typography>
+                                  <Typography variant="caption" sx={{ color: '#0F766E', fontWeight: 700 }}>
+                                    Lead / Focal Person: {ev.focalPerson}
+                                  </Typography>
+                                </Box>
+                              )}
+
+                              {(ev.remarks || ev.description) && (
+                                <Box sx={{ mt: 0.5, p: 0.8, px: 1, bgcolor: '#F8FAFC', borderRadius: '8px', border: '1px solid #F1F5F9' }}>
+                                  <Typography variant="caption" sx={{ color: '#475569', fontStyle: 'italic', display: 'block' }}>
+                                    📝 Directives: {ev.remarks || ev.description}
+                                  </Typography>
+                                </Box>
                               )}
                             </Box>
                           </Box>
@@ -899,50 +950,83 @@ export default function OperationalCalendar({ initialEvents, onRefreshParent }: 
                   📍 {it.location || 'Main Campus'} &bull; {it.arrivalTime || '09:00 AM'}
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
-                  👥 {it.targetAudience || 'All Staff'}
+                  👥 {it.participants || it.targetAudience || 'All Staff'}
                 </Typography>
+                {it.focalPerson && (
+                  <Typography variant="caption" sx={{ color: '#0F766E', fontWeight: 700, display: 'block' }}>
+                    👤 {it.focalPerson}
+                  </Typography>
+                )}
+                {it.remarks && (
+                  <Typography variant="caption" sx={{ color: '#475569', fontStyle: 'italic', display: 'block', mt: 0.5 }}>
+                    📝 {it.remarks}
+                  </Typography>
+                )}
               </Box>
             ))}
           </Box>
         )}
       </Popover>
 
+      {/* CSV Upload Modal */}
+      {!readOnly && (
+        <CalendarCsvUploadDialog
+          open={csvDialogOpen}
+          onClose={() => setCsvDialogOpen(false)}
+          initialYear={selectedYear}
+          onSuccess={(count) => {
+            setNotificationMsg({
+              type: 'success',
+              text: `Successfully imported ${count} milestones from operational calendar CSV into ${selectedYear} session.`,
+            });
+            fetchEvents(selectedYear);
+            if (onRefreshParent) onRefreshParent();
+          }}
+        />
+      )}
+
       {/* PDF Upload Modal */}
-      <CalendarPdfUploadDialog
-        open={pdfDialogOpen}
-        onClose={() => setPdfDialogOpen(false)}
-        initialYear={selectedYear}
-        onSuccess={(count) => {
-          setNotificationMsg({
-            type: 'success',
-            text: `Successfully imported ${count} milestones from yearly calendar PDF into ${selectedYear} session.`,
-          });
-          fetchEvents(selectedYear);
-          if (onRefreshParent) onRefreshParent();
-        }}
-      />
+      {!readOnly && (
+        <CalendarPdfUploadDialog
+          open={pdfDialogOpen}
+          onClose={() => setPdfDialogOpen(false)}
+          initialYear={selectedYear}
+          onSuccess={(count) => {
+            setNotificationMsg({
+              type: 'success',
+              text: `Successfully imported ${count} milestones from yearly calendar PDF into ${selectedYear} session.`,
+            });
+            fetchEvents(selectedYear);
+            if (onRefreshParent) onRefreshParent();
+          }}
+        />
+      )}
 
       {/* Edit Event Modal */}
-      <EventEditDialog
-        open={Boolean(editEvent)}
-        event={editEvent}
-        onClose={() => setEditEvent(null)}
-        onSuccess={(updated) => {
-          setNotificationMsg({
-            type: 'success',
-            text: `Event "${updated.eventName || updated.title}" updated successfully.`,
-          });
-          fetchEvents(selectedYear);
-          if (onRefreshParent) onRefreshParent();
-        }}
-      />
+      {!readOnly && (
+        <EventEditDialog
+          open={Boolean(editEvent)}
+          event={editEvent}
+          onClose={() => setEditEvent(null)}
+          onSuccess={(updated) => {
+            setNotificationMsg({
+              type: 'success',
+              text: `Event "${updated.eventName || updated.title}" updated successfully.`,
+            });
+            fetchEvents(selectedYear);
+            if (onRefreshParent) onRefreshParent();
+          }}
+        />
+      )}
 
       {/* Schedule Single Event Modal */}
-      <EventFormDialog
-        open={createDialogOpen}
-        onClose={() => setCreateDialogOpen(false)}
-        onSubmit={handleCreateSubmit}
-      />
+      {!readOnly && (
+        <EventFormDialog
+          open={createDialogOpen}
+          onClose={() => setCreateDialogOpen(false)}
+          onSubmit={handleCreateSubmit}
+        />
+      )}
     </Box>
   );
 }

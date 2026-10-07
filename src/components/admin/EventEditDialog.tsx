@@ -40,6 +40,9 @@ export default function EventEditDialog({ open, event, onClose, onSuccess }: Eve
   const [targetAudience, setTargetAudience] = React.useState('');
   const [arrivalTime, setArrivalTime] = React.useState('');
   const [description, setDescription] = React.useState('');
+  const [participants, setParticipants] = React.useState('');
+  const [focalPerson, setFocalPerson] = React.useState('');
+  const [remarks, setRemarks] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -54,6 +57,9 @@ export default function EventEditDialog({ open, event, onClose, onSuccess }: Eve
       setTargetAudience(event.targetAudience || '');
       setArrivalTime(event.arrivalTime || '');
       setDescription(event.description || '');
+      setParticipants(event.participants || '');
+      setFocalPerson(event.focalPerson || '');
+      setRemarks(event.remarks || '');
       setError(null);
     }
   }, [event]);
@@ -84,6 +90,9 @@ export default function EventEditDialog({ open, event, onClose, onSuccess }: Eve
           targetAudience: targetAudience.trim(),
           arrivalTime: arrivalTime.trim(),
           description: description.trim() || undefined,
+          participants: participants.trim() || undefined,
+          focalPerson: focalPerson.trim() || undefined,
+          remarks: remarks.trim() || undefined,
         }),
       });
 
@@ -215,6 +224,37 @@ export default function EventEditDialog({ open, event, onClose, onSuccess }: Eve
             placeholder="e.g. All Registered Patrons & Staff"
             value={targetAudience}
             onChange={(e) => setTargetAudience(e.target.value)}
+          />
+
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+            <TextField
+              label="Participants"
+              fullWidth
+              size="small"
+              placeholder="e.g. All Team Members, Library Members"
+              value={participants}
+              onChange={(e) => setParticipants(e.target.value)}
+            />
+
+            <TextField
+              label="Focal Person"
+              fullWidth
+              size="small"
+              placeholder="e.g. CM, Librarian PM: Mrs Funmi"
+              value={focalPerson}
+              onChange={(e) => setFocalPerson(e.target.value)}
+            />
+          </Box>
+
+          <TextField
+            label="Remarks / Activity Directives"
+            fullWidth
+            multiline
+            rows={2}
+            size="small"
+            placeholder="e.g. Librarians to come up with impact-driven plan"
+            value={remarks}
+            onChange={(e) => setRemarks(e.target.value)}
           />
 
           <TextField

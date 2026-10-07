@@ -60,6 +60,9 @@ export async function POST(req: NextRequest) {
       targetAudience: body.targetAudience ? String(body.targetAudience).trim() : undefined,
       arrivalTime: body.arrivalTime ? String(body.arrivalTime).trim() : undefined,
       description: body.description ? String(body.description).trim() : undefined,
+      participants: body.participants ? String(body.participants).trim() : undefined,
+      focalPerson: body.focalPerson ? String(body.focalPerson).trim() : undefined,
+      remarks: body.remarks ? String(body.remarks).trim() : undefined,
       staffUsername: user.username,
       staffRole: user.role,
     });

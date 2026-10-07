@@ -37,6 +37,9 @@ export async function POST(req: NextRequest) {
       targetAudience: e.targetAudience ? String(e.targetAudience).trim() : undefined,
       arrivalTime: e.arrivalTime ? String(e.arrivalTime).trim() : undefined,
       description: e.description ? String(e.description).trim() : undefined,
+      participants: e.participants ? String(e.participants).trim() : undefined,
+      focalPerson: e.focalPerson ? String(e.focalPerson).trim() : undefined,
+      remarks: e.remarks ? String(e.remarks).trim() : undefined,
     }));
 
     // Filter out invalid dates

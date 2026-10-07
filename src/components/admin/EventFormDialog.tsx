@@ -23,6 +23,9 @@ interface EventFormDialogProps {
     targetAudience?: string;
     arrivalTime?: string;
     description?: string;
+    participants?: string;
+    focalPerson?: string;
+    remarks?: string;
   }) => Promise<void>;
 }
 
@@ -33,6 +36,9 @@ export default function EventFormDialog({ open, onClose, onSubmit }: EventFormDi
   const [targetAudience, setTargetAudience] = React.useState('All Registered Patrons & Staff');
   const [arrivalTime, setArrivalTime] = React.useState('09:00 AM');
   const [description, setDescription] = React.useState('');
+  const [participants, setParticipants] = React.useState('');
+  const [focalPerson, setFocalPerson] = React.useState('');
+  const [remarks, setRemarks] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -54,10 +60,16 @@ export default function EventFormDialog({ open, onClose, onSubmit }: EventFormDi
         targetAudience: targetAudience.trim(),
         arrivalTime: arrivalTime.trim(),
         description: description.trim() || undefined,
+        participants: participants.trim() || undefined,
+        focalPerson: focalPerson.trim() || undefined,
+        remarks: remarks.trim() || undefined,
       });
       setEventName('');
       setEventDate('');
       setDescription('');
+      setParticipants('');
+      setFocalPerson('');
+      setRemarks('');
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to schedule event');
@@ -140,6 +152,40 @@ export default function EventFormDialog({ open, onClose, onSubmit }: EventFormDi
             size="small"
             value={targetAudience}
             onChange={(e) => setTargetAudience(e.target.value)}
+            disabled={loading}
+          />
+
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <TextField
+              label="Participants"
+              fullWidth
+              size="small"
+              placeholder="e.g. All Team Members, General Public"
+              value={participants}
+              onChange={(e) => setParticipants(e.target.value)}
+              disabled={loading}
+            />
+
+            <TextField
+              label="Focal Person"
+              fullWidth
+              size="small"
+              placeholder="e.g. CM, Mrs Funmi"
+              value={focalPerson}
+              onChange={(e) => setFocalPerson(e.target.value)}
+              disabled={loading}
+            />
+          </Box>
+
+          <TextField
+            label="Remarks / Directives"
+            multiline
+            rows={2}
+            fullWidth
+            size="small"
+            placeholder="Special instructions, milestones, or notes..."
+            value={remarks}
+            onChange={(e) => setRemarks(e.target.value)}
             disabled={loading}
           />
 

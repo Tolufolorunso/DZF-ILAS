@@ -1,12 +1,12 @@
-# DZF-ILLS - Project Overview
+# DZF-ILAS - Project Overview
 
-<!-- blueprint:source-hash 868ecc7026860440c039acfe0c5bcdaf72b91a4844b8a66192007ad732862dd1 -->
+<!-- blueprint:source-hash 83db94252472b98ac947c5491468972c3834a226a55f91be4096262285faf8ac -->
 
 > Centralized internal staff workspace and REST API backend for the Dzuels Educational Foundation (DZF), managing academic library cataloging, patron identity, circulation, and academy engagement.
 
 ## Problem
 
-The Dzuels Educational Foundation operates a high-volume academic library and learning center in Nigeria, managing 2,300+ catalog items, 670+ patrons, active book circulation, student digital literacy cohorts, reading competitions, and values publication. The legacy system suffered from fragmented auth patterns, unindexed database schemas, transaction desynchronization during circulations, and edge runtime failures. DZF-ILLS provides a clean, unified Next.js web application and REST API backend for an upcoming companion Android mobile client. Phase 5 delivered shell modernizations, `/dashboard/*` reorganization, dynamic registration, monthly loan caps, and catalog acquisition studios. Phase 6 refined patron workflows with an Ijero Ekiti school directory, typed deletion security guards, interactive column sorting, and 60×40mm thermal bulk printing. Phase 7 introduces operational staff task governance (Kanban board, role-restricted assignment, notification bell alerts), a yearly foundation operational calendar with PDF ingestion and multi-stage alerts (30-day, 14-day, 7-day), staff self-registration with Admin-Only activation, top-to-bottom role hierarchy access control, and an isolated POS thermal label print engine.
+The Dzuels Educational Foundation operates a high-volume academic library and learning center in Nigeria, managing 2,300+ catalog items, 670+ patrons, active book circulation, student digital literacy cohorts, reading competitions, and values publication. The legacy system suffered from fragmented auth patterns, unindexed database schemas, transaction desynchronization during circulations, and edge runtime failures. DZF-ILAS (Dzuels Integrated Library & Administrative System) provides a clean, unified Next.js web application and REST API backend for an upcoming companion Android mobile client. Phase 5 delivered shell modernizations, `/dashboard/*` reorganization, dynamic registration, monthly loan caps, and catalog acquisition studios. Phase 6 refined patron workflows with an Ijero Ekiti school directory, typed deletion security guards, interactive column sorting, and 60×40mm thermal bulk printing. Phase 7 introduced operational staff task governance (Kanban board, role-restricted assignment, notification bell alerts), a yearly foundation operational calendar with PDF ingestion and multi-stage alerts (30-day, 14-day, 7-day), staff self-registration with Admin-Only activation, top-to-bottom role hierarchy access control, and an isolated POS thermal label print engine. Phase 8 expands calendar capabilities with flexible multi-date CSV ingestion and an institutional read-only workspace route (`/dashboard/calendar`), rebrands the platform to DZF-ILAS, enforces strict SEO indexing rules ensuring only public Transcomm articles are indexed by search engines, adds staff birthday tracking (month and day), and purges hardcoded fallback data.
 
 ## Users & Role Hierarchy
 
@@ -24,8 +24,9 @@ Top-to-bottom institutional hierarchy:
 
 - **Scale & Performance:** 670+ registered patrons, 2,300+ catalog items, daily attendance batches, and real-time competition leaderboards.
 - **Reachability & Trust:** Authenticated internal staff platform (`/dashboard/*`). Staff identities verified via JWT sessions. Public marketing/reading routes (`/`, `/transcomm`).
+- **SEO & Search Indexing:** Strict privacy configuration: only `/transcomm` and `/transcomm/*` are indexed by Google and search engines (`index, follow`); all internal staff routes (`/dashboard/*`, `/auth/*`, `/api/*`, `/`) are strictly disallowed and marked `noindex, nofollow`.
 - **Dual-Mode API Interoperability:** Consumed concurrently by the Next.js web frontend (HTTP-only `ils_token` cookies) and the Android mobile app (`Authorization: Bearer <token>`).
-- **Hardware Integration:** Instant input support for physical USB/Bluetooth barcode scanners with automatic submit triggers; continuous 60mm × 40mm roll printing on Xprinter XP-365B thermal label printers via an isolated print pipeline.
+- **Hardware Integration:** Instant input support for physical USB/Bluetooth barcode scanners with automatic submit triggers; continuous 60mm × 40mm roll printing on Xprinter XP-365B thermal label printers via an isolated iframe print pipeline.
 
 ## Features
 
@@ -54,6 +55,8 @@ Top-to-bottom institutional hierarchy:
 23. **Foundation Operational Calendar, PDF Ingestion & Multi-Stage Alert Pipeline** - Yearly 12-month calendar matrix (2027 ready), yearly calendar PDF upload with automated milestone extraction and interactive edit/confirmation table, and multi-stage advance alerts (1 month, 2 weeks, 1 week) delivered via the header notification bell.
 24. **Staff Self-Registration, Admin-Only Activation & Role Hierarchy Access Control** - Staff registration page (`/auth/register`) creating inactive accounts, strict Admin-Only account activation dashboard, and full top-to-bottom role access enforcement (IMA -> Country Manager -> Admin -> Asst Admin -> ICT -> Librarian -> Intern) filtering AppShell navigation and securing routes.
 25. **Isolated POS Thermal Label Printing Engine** - Overhaul thermal print execution using an isolated hidden iframe pipeline for Xprinter XP-365B and thermal roll printers, eliminating Next.js root wrapper CSS hiding bugs and guaranteeing 100% visible print previews.
+26. **Operational Calendar CSV Ingestion & Staff Workspace Route** - Upload and extract foundation calendar milestones from CSV files (supporting Date, Event, Participants, Focal Person, Remarks, and multi-date activity stages), interactive review table before saving, Event schema enrichment, and dedicated read-only operational calendar workspace route (`/dashboard/calendar`) positioned under Leaderboard in the AppShell navigation.
+27. **DZF-ILAS Platform Rebranding, SEO Privacy Rules, Staff Birthdays & Data Cleanup** - Rebrand entire platform from ILLS to DZF-ILAS (Dzuels Integrated Library & Administrative System) across UI, metadata, and configuration; enforce strict SEO robots rules ensuring only `/transcomm` is indexed by search engines while all internal routes are noindex; add birthdate (month and day only) to staff registration and directory; and purge all hardcoded mock/fallback calendar data across views.
 
 ## Data model
 
@@ -64,6 +67,8 @@ Top-to-bottom institutional hierarchy:
 - `password` (string, bcrypt hashed)
 - `role` (enum: `'ima' | 'country_manager' | 'admin' | 'asst_admin' | 'ict' | 'librarian' | 'intern' | 'cohort_lead' | 'transcomm_author' | 'facility'`)
 - `phone` (string, optional)
+- `birthMonth` (number, optional, 1-12)
+- `birthDay` (number, optional, 1-31)
 - `active` (boolean, default: false for new registrations, true for activated staff)
 - `createdAt`, `updatedAt` (Date)
 
@@ -82,12 +87,15 @@ Top-to-bottom institutional hierarchy:
 - `_id` (ObjectId)
 - `title` (string, required)
 - `description` (string, optional)
-- `startDate` (Date, required, indexed)
+- `startDate` / `eventDate` (Date, required, indexed)
 - `endDate` (Date, optional)
+- `participants` (string, optional)
+- `focalPerson` (string, optional)
+- `remarks` (string, optional)
 - `category` (enum: `'academy' | 'library' | 'board' | 'inspection' | 'holiday' | 'competition' | 'general'`, indexed)
 - `year` (number, e.g. 2026, 2027, indexed)
-- `sourcePdfUrl` (string, optional)
-- `alertHorizons` (object: `{ oneMonthNotified: boolean, twoWeeksNotified: boolean, oneWeekNotified: boolean }`)
+- `sourcePdfUrl` / `sourceCsvUrl` (string, optional)
+- `alertHorizons` / `alertsSent` (object: `{ oneMonth: boolean, twoWeeks: boolean, oneWeek: boolean }`)
 - `createdBy` (string)
 - `createdAt`, `updatedAt` (Date)
 
@@ -133,7 +141,7 @@ Top-to-bottom institutional hierarchy:
 
 ### Governance & System
 - `SystemSetting`: `{ emergencyCirculationLock, circulationLockReason, lockedBy, lockedAt }`
-- `AuditLog`: `{ action, performedBy, performedByRole, targetEntity, targetId, details, createdAt }`
+- `AuditLog` / `AdminAuditLog`: `{ action, performedBy, performedByRole, targetEntity, targetId, details, createdAt }`
 - `Requisition`: `{ title, description, department, estimatedCost, status, requestedBy }`
 
 ## Tech stack
@@ -145,34 +153,35 @@ Top-to-bottom institutional hierarchy:
 - **Cloudinary:** Cloud storage for patron webcam photos and book covers.
 - **Google Sheets API v4:** Service account integration for two-way cohort enrollment backups.
 - **JsBarcode:** SVG-based barcode rendering for cards and item spine tags.
+- **Thermal Print Engine:** Sandboxed headless iframe print pipeline targeting Xprinter XP-365B and 60mm × 40mm continuous rolls.
 
 ## Monetization
 
-Not applicable. DZF-ILLS is a 100% internal non-profit educational platform for the Dzuels Educational Foundation.
+Not applicable. DZF-ILAS is a 100% internal non-profit educational and library management platform for the Dzuels Educational Foundation.
 
 ## UI/UX
 
 - **Design Language:** Modern Academic SaaS / Digital Workspace.
-- **Palette & Contrast:** Midnight Navy (`#0b1d2e`), Scholastic Navy (`#17324d`), Brand Maroon (`#6f1111`), Academic Gold (`#cca349`), crisp high-contrast text (`#ffffff`, `#f1f5f9`), meeting WCAG AA standards.
-- **Layout Architecture:** Full-width header and footer bands on public `/` with 1200px centered body; dedicated `<Box component="nav">` sidebar allocation on `/dashboard/*`.
+- **Palette & Contrast:** Midnight Navy (`#0b1d2e`), Scholastic Navy (`#17324d`), Brand Maroon (`#6f1111`), Academic Gold (`#cca349`), crisp high-contrast text meeting WCAG AA standards.
+- **Layout Architecture:** Full-width header and footer bands on public `/` with 1200px centered body; dedicated sidebar allocation on `/dashboard/*`.
 - **Loading UX:** Next.js `loading.tsx` route skeletons using Material UI Skeleton components with brand shimmer.
 - **Core Routes:**
-  - `/` - Public welcome board with system overview, rules, staff birthdays, and live database stats
-  - `/transcomm` & `/transcomm/[slug]` - Public DRNICER leadership knowledge hub
+  - `/` - Public welcome board with system overview, rules, and live database stats
+  - `/transcomm` & `/transcomm/[slug]` - Public DRNICER leadership knowledge hub (indexed by search engines)
   - `/auth/login` - Staff credential sign-in
-  - `/auth/register` - Staff self-registration with pending admin activation
+  - `/auth/register` - Staff self-registration with birth month/day and pending admin activation
   - `/dashboard` - Summary counters, circulation stats, gender ratios, upcoming milestones
   - `/dashboard/catalog` & `/dashboard/catalog/acquire` - Monograph inventory and acquisition studio
   - `/dashboard/patrons` & `/dashboard/patrons/register` - Patron directory, dynamic registration, Xprinter XP-365B bulk printing
   - `/dashboard/circulations` - Barcode loan transactions, checkout, return, holds, overdues
   - `/dashboard/attendance` - Barcode scanner interface ("Attendant")
   - `/dashboard/leaderboard` - Activity metrics and patron leaderboard
+  - `/dashboard/calendar` - Dedicated staff operational calendar matrix & agenda stream
   - `/dashboard/cohorts` - Digital literacy cohorts, student rosters, Google Sheets sync
   - `/dashboard/competitions` - Live competition judging and broadcast results
   - `/dashboard/certificates` - Vector certificate studio & export pipeline
   - `/dashboard/transcomm` - Staff editorial management for DRNICER articles
-  - `/dashboard/admin` - Staff RBAC accounts, emergency circulation overrides, audit ledger
-  - `/dashboard/admin/calendar` - Yearly foundation operational calendar matrix & PDF ingestion
+  - `/dashboard/admin` - Staff RBAC accounts, emergency circulation overrides, audit ledger, CSV/PDF calendar ingestion tools
   - `/dashboard/admin/tasks` - Operational staff tasks Kanban board with drag-and-drop
 
 ## Deployment
