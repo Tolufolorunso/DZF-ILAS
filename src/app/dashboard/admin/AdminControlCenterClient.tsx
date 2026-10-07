@@ -41,9 +41,14 @@ import {
   PatronOverrideCard,
   RequisitionReviewDialog,
   TaskFormDialog,
+  TaskKanbanBoard,
+  TaskEditDialog,
   EventFormDialog,
   AuditLogViewer,
 } from '@/components/admin';
+import type { KanbanStatus } from '@/components/admin/TaskKanbanBoard';
+import type { TaskUpdatePayload } from '@/components/admin/TaskEditDialog';
+
 
 interface AdminControlCenterClientProps {
   user: ITokenPayload;
@@ -78,6 +83,7 @@ export default function AdminControlCenterClient({
   // Modals state
   const [lockDialogOpen, setLockDialogOpen] = React.useState(false);
   const [taskDialogOpen, setTaskDialogOpen] = React.useState(false);
+  const [selectedEditTask, setSelectedEditTask] = React.useState<ITaskItemDTO | null>(null);
   const [eventDialogOpen, setEventDialogOpen] = React.useState(false);
   const [selectedRequisition, setSelectedRequisition] = React.useState<IRequisitionItemDTO | null>(null);
 
@@ -90,6 +96,18 @@ export default function AdminControlCenterClient({
     } finally {
       router.push('/auth/login');
       router.refresh();
+    }
+  };
+
+  const refreshTasks = async () => {
+    try {
+      const res = await fetch('/api/admin/tasks');
+      const data = await res.json();
+      if (data.success && data.tasks) {
+        setTasks(data.tasks);
+      }
+    } catch (e) {
+      console.error('Failed to reload tasks:', e);
     }
   };
 
@@ -156,15 +174,17 @@ export default function AdminControlCenterClient({
       throw new Error(data.error || 'Failed to create task');
     }
 
-    setTasks((prev) => [data.task, ...prev]);
+    await refreshTasks();
     setNotification({
       type: 'success',
       message: 'Operational task created and assigned.',
     });
   };
 
-  // Task status transition handler
-  const handleUpdateTaskStatus = async (id: string, newStatus: 'todo' | 'inProgress' | 'completed' | 'archived') => {
+  // Task status transition handler (drag-and-drop or menu move)
+  const handleUpdateTaskStatus = async (id: string, newStatus: KanbanStatus) => {
+    // Optimistic update
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t)));
     try {
       const res = await fetch(`/api/admin/tasks/${id}`, {
         method: 'PATCH',
@@ -173,16 +193,38 @@ export default function AdminControlCenterClient({
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to update task');
+        throw new Error(data.error || 'Failed to update task status');
       }
-
-      setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t)));
     } catch (err) {
+      await refreshTasks();
       setNotification({
         type: 'error',
         message: err instanceof Error ? err.message : 'Task update failed',
       });
     }
+  };
+
+  // Task full details update handler
+  const handleSaveEditedTask = async (taskId: string, payload: TaskUpdatePayload) => {
+    const res = await fetch(`/api/admin/tasks/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Failed to update task');
+    }
+
+    if (data.task) {
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? data.task : t)));
+    } else {
+      await refreshTasks();
+    }
+    setNotification({
+      type: 'success',
+      message: 'Task details updated successfully.',
+    });
   };
 
   // Task delete handler
@@ -202,6 +244,7 @@ export default function AdminControlCenterClient({
       });
     }
   };
+
 
   // Event creation handler
   const handleCreateEvent = async (eventData: {
@@ -660,103 +703,31 @@ export default function AdminControlCenterClient({
               </Grid>
             )}
           </Box>
-        )}
-
-        {/* TAB 3: Operational Tasks Board */}
+        )}        {/* TAB 3: Operational Tasks Board */}
         {tabIndex === 3 && (
           <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, flexWrap: 'wrap', gap: 2 }}>
               <Box>
                 <Typography variant="h6" sx={{ fontWeight: 800, color: dzfColors.navy[900] }}>
-                  Operational Staff Tasks
+                  Operational Staff Tasks Kanban
                 </Typography>
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  Track institutional maintenance and library duties
+                  Drag and drop tasks between lanes to track institutional workflow and maintenance
                 </Typography>
               </Box>
               <DZFButton variant="primary" size="small" onClick={() => setTaskDialogOpen(true)}>
-                + New Task
+                + Assign New Task
               </DZFButton>
             </Box>
 
-            <Grid container spacing={2.5}>
-              {(['todo', 'inProgress', 'completed'] as const).map((colStatus) => {
-                const colTasks = tasks.filter((t) => t.status === colStatus);
-                const colTitle =
-                  colStatus === 'todo' ? 'To Do' : colStatus === 'inProgress' ? 'In Progress' : 'Completed';
-
-                return (
-                  <Grid size={{ xs: 12, md: 4 }} key={colStatus}>
-                    <Box
-                      sx={{
-                        p: 2,
-                        borderRadius: '16px',
-                        bgcolor: '#f8fafc',
-                        border: '1px solid #e2e8f0',
-                        minHeight: 380,
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 800, color: dzfColors.navy[900] }}>
-                          {colTitle}
-                        </Typography>
-                        <Chip size="small" label={colTasks.length} />
-                      </Box>
-
-                      {colTasks.length === 0 ? (
-                        <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', textAlign: 'center', mt: 4 }}>
-                          No tasks in this lane
-                        </Typography>
-                      ) : (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                          {colTasks.map((t) => (
-                            <Card key={t.id} sx={{ p: 2, borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                                  {t.title}
-                                </Typography>
-                                <DZFBadge
-                                  variant={t.priority === 'high' ? 'error' : t.priority === 'low' ? 'default' : 'warning'}
-                                  size="small"
-                                  label={t.priority}
-                                />
-                              </Box>
-
-                              {t.description && (
-                                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
-                                  {t.description}
-                                </Typography>
-                              )}
-
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
-                                <Typography variant="caption" sx={{ fontWeight: 600, color: dzfColors.navy[700] }}>
-                                  @{t.assignedTo.username}
-                                </Typography>
-
-                                <Box sx={{ display: 'flex', gap: 0.5 }}>
-                                  {colStatus !== 'completed' && (
-                                    <IconButton
-                                      size="small"
-                                      onClick={() => handleUpdateTaskStatus(t.id, colStatus === 'todo' ? 'inProgress' : 'completed')}
-                                      title={colStatus === 'todo' ? 'Move to In Progress' : 'Mark Completed'}
-                                    >
-                                      <CheckIcon size={16} color="#16a34a" />
-                                    </IconButton>
-                                  )}
-                                  <IconButton size="small" onClick={() => handleDeleteTask(t.id)} title="Delete Task">
-                                    <TrashIcon size={16} color="#dc2626" />
-                                  </IconButton>
-                                </Box>
-                              </Box>
-                            </Card>
-                          ))}
-                        </Box>
-                      )}
-                    </Box>
-                  </Grid>
-                );
-              })}
-            </Grid>
+            <TaskKanbanBoard
+              tasks={tasks}
+              onUpdateStatus={handleUpdateTaskStatus}
+              onEditTask={(task) => setSelectedEditTask(task)}
+              onDeleteTask={handleDeleteTask}
+              canManage={user.role === 'admin' || user.role === 'ima' || user.role === 'country_manager'}
+              currentUsername={user.username}
+            />
           </Box>
         )}
 
@@ -864,6 +835,13 @@ export default function AdminControlCenterClient({
           open={taskDialogOpen}
           onClose={() => setTaskDialogOpen(false)}
           onSubmit={handleCreateTask}
+        />
+
+        <TaskEditDialog
+          open={Boolean(selectedEditTask)}
+          task={selectedEditTask}
+          onClose={() => setSelectedEditTask(null)}
+          onSubmit={handleSaveEditedTask}
         />
 
         <EventFormDialog

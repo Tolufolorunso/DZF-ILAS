@@ -20,9 +20,10 @@ import {
   Task,
   Event,
   Counter,
+  Notification,
 } from '@/models';
 
-// Map of all 16 registered production models
+// Map of registered production models
 const DOMAIN_MODELS = [
   User.modelName,
   Patron.modelName,
@@ -40,6 +41,7 @@ const DOMAIN_MODELS = [
   Task.modelName,
   Event.modelName,
   Counter.modelName,
+  Notification.modelName,
 ];
 
 export async function GET() {

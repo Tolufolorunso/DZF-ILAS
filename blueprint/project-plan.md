@@ -131,6 +131,39 @@ DZF-ILLS is a ground-up rewrite delivering:
     - Bulk preview displaying matching patron count and barcode cards.
     - One-click bulk printing dispatching continuous 60×40mm thermal roll print dialog with individual page breaks (`break-after: page; page-break-after: always;`).
 
+### Phase 7: Operational Staff Governance, Calendar Intelligence & POS Thermal Print Engine (New)
+
+- **Operational Staff Tasks Enrichment & Drag-and-Drop Kanban Board:**
+  - **Task Assignment Role Permissions:**
+    - `ima`: Can assign tasks to herself, `country_manager`, `admin`, and any other staff.
+    - `country_manager`: Can assign tasks to `admin` and subordinate staff.
+    - `admin`: Can assign tasks to himself and all subordinate staff (`asst_admin`, `ict`, `librarian`, `intern`, etc.).
+  - **Dynamic Assignee Lookup:** Populate active usernames from the `User` collection. Support assigning to an individual or to a group by role.
+  - **Task Attribution:** Cards display both Assignee and `Assigned By`.
+  - **Interactive Kanban Board:** 3 columns (`todo`, `in_progress`, `completed`) with smooth HTML5 drag-and-drop card reordering, modal edit/delete controls, and persistence via API.
+  - **Notification Bell Alerts:** Dispatches in-app notification to the assignee upon creation/update; triggers unread badge and dropdown list on the AppShell header notification bell.
+
+- **Foundation Operational Calendar, PDF Ingestion & Multi-Stage Alert Pipeline:**
+  - **Yearly Foundation Calendar:** 12-month visual matrix and agenda table supporting multi-year schedules (e.g. 2026, 2027).
+  - **PDF Ingestion & Review:** Staff can upload the yearly calendar PDF; a server parsing helper extracts dates and event titles into an editable review table for one-click database ingestion, while preserving the PDF for download.
+  - **Multi-Stage Advance Notifications:** Background horizon evaluator alerts staff at:
+    - 30 days (1 month) prior
+    - 14 days (2 weeks) prior
+    - 7 days (1 week) prior
+    Delivered via the AppShell notification bell and dashboard milestone cards.
+
+- **Staff Self-Registration, Admin-Only Activation & Role Hierarchy Access Control:**
+  - **Self-Registration Page (`/auth/register`):** Allows prospective staff to register with name, username, email, phone, password, and requested role. Accounts are created with `active: false` (Pending Approval). Inactive accounts cannot log in.
+  - **Admin-Only Account Activation:** Strictly the `admin` role has the privilege to activate accounts or decline registrations in `/dashboard/admin/users`.
+  - **Top-to-Bottom Role Hierarchy & Page Authorization:**
+    - Hierarchy: `ima` -> `country_manager` -> `admin` -> `asst_admin` -> `ict` -> `librarian` -> `intern`.
+    - AppShell navigation links and middleware route authorization strictly permit only accessible pages per role. `admin` oversees website and operational administration.
+
+- **Isolated POS Thermal Label Printing Engine:**
+  - Complete overhaul of the thermal printing execution in `ThermalPrintDialog.tsx`.
+  - Replace fragile `@media print` ancestor-hiding CSS with an isolated hidden `<iframe>` print pipeline populated with pure 60mm × 40mm thermal HTML, Barcode SVGs, and zero-margin page styles.
+  - Resolves print preview blank screens permanently on Xprinter XP-365B and standard thermal roll printers.
+
 ## 4. Data - What are we storing?
 
 All 15 core production entities plus Phase 5 model extensions:

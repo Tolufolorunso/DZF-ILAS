@@ -12,6 +12,7 @@ import {
   Requisition,
   Task,
   Event,
+  Notification,
 } from '@/models';
 import type {
   ISystemStats,
@@ -393,6 +394,83 @@ export async function createTask(params: {
   staffRole: string;
 }): Promise<ITaskItemDTO> {
   await connectDB();
+
+  // Check if assigning to a role group (e.g. "group:librarian", "group:ict")
+  if (params.assignedToUsername.startsWith('group:')) {
+    const targetRole = params.assignedToUsername.replace('group:', '') as import('@/models/User').UserRole;
+    const groupMembers = await User.find({ role: targetRole, active: true }).lean();
+
+    if (groupMembers.length > 0) {
+      const createdTasks = await Promise.all(
+        groupMembers.map(async (member) => {
+          const t = await Task.create({
+            title: params.title.trim(),
+            description: params.description?.trim(),
+            dueDate: params.dueDate,
+            priority: params.priority,
+            status: 'todo',
+            assignedBy: {
+              name: params.staffName,
+              username: params.staffUsername,
+            },
+            assignedTo: {
+              name: member.name,
+              username: member.username,
+            },
+            comments: [],
+            likes: [],
+          });
+
+          // Dispatch notification to each group member
+          if (member.username.toLowerCase() !== params.staffUsername.toLowerCase()) {
+            await Notification.create({
+              recipientUsername: member.username.toLowerCase(),
+              senderUsername: params.staffUsername.toLowerCase(),
+              type: 'task_assigned',
+              title: 'New Team Task Assigned',
+              message: `@${params.staffUsername} assigned your team a task: "${params.title}" (Priority: ${params.priority})`,
+              link: '/dashboard/admin',
+              read: false,
+            });
+          }
+
+          return t;
+        })
+      );
+
+      await logAuditEvent({
+        action: 'TASK_GROUP_CREATED',
+        performedBy: params.staffUsername,
+        performedByRole: params.staffRole,
+        targetEntity: 'Task',
+        targetId: String(createdTasks[0]._id),
+        details: {
+          title: params.title,
+          groupRole: targetRole,
+          membersCount: groupMembers.length,
+        },
+      });
+
+      const firstTask = createdTasks[0];
+      return {
+        id: String(firstTask._id),
+        title: firstTask.title,
+        description: firstTask.description,
+        dueDate: firstTask.dueDate ? firstTask.dueDate.toISOString() : null,
+        assignedBy: firstTask.assignedBy,
+        assignedTo: {
+          name: `${targetRole.toUpperCase()} Team (${groupMembers.length})`,
+          username: params.assignedToUsername,
+        },
+        status: firstTask.status,
+        priority: firstTask.priority,
+        createdAt: firstTask.createdAt.toISOString(),
+        updatedAt: firstTask.updatedAt.toISOString(),
+      };
+    }
+  }
+
+  // Individual task assignment
   const task = await Task.create({
     title: params.title.trim(),
     description: params.description?.trim(),
@@ -410,6 +488,19 @@ export async function createTask(params: {
     comments: [],
     likes: [],
   });
+
+  // Dispatch in-app notification to the assignee
+  if (params.assignedToUsername.toLowerCase() !== params.staffUsername.toLowerCase()) {
+    await Notification.create({
+      recipientUsername: params.assignedToUsername.toLowerCase(),
+      senderUsername: params.staffUsername.toLowerCase(),
+      type: 'task_assigned',
+      title: 'New Operational Task Assigned',
+      message: `@${params.staffUsername} assigned you a task: "${params.title}" (Priority: ${params.priority})`,
+      link: '/dashboard/admin',
+      read: false,
+    });
+  }
 
   await logAuditEvent({
     action: 'TASK_CREATED',
@@ -450,8 +541,27 @@ export async function updateTaskStatus(params: {
     throw new Error('Task not found');
   }
 
+  const oldStatus = task.status;
   task.status = params.status;
   await task.save();
+
+  // If completed, notify the assigner if someone else completed it
+  if (
+    params.status === 'completed' &&
+    oldStatus !== 'completed' &&
+    task.assignedBy?.username &&
+    task.assignedBy.username.toLowerCase() !== params.staffUsername.toLowerCase()
+  ) {
+    await Notification.create({
+      recipientUsername: task.assignedBy.username.toLowerCase(),
+      senderUsername: params.staffUsername.toLowerCase(),
+      type: 'task_updated',
+      title: 'Task Completed',
+      message: `@${params.staffUsername} completed task "${task.title}".`,
+      link: '/dashboard/admin',
+      read: false,
+    });
+  }
 
   await logAuditEvent({
     action: 'TASK_UPDATED',
@@ -461,6 +571,7 @@ export async function updateTaskStatus(params: {
     targetId: params.id,
     details: {
       title: task.title,
+      oldStatus,
       newStatus: params.status,
     },
   });
@@ -478,6 +589,79 @@ export async function updateTaskStatus(params: {
     updatedAt: task.updatedAt.toISOString(),
   };
 }
+
+export async function updateTaskDetails(params: {
+  id: string;
+  title?: string;
+  description?: string;
+  priority?: 'low' | 'medium' | 'high';
+  status?: 'todo' | 'inProgress' | 'completed' | 'archived';
+  dueDate?: Date | null;
+  assignedToUsername?: string;
+  assignedToName?: string;
+  staffUsername: string;
+  staffRole: string;
+}): Promise<ITaskItemDTO> {
+  await connectDB();
+  const task = await Task.findById(params.id);
+  if (!task) {
+    throw new Error('Task not found');
+  }
+
+  if (params.title !== undefined) task.title = params.title.trim();
+  if (params.description !== undefined) task.description = params.description.trim();
+  if (params.priority !== undefined) task.priority = params.priority;
+  if (params.status !== undefined) task.status = params.status;
+  if (params.dueDate !== undefined) task.dueDate = params.dueDate || undefined;
+  if (params.assignedToUsername && params.assignedToName) {
+    const oldAssignee = task.assignedTo.username;
+    task.assignedTo = {
+      username: params.assignedToUsername.trim(),
+      name: params.assignedToName.trim(),
+    };
+
+    if (oldAssignee.toLowerCase() !== params.assignedToUsername.toLowerCase()) {
+      await Notification.create({
+        recipientUsername: params.assignedToUsername.toLowerCase(),
+        senderUsername: params.staffUsername.toLowerCase(),
+        type: 'task_assigned',
+        title: 'Task Re-assigned to You',
+        message: `@${params.staffUsername} re-assigned task "${task.title}" to you.`,
+        link: '/dashboard/admin',
+        read: false,
+      });
+    }
+  }
+
+  await task.save();
+
+  await logAuditEvent({
+    action: 'TASK_EDITED',
+    performedBy: params.staffUsername,
+    performedByRole: params.staffRole,
+    targetEntity: 'Task',
+    targetId: params.id,
+    details: {
+      title: task.title,
+      priority: task.priority,
+      assignedTo: task.assignedTo.username,
+    },
+  });
+
+  return {
+    id: String(task._id),
+    title: task.title,
+    description: task.description,
+    dueDate: task.dueDate ? task.dueDate.toISOString() : null,
+    assignedBy: task.assignedBy,
+    assignedTo: task.assignedTo,
+    status: task.status,
+    priority: task.priority,
+    createdAt: task.createdAt.toISOString(),
+    updatedAt: task.updatedAt.toISOString(),
+  };
+}
+
 
 /**
  * Foundation Events management.

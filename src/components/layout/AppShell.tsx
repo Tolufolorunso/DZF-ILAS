@@ -13,6 +13,10 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Avatar from '@mui/material/Avatar';
+import Badge from '@mui/material/Badge';
+import Popover from '@mui/material/Popover';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import { dzfColors } from '@/theme/colors';
@@ -53,6 +57,18 @@ export interface NavSection {
   items: NavItem[];
 }
 
+export interface NotificationItem {
+  id: string;
+  recipientUsername: string;
+  senderUsername: string;
+  type: string;
+  title: string;
+  message: string;
+  link?: string;
+  read: boolean;
+  createdAt: string;
+}
+
 export interface AppShellProps {
   children: React.ReactNode;
   activeNavId?: string;
@@ -81,6 +97,83 @@ export function AppShell({
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [collapsed, setCollapsed] = React.useState(false);
+
+  // Notifications State & Polling
+  const [notifications, setNotifications] = React.useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = React.useState<number>(0);
+  const [notifAnchor, setNotifAnchor] = React.useState<HTMLElement | null>(null);
+  const [isUpdatingNotifs, setIsUpdatingNotifs] = React.useState<boolean>(false);
+
+  const fetchNotifications = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/notifications');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setNotifications(data.notifications || []);
+          setUnreadCount(data.unreadCount || 0);
+        }
+      }
+    } catch {
+      // non-blocking polling catch
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchNotifications();
+    const timer = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(timer);
+  }, [fetchNotifications]);
+
+  const handleOpenNotifications = (event: React.MouseEvent<HTMLElement>) => {
+    setNotifAnchor(event.currentTarget);
+    fetchNotifications();
+  };
+
+  const handleCloseNotifications = () => {
+    setNotifAnchor(null);
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      setIsUpdatingNotifs(true);
+      const res = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ markAllRead: true }),
+      });
+      if (res.ok) {
+        setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+        setUnreadCount(0);
+      }
+    } catch (err) {
+      console.error('Failed to mark all notifications read', err);
+    } finally {
+      setIsUpdatingNotifs(false);
+    }
+  };
+
+  const handleNotificationClick = async (notif: NotificationItem) => {
+    if (!notif.read) {
+      try {
+        await fetch('/api/notifications', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: notif.id }),
+        });
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n))
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      } catch (err) {
+        console.error('Failed to mark notification read', err);
+      }
+    }
+    if (notif.link) {
+      handleCloseNotifications();
+      router.push(notif.link);
+    }
+  };
 
   if (isInsideShell) {
     return <>{children}</>;
@@ -461,6 +554,7 @@ export function AppShell({
             <IconButton
               size="small"
               aria-label="notifications"
+              onClick={handleOpenNotifications}
               sx={{
                 p: 1,
                 borderRadius: '8px',
@@ -468,7 +562,21 @@ export function AppShell({
                 color: dzfColors.navy[700],
               }}
             >
-              <BellIcon size={18} />
+              <Badge
+                badgeContent={unreadCount}
+                color="error"
+                max={99}
+                sx={{
+                  '& .MuiBadge-badge': {
+                    fontSize: '0.625rem',
+                    height: 16,
+                    minWidth: 16,
+                    px: 0.5,
+                  },
+                }}
+              >
+                <BellIcon size={18} />
+              </Badge>
             </IconButton>
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 1 }}>
@@ -598,6 +706,179 @@ export function AppShell({
           {children}
         </Box>
       </Box>
+
+      {/* Notifications Popover */}
+      <Popover
+        open={Boolean(notifAnchor)}
+        anchorEl={notifAnchor}
+        onClose={handleCloseNotifications}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        slotProps={{
+          paper: {
+            sx: {
+              width: { xs: 320, sm: 380 },
+              maxHeight: 520,
+              borderRadius: '16px',
+              boxShadow: '0 12px 36px rgba(11, 29, 46, 0.2)',
+              border: `1px solid ${dzfColors.surfaces.border}`,
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+            },
+          },
+        }}
+      >
+        {/* Popover Header */}
+        <Box
+          sx={{
+            p: 2,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            borderBottom: `1px solid ${dzfColors.surfaces.border}`,
+            backgroundColor: dzfColors.surfaces.canvas,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: dzfColors.navy[900] }}>
+              Notifications
+            </Typography>
+            {unreadCount > 0 && (
+              <Chip
+                label={`${unreadCount} new`}
+                size="small"
+                sx={{
+                  height: 20,
+                  fontSize: '0.6875rem',
+                  fontWeight: 700,
+                  backgroundColor: dzfColors.maroon[900],
+                  color: '#ffffff',
+                }}
+              />
+            )}
+          </Box>
+
+          {unreadCount > 0 && (
+            <Button
+              size="small"
+              onClick={handleMarkAllRead}
+              disabled={isUpdatingNotifs}
+              sx={{
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                color: dzfColors.navy[700],
+                textTransform: 'none',
+                p: 0.5,
+                minWidth: 0,
+                '&:hover': { backgroundColor: 'transparent', color: dzfColors.navy[950], textDecoration: 'underline' },
+              }}
+            >
+              Mark all read
+            </Button>
+          )}
+        </Box>
+
+        {/* Notifications List */}
+        <Box sx={{ overflowY: 'auto', flex: 1, maxHeight: 420 }}>
+          {notifications.length === 0 ? (
+            <Box sx={{ p: 4, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+              <Box
+                sx={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: '50%',
+                  backgroundColor: dzfColors.surfaces.canvas,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: dzfColors.surfaces.textMuted,
+                  mb: 0.5,
+                }}
+              >
+                <BellIcon size={22} />
+              </Box>
+              <Typography variant="body2" sx={{ fontWeight: 700, color: dzfColors.navy[900] }}>
+                No notifications yet
+              </Typography>
+              <Typography variant="caption" sx={{ color: dzfColors.surfaces.textMuted, maxWidth: 220 }}>
+                You&apos;ll be alerted when operational tasks are assigned to you.
+              </Typography>
+            </Box>
+          ) : (
+            notifications.map((notif) => (
+              <Box
+                key={notif.id}
+                onClick={() => handleNotificationClick(notif)}
+                sx={{
+                  p: 1.75,
+                  borderBottom: `1px solid ${dzfColors.surfaces.border}`,
+                  cursor: 'pointer',
+                  backgroundColor: notif.read ? '#ffffff' : 'rgba(2, 132, 199, 0.04)',
+                  borderLeft: notif.read ? '3px solid transparent' : `3px solid ${dzfColors.gold[500]}`,
+                  transition: 'background-color 0.15s ease',
+                  '&:hover': {
+                    backgroundColor: notif.read ? '#f8fafc' : 'rgba(2, 132, 199, 0.08)',
+                  },
+                }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5, gap: 1 }}>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontWeight: notif.read ? 600 : 800,
+                      color: notif.read ? dzfColors.navy[700] : dzfColors.navy[950],
+                      fontSize: '0.8125rem',
+                      lineHeight: 1.3,
+                      flex: 1,
+                    }}
+                  >
+                    {notif.title}
+                  </Typography>
+                  {!notif.read && (
+                    <Box
+                      sx={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        backgroundColor: dzfColors.gold[500],
+                        flexShrink: 0,
+                        mt: 0.5,
+                      }}
+                    />
+                  )}
+                </Box>
+
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: dzfColors.surfaces.textSecondary,
+                    fontSize: '0.75rem',
+                    lineHeight: 1.4,
+                    mb: 0.75,
+                  }}
+                >
+                  {notif.message}
+                </Typography>
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="caption" sx={{ fontSize: '0.6875rem', color: dzfColors.navy[700], fontWeight: 600 }}>
+                    From: @{notif.senderUsername}
+                  </Typography>
+                  <Typography variant="caption" sx={{ fontSize: '0.6875rem', color: dzfColors.surfaces.textMuted }}>
+                    {new Date(notif.createdAt).toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </Typography>
+                </Box>
+              </Box>
+            ))
+          )}
+        </Box>
+      </Popover>
     </Box>
   </AppShellContext.Provider>
 );

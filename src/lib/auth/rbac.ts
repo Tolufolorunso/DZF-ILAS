@@ -1,17 +1,68 @@
 import type { UserRole } from '@/models/User';
 
 export const ALL_ROLES: UserRole[] = [
+  'ima',
+  'country_manager',
   'admin',
   'asst_admin',
+  'ict',
   'librarian',
+  'intern',
   'cohort_lead',
   'transcomm_author',
-  'ima',
-  'ict',
   'facility',
 ];
 
-export const ADMIN_ROLES: UserRole[] = ['admin', 'asst_admin'];
+export const ROLE_HIERARCHY_RANK: Record<UserRole, number> = {
+  ima: 70,
+  country_manager: 60,
+  admin: 50,
+  asst_admin: 40,
+  ict: 30,
+  librarian: 20,
+  cohort_lead: 20,
+  transcomm_author: 20,
+  intern: 10,
+  facility: 10,
+};
+
+/**
+ * Task assignment hierarchy verification:
+ * - IMA can assign tasks to herself, Country Manager, Admin, and all staff.
+ * - Country Manager can assign tasks to Admin and all subordinate staff.
+ * - Admin can assign tasks to himself and all subordinate staff.
+ * - Other staff cannot assign tasks upward or across.
+ */
+export function canAssignTaskTo(
+  assignerRole: UserRole | string,
+  targetRole: UserRole | string
+): boolean {
+  const assigner = assignerRole as UserRole;
+  const target = targetRole as UserRole;
+
+  if (assigner === 'ima') {
+    return true;
+  }
+
+  if (assigner === 'country_manager') {
+    return target !== 'ima';
+  }
+
+  if (assigner === 'admin') {
+    return target !== 'ima' && target !== 'country_manager';
+  }
+
+  return false;
+}
+
+/**
+ * Check if a role has task creation privileges (IMA, Country Manager, Admin)
+ */
+export function canCreateTask(role: UserRole | string): boolean {
+  return ['ima', 'country_manager', 'admin'].includes(role as UserRole);
+}
+
+export const ADMIN_ROLES: UserRole[] = ['ima', 'country_manager', 'admin', 'asst_admin'];
 export const CIRCULATION_ROLES: UserRole[] = ['admin', 'asst_admin', 'librarian'];
 export const COHORT_ROLES: UserRole[] = ['admin', 'asst_admin', 'cohort_lead', 'ict'];
 export const EDITORIAL_ROLES: UserRole[] = ['admin', 'asst_admin', 'transcomm_author'];

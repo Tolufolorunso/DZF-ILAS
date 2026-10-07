@@ -25,30 +25,49 @@ export async function PATCH(
     const { id } = await params;
     const body = await req.json().catch(() => null);
 
-    if (!body || !body.status) {
-      return NextResponse.json(
-        { success: false, error: 'Field "status" is required in payload.' },
-        { status: 400 }
-      );
+    if (!body) {
+      return NextResponse.json({ success: false, error: 'Payload is required.' }, { status: 400 });
     }
 
-    const validStatuses = ['todo', 'inProgress', 'completed', 'archived'];
-    if (!validStatuses.includes(body.status)) {
-      return NextResponse.json(
-        { success: false, error: `Invalid task status. Valid: ${validStatuses.join(', ')}` },
-        { status: 400 }
-      );
-    }
+    const { updateTaskStatus, updateTaskDetails } = await import('@/lib/admin/service');
 
-    const updated = await updateTaskStatus({
-      id,
-      status: body.status,
-      staffUsername: user.username,
-      staffRole: user.role,
-    });
+    let updated;
+    if (body.title !== undefined || body.description !== undefined || body.priority !== undefined || body.assignedToUsername !== undefined) {
+      // Full details update
+      updated = await updateTaskDetails({
+        id,
+        title: body.title,
+        description: body.description,
+        priority: body.priority,
+        dueDate: body.dueDate ? new Date(body.dueDate) : body.dueDate === null ? null : undefined,
+        status: body.status,
+        assignedToUsername: body.assignedToUsername,
+        assignedToName: body.assignedToName,
+        staffUsername: user.username,
+        staffRole: user.role,
+      });
+    } else if (body.status) {
+      // Quick status transition (e.g. Kanban drag and drop)
+      const validStatuses = ['todo', 'inProgress', 'completed', 'archived'];
+      if (!validStatuses.includes(body.status)) {
+        return NextResponse.json(
+          { success: false, error: `Invalid task status. Valid: ${validStatuses.join(', ')}` },
+          { status: 400 }
+        );
+      }
+
+      updated = await updateTaskStatus({
+        id,
+        status: body.status,
+        staffUsername: user.username,
+        staffRole: user.role,
+      });
+    } else {
+      return NextResponse.json({ success: false, error: 'No valid update fields provided.' }, { status: 400 });
+    }
 
     return NextResponse.json(
-      { success: true, message: `Task status updated to "${body.status}".`, task: updated },
+      { success: true, message: 'Task updated successfully.', task: updated },
       { status: 200 }
     );
   } catch (error) {
@@ -62,7 +81,7 @@ export async function PATCH(
 
 /**
  * DELETE /api/admin/tasks/[id]
- * Removes an operational task. Restricted to administrators.
+ * Removes an operational task. Restricted to staff with task creation privileges (IMA, Country Manager, Admin).
  */
 export async function DELETE(
   req: NextRequest,
@@ -70,9 +89,11 @@ export async function DELETE(
 ) {
   try {
     const user = await getSessionUser(req);
-    if (!user || !isAdmin(user.role)) {
+    const { canCreateTask } = await import('@/lib/auth/rbac');
+
+    if (!user || !canCreateTask(user.role)) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized. Administrator privileges required.' },
+        { success: false, error: 'Unauthorized. Higher administrative privileges required to delete tasks.' },
         { status: 403 }
       );
     }

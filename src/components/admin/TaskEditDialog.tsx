@@ -15,6 +15,7 @@ import ListSubheader from '@mui/material/ListSubheader';
 
 import { dzfColors } from '@/theme/colors';
 import DZFButton from '@/components/ui/DZFButton';
+import type { ITaskItemDTO } from '@/lib/admin/types';
 
 interface AssigneeOption {
   username: string;
@@ -23,23 +24,33 @@ interface AssigneeOption {
   isGroup: boolean;
 }
 
-interface TaskFormDialogProps {
-  open: boolean;
-  onClose: () => void;
-  onSubmit: (task: {
-    title: string;
-    description?: string;
-    priority: 'low' | 'medium' | 'high';
-    dueDate?: string;
-    assignedToUsername: string;
-    assignedToName: string;
-  }) => Promise<void>;
+export interface TaskUpdatePayload {
+  title?: string;
+  description?: string;
+  priority?: 'low' | 'medium' | 'high';
+  status?: 'todo' | 'inProgress' | 'completed' | 'archived';
+  dueDate?: string | null;
+  assignedToUsername?: string;
+  assignedToName?: string;
 }
 
-export default function TaskFormDialog({ open, onClose, onSubmit }: TaskFormDialogProps) {
+interface TaskEditDialogProps {
+  open: boolean;
+  task: ITaskItemDTO | null;
+  onClose: () => void;
+  onSubmit: (taskId: string, payload: TaskUpdatePayload) => Promise<void>;
+}
+
+export default function TaskEditDialog({
+  open,
+  task,
+  onClose,
+  onSubmit,
+}: TaskEditDialogProps) {
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [priority, setPriority] = React.useState<'low' | 'medium' | 'high'>('medium');
+  const [status, setStatus] = React.useState<'todo' | 'inProgress' | 'completed'>('todo');
   const [dueDate, setDueDate] = React.useState('');
   const [selectedAssignee, setSelectedAssignee] = React.useState<string>('');
   const [assignees, setAssignees] = React.useState<AssigneeOption[]>([]);
@@ -48,7 +59,23 @@ export default function TaskFormDialog({ open, onClose, onSubmit }: TaskFormDial
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // Load assignable staff and groups whenever dialog opens
+  // Sync state when task changes
+  React.useEffect(() => {
+    if (task) {
+      setTitle(task.title || '');
+      setDescription(task.description || '');
+      setPriority(task.priority || 'medium');
+      setStatus((task.status as 'todo' | 'inProgress' | 'completed') || 'todo');
+      setDueDate(
+        task.dueDate
+          ? new Date(task.dueDate).toISOString().split('T')[0]
+          : ''
+      );
+      setSelectedAssignee(task.assignedTo?.username || '');
+    }
+  }, [task]);
+
+  // Load assignable staff options
   React.useEffect(() => {
     if (open) {
       let isMounted = true;
@@ -59,9 +86,6 @@ export default function TaskFormDialog({ open, onClose, onSubmit }: TaskFormDial
           if (isMounted && data.success) {
             setAssignees(data.assignees || []);
             setGroups(data.groups || []);
-            if (data.assignees?.length > 0 && !selectedAssignee) {
-              setSelectedAssignee(data.assignees[0].username);
-            }
           }
         })
         .catch((err) => {
@@ -75,16 +99,16 @@ export default function TaskFormDialog({ open, onClose, onSubmit }: TaskFormDial
         isMounted = false;
       };
     }
-  }, [open, selectedAssignee]);
+  }, [open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !selectedAssignee) {
-      setError('Title and Assigned Staff or Group are required.');
+    if (!task) return;
+    if (!title.trim()) {
+      setError('Task title is required.');
       return;
     }
 
-    // Resolve name
     const allOptions = [...groups, ...assignees];
     const matched = allOptions.find((o) => o.username === selectedAssignee);
     const assignedName = matched ? matched.name : selectedAssignee;
@@ -92,25 +116,24 @@ export default function TaskFormDialog({ open, onClose, onSubmit }: TaskFormDial
     try {
       setLoading(true);
       setError(null);
-      await onSubmit({
+      await onSubmit(task.id, {
         title: title.trim(),
         description: description.trim() || undefined,
         priority,
-        dueDate: dueDate || undefined,
-        assignedToUsername: selectedAssignee,
-        assignedToName: assignedName,
+        status,
+        dueDate: dueDate ? dueDate : null,
+        assignedToUsername: selectedAssignee || undefined,
+        assignedToName: assignedName || undefined,
       });
-      setTitle('');
-      setDescription('');
-      setDueDate('');
-      setSelectedAssignee('');
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create task');
+      setError(err instanceof Error ? err.message : 'Failed to update task');
     } finally {
       setLoading(false);
     }
   };
+
+  if (!task) return null;
 
   return (
     <Dialog
@@ -123,10 +146,10 @@ export default function TaskFormDialog({ open, onClose, onSubmit }: TaskFormDial
       <form onSubmit={handleSubmit}>
         <DialogTitle sx={{ pb: 1 }}>
           <Typography variant="h6" sx={{ fontWeight: 800, color: dzfColors.navy[900] }}>
-            Create Operational Task
+            Edit Operational Task
           </Typography>
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            Assign an internal action item to an individual staff member or group
+            Assigned by: @{task.assignedBy?.username || 'admin'}
           </Typography>
         </DialogTitle>
 
@@ -144,19 +167,17 @@ export default function TaskFormDialog({ open, onClose, onSubmit }: TaskFormDial
             size="small"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g. Recalibrate barcode scanners in ICT Lab"
             disabled={loading}
           />
 
           <TextField
-            label="Description / Context"
+            label="Description / Instructions"
             multiline
             rows={3}
             fullWidth
             size="small"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Detailed instructions for the assigned staff member..."
             disabled={loading}
           />
 
@@ -167,7 +188,7 @@ export default function TaskFormDialog({ open, onClose, onSubmit }: TaskFormDial
               size="small"
               value={priority}
               onChange={(e) => setPriority(e.target.value as 'low' | 'medium' | 'high')}
-              sx={{ width: 160 }}
+              sx={{ flex: 1 }}
               disabled={loading}
             >
               <MenuItem value="low">Low Priority</MenuItem>
@@ -176,36 +197,56 @@ export default function TaskFormDialog({ open, onClose, onSubmit }: TaskFormDial
             </TextField>
 
             <TextField
-              label="Target Due Date"
-              type="date"
+              label="Status"
+              select
               size="small"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              slotProps={{ inputLabel: { shrink: true } }}
+              value={status}
+              onChange={(e) => setStatus(e.target.value as 'todo' | 'inProgress' | 'completed')}
               sx={{ flex: 1 }}
               disabled={loading}
-            />
+            >
+              <MenuItem value="todo">To Do</MenuItem>
+              <MenuItem value="inProgress">In Progress</MenuItem>
+              <MenuItem value="completed">Completed</MenuItem>
+            </TextField>
           </Box>
 
           <TextField
-            label="Assignee (Staff Member or Role Group)"
+            label="Target Due Date"
+            type="date"
+            size="small"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            slotProps={{ inputLabel: { shrink: true } }}
+            fullWidth
+            disabled={loading}
+          />
+
+          <TextField
+            label="Reassign To (Staff Member or Group)"
             select
-            required
             fullWidth
             size="small"
             value={selectedAssignee}
             onChange={(e) => setSelectedAssignee(e.target.value)}
             disabled={loading || loadingAssignees}
-            helperText={loadingAssignees ? 'Loading authorized staff...' : 'Select a team member or entire group to delegate to'}
+            helperText={loadingAssignees ? 'Loading authorized staff...' : 'Leave unchanged to keep current assignee'}
           >
             {loadingAssignees ? (
               <MenuItem disabled value="">
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <CircularProgress size={16} />
-                  <span>Loading staff from database...</span>
+                  <span>Loading staff...</span>
                 </Box>
               </MenuItem>
             ) : null}
+
+            {/* Current Assignee if not in fetched list */}
+            {task.assignedTo?.username && !assignees.some((a) => a.username === task.assignedTo.username) && (
+              <MenuItem value={task.assignedTo.username}>
+                Current: {task.assignedTo.name} (@{task.assignedTo.username})
+              </MenuItem>
+            )}
 
             {groups.length > 0 && <ListSubheader sx={{ fontWeight: 800 }}>Teams & Role Groups</ListSubheader>}
             {groups.map((g) => (
@@ -227,8 +268,8 @@ export default function TaskFormDialog({ open, onClose, onSubmit }: TaskFormDial
           <DZFButton variant="secondary" onClick={onClose} disabled={loading}>
             Cancel
           </DZFButton>
-          <DZFButton type="submit" variant="primary" disabled={loading || loadingAssignees}>
-            {loading ? 'Assigning...' : 'Assign Task'}
+          <DZFButton type="submit" variant="primary" disabled={loading}>
+            {loading ? 'Saving...' : 'Save Changes'}
           </DZFButton>
         </DialogActions>
       </form>

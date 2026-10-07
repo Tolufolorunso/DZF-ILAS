@@ -1,13 +1,15 @@
 import mongoose, { Document, Model, Schema } from 'mongoose';
 
 export type UserRole =
+  | 'ima'
+  | 'country_manager'
   | 'admin'
   | 'asst_admin'
+  | 'ict'
   | 'librarian'
+  | 'intern'
   | 'cohort_lead'
   | 'transcomm_author'
-  | 'ima'
-  | 'ict'
   | 'facility';
 
 export interface IUserImage {
@@ -64,13 +66,15 @@ const UserSchema = new Schema<IUserDocument>(
     role: {
       type: String,
       enum: [
+        'ima',
+        'country_manager',
         'admin',
         'asst_admin',
+        'ict',
         'librarian',
+        'intern',
         'cohort_lead',
         'transcomm_author',
-        'ima',
-        'ict',
         'facility',
       ],
       default: 'librarian',
