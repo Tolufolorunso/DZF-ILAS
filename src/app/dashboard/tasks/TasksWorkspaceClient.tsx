@@ -148,6 +148,7 @@ export default function TasksWorkspaceClient({
           open={isCreateOpen}
           onClose={() => setIsCreateOpen(false)}
           onSubmit={handleCreateTask}
+          currentUser={user}
         />
 
         {/* Edit Task Dialog */}
@@ -156,6 +157,7 @@ export default function TasksWorkspaceClient({
           task={selectedEditTask}
           onClose={() => setSelectedEditTask(null)}
           onSubmit={handleSaveEditedTask}
+          currentUser={user}
         />
       </Box>
     </AppShell>

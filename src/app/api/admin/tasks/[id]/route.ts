@@ -30,10 +30,40 @@ export async function PATCH(
     }
 
     const { updateTaskStatus, updateTaskDetails } = await import('@/lib/admin/service');
+    const { isLeadershipRole } = await import('@/lib/auth/rbac');
+
+    await connectDB();
+    const existingTask = await Task.findById(id);
+    if (!existingTask) {
+      return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 });
+    }
+
+    const isLeadership = isLeadershipRole(user.role);
+    const assignedBy = (existingTask.assignedBy?.username || '').toLowerCase();
+    const assignedTo = (existingTask.assignedTo?.username || '').toLowerCase();
+    const currentUsername = user.username.toLowerCase();
+    const isAuthor = assignedBy === currentUsername;
+    const isAssignee = assignedTo === currentUsername;
+    const isSelfTask = existingTask.isSelfAssigned || (assignedBy && assignedTo && assignedBy === assignedTo);
+
+    // Private self-assigned tasks can only be updated by the owner
+    if (isSelfTask && !isAuthor && !isAssignee) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. This is a private self-assigned task.' },
+        { status: 403 }
+      );
+    }
 
     let updated;
     if (body.title !== undefined || body.description !== undefined || body.priority !== undefined || body.assignedToUsername !== undefined) {
-      // Full details update
+      // Full details update requires being author or leadership
+      if (!isLeadership && !isAuthor) {
+        return NextResponse.json(
+          { success: false, error: 'Unauthorized. You can only edit tasks you created.' },
+          { status: 403 }
+        );
+      }
+
       updated = await updateTaskDetails({
         id,
         title: body.title,
@@ -81,7 +111,7 @@ export async function PATCH(
 
 /**
  * DELETE /api/admin/tasks/[id]
- * Removes an operational task. Restricted to staff with task creation privileges (IMA, Country Manager, Admin).
+ * Removes an operational task. Allows authors to delete self-created tasks, or leadership for general management.
  */
 export async function DELETE(
   req: NextRequest,
@@ -89,18 +119,31 @@ export async function DELETE(
 ) {
   try {
     const user = await getSessionUser(req);
-    const { canCreateTask } = await import('@/lib/auth/rbac');
-
-    if (!user || !canCreateTask(user.role)) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized. Higher administrative privileges required to delete tasks.' },
-        { status: 403 }
-      );
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
     }
 
     const { id } = await params;
     await connectDB();
-    const task = await Task.findByIdAndDelete(id);
+    const task = await Task.findById(id);
+
+    if (!task) {
+      return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 });
+    }
+
+    const { isLeadershipRole } = await import('@/lib/auth/rbac');
+    const isLeadership = isLeadershipRole(user.role);
+    const isAuthor = task.assignedBy?.username?.toLowerCase() === user.username.toLowerCase();
+
+    // Staff can delete their own self-created tasks; leadership can delete any task
+    if (!isLeadership && !isAuthor) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized. You can only delete tasks you created.' },
+        { status: 403 }
+      );
+    }
+
+    await Task.findByIdAndDelete(id);
 
     if (!task) {
       return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 });

@@ -15,7 +15,11 @@ export default async function TasksWorkspacePage() {
 
   let initialTasks: ITaskItemDTO[] = [];
   try {
-    initialTasks = await listTasks({ limit: 100 });
+    initialTasks = await listTasks({
+      limit: 100,
+      currentUserUsername: user.username,
+      currentUserRole: user.role,
+    });
   } catch (err) {
     console.error('[TASKS_WORKSPACE_INITIAL_FETCH_ERROR]', err);
     initialTasks = [];

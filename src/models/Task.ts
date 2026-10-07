@@ -26,6 +26,10 @@ export interface ITask {
   dueDate?: Date;
   assignedBy: ITaskUserRef;
   assignedTo: ITaskUserRef;
+  targetGroup?: string;
+  assignedByRole?: string;
+  assignedToRole?: string;
+  isSelfAssigned?: boolean;
   status: TaskStatus;
   priority: TaskPriority;
   comments: ITaskComment[];
@@ -110,6 +114,24 @@ const TaskSchema = new Schema<ITaskDocument>(
       type: TaskUserRefSchema,
       required: true,
     },
+    targetGroup: {
+      type: String,
+      trim: true,
+      index: true,
+    },
+    assignedByRole: {
+      type: String,
+      trim: true,
+    },
+    assignedToRole: {
+      type: String,
+      trim: true,
+    },
+    isSelfAssigned: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     status: {
       type: String,
       enum: ['todo', 'inProgress', 'completed', 'archived'],
@@ -138,6 +160,9 @@ const TaskSchema = new Schema<ITaskDocument>(
 
 // Indexes for staff dashboard task lists and due date sorting
 TaskSchema.index({ 'assignedTo.username': 1, status: 1 });
+TaskSchema.index({ 'assignedBy.username': 1, status: 1 });
+TaskSchema.index({ targetGroup: 1, status: 1 });
+TaskSchema.index({ isSelfAssigned: 1, 'assignedTo.username': 1 });
 TaskSchema.index({ status: 1, priority: 1 });
 TaskSchema.index({ dueDate: 1, status: 1 });
 

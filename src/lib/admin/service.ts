@@ -350,21 +350,113 @@ export async function updateRequisitionStatus(params: {
 export async function listTasks(options: {
   status?: string;
   limit?: number;
-}): Promise<ITaskItemDTO[]> {
+  currentUserUsername?: string;
+  currentUserRole?: string;
+} = {}): Promise<ITaskItemDTO[]> {
   await connectDB();
   const query: Record<string, unknown> = {};
   if (options.status && options.status !== 'all') {
     query.status = options.status;
   }
 
-  const tasks = await Task.find(query)
+  const rawTasks = await Task.find(query)
     .sort({ createdAt: -1 })
-    .limit(options.limit || 50)
+    .limit(options.limit || 100)
     .lean();
 
-  return tasks.map((t) => ({
+  if (!options.currentUserUsername) {
+    return rawTasks.map((t) => mapTaskToDTO(t));
+  }
+
+  const currentUsername = options.currentUserUsername.toLowerCase();
+  const currentUserRole = (options.currentUserRole || '').toLowerCase();
+
+  // Load user role lookup map to evaluate legacy documents without role tags
+  const allUsers = await User.find({}, 'username role').lean();
+  const userRoleMap = new Map<string, string>();
+  for (const u of allUsers) {
+    if (u.username) {
+      userRoleMap.set(u.username.toLowerCase(), (u.role || '').toLowerCase());
+    }
+  }
+
+  const filteredTasks = rawTasks.filter((t) => {
+    const assignedByUsername = (t.assignedBy?.username || '').toLowerCase();
+    const assignedToUsername = (t.assignedTo?.username || '').toLowerCase();
+
+    const isAssignee = assignedToUsername === currentUsername;
+    const isAssigner = assignedByUsername === currentUsername;
+
+    // 1. Broadcast / All Team Members task
+    if (t.targetGroup === 'all' || assignedToUsername === 'group:all') {
+      return true;
+    }
+
+    // 2. Self-assigned private task
+    const isSelf =
+      t.isSelfAssigned === true ||
+      (assignedByUsername && assignedToUsername && assignedByUsername === assignedToUsername);
+
+    if (isSelf) {
+      // Strictly private: visible ONLY to the person who created it for themselves
+      return isAssignee || isAssigner;
+    }
+
+    // 3. User is direct assignee or assigner
+    if (isAssignee || isAssigner) {
+      return true;
+    }
+
+    // 4. Role group assignment matching user role
+    if (
+      t.targetGroup === currentUserRole ||
+      assignedToUsername === `group:${currentUserRole}`
+    ) {
+      return true;
+    }
+
+    // Resolve roles for assigner and assignee
+    const assignerRole =
+      (t.assignedByRole || userRoleMap.get(assignedByUsername) || '').toLowerCase();
+    const assigneeRole =
+      (t.assignedToRole ||
+        (assignedToUsername.startsWith('group:')
+          ? assignedToUsername.replace('group:', '')
+          : userRoleMap.get(assignedToUsername) || '')).toLowerCase();
+
+    const isLeadershipAssigner = ['ima', 'country_manager', 'admin'].includes(assignerRole);
+    const isLeadershipAssignee = ['ima', 'country_manager', 'admin'].includes(assigneeRole);
+
+    // 5. Leadership 1-on-1 confidential task (e.g. IMA -> Country Manager, IMA -> Admin, Country Manager -> Admin)
+    if (isLeadershipAssigner && isLeadershipAssignee) {
+      // Strictly confidential: visible ONLY to assigner and assignee
+      return false;
+    }
+
+    // 6. General operational tasks (assigned to general staff or general departments)
+    // Visible to all staff members
+    return true;
+  });
+
+  return filteredTasks.map((t) => mapTaskToDTO(t));
+}
+
+function mapTaskToDTO(
+  t: Partial<import('@/models/Task').ITask> & {
+    _id: unknown;
+    assignedBy?: { name?: string; username?: string };
+    assignedTo?: { name?: string; username?: string };
+  }
+): ITaskItemDTO {
+  const assignedByUsername = (t.assignedBy?.username || '').toLowerCase();
+  const assignedToUsername = (t.assignedTo?.username || '').toLowerCase();
+  const isSelfAssigned =
+    t.isSelfAssigned === true ||
+    (assignedByUsername && assignedToUsername && assignedByUsername === assignedToUsername);
+
+  return {
     id: String(t._id),
-    title: t.title,
+    title: t.title || '',
     description: t.description,
     dueDate: t.dueDate ? new Date(t.dueDate).toISOString() : null,
     assignedBy: {
@@ -375,11 +467,13 @@ export async function listTasks(options: {
       name: t.assignedTo?.name || 'Staff',
       username: t.assignedTo?.username || 'staff',
     },
-    status: t.status,
-    priority: t.priority,
+    targetGroup: t.targetGroup || (assignedToUsername.startsWith('group:') ? assignedToUsername.replace('group:', '') : undefined),
+    isSelfAssigned: Boolean(isSelfAssigned),
+    status: (t.status as 'todo' | 'inProgress' | 'completed' | 'archived') || 'todo',
+    priority: (t.priority as 'low' | 'medium' | 'high') || 'medium',
     createdAt: t.createdAt ? new Date(t.createdAt).toISOString() : new Date().toISOString(),
     updatedAt: t.updatedAt ? new Date(t.updatedAt).toISOString() : new Date().toISOString(),
-  }));
+  };
 }
 
 export async function createTask(params: {
@@ -395,88 +489,139 @@ export async function createTask(params: {
 }): Promise<ITaskItemDTO> {
   await connectDB();
 
-  // Check if assigning to a role group (e.g. "group:librarian", "group:ict")
-  if (params.assignedToUsername.startsWith('group:')) {
-    const targetRole = params.assignedToUsername.replace('group:', '') as import('@/models/User').UserRole;
-    const groupMembers = await User.find({ role: targetRole, active: true }).lean();
+  // 1. Check if broadcasting to "All Team Members"
+  if (params.assignedToUsername === 'group:all') {
+    const task = await Task.create({
+      title: params.title.trim(),
+      description: params.description?.trim(),
+      dueDate: params.dueDate,
+      priority: params.priority,
+      status: 'todo',
+      targetGroup: 'all',
+      assignedByRole: params.staffRole,
+      assignedToRole: 'all',
+      isSelfAssigned: false,
+      assignedBy: {
+        name: params.staffName,
+        username: params.staffUsername,
+      },
+      assignedTo: {
+        name: 'All Team Members',
+        username: 'group:all',
+      },
+      comments: [],
+      likes: [],
+    });
 
-    if (groupMembers.length > 0) {
-      const createdTasks = await Promise.all(
-        groupMembers.map(async (member) => {
-          const t = await Task.create({
-            title: params.title.trim(),
-            description: params.description?.trim(),
-            dueDate: params.dueDate,
-            priority: params.priority,
-            status: 'todo',
-            assignedBy: {
-              name: params.staffName,
-              username: params.staffUsername,
-            },
-            assignedTo: {
-              name: member.name,
-              username: member.username,
-            },
-            comments: [],
-            likes: [],
-          });
+    // Broadcast notifications to all active staff members
+    const activeStaff = await User.find({ active: true }, 'username').lean();
+    await Promise.all(
+      activeStaff
+        .filter((s) => s.username.toLowerCase() !== params.staffUsername.toLowerCase())
+        .map((member) =>
+          Notification.create({
+            recipientUsername: member.username.toLowerCase(),
+            senderUsername: params.staffUsername.toLowerCase(),
+            type: 'task_assigned',
+            title: 'New Team-Wide Task',
+            message: `@${params.staffUsername} assigned a team-wide task: "${params.title}" (Priority: ${params.priority})`,
+            link: '/dashboard/tasks',
+            read: false,
+          })
+        )
+    );
 
-          // Dispatch notification to each group member
-          if (member.username.toLowerCase() !== params.staffUsername.toLowerCase()) {
-            await Notification.create({
-              recipientUsername: member.username.toLowerCase(),
-              senderUsername: params.staffUsername.toLowerCase(),
-              type: 'task_assigned',
-              title: 'New Team Task Assigned',
-              message: `@${params.staffUsername} assigned your team a task: "${params.title}" (Priority: ${params.priority})`,
-              link: '/dashboard/tasks',
-              read: false,
-            });
-          }
+    await logAuditEvent({
+      action: 'TASK_BROADCAST_CREATED',
+      performedBy: params.staffUsername,
+      performedByRole: params.staffRole,
+      targetEntity: 'Task',
+      targetId: String(task._id),
+      details: {
+        title: params.title,
+        group: 'all',
+        broadcastRecipientsCount: activeStaff.length - 1,
+      },
+    });
 
-          return t;
-        })
-      );
-
-      await logAuditEvent({
-        action: 'TASK_GROUP_CREATED',
-        performedBy: params.staffUsername,
-        performedByRole: params.staffRole,
-        targetEntity: 'Task',
-        targetId: String(createdTasks[0]._id),
-        details: {
-          title: params.title,
-          groupRole: targetRole,
-          membersCount: groupMembers.length,
-        },
-      });
-
-      const firstTask = createdTasks[0];
-      return {
-        id: String(firstTask._id),
-        title: firstTask.title,
-        description: firstTask.description,
-        dueDate: firstTask.dueDate ? firstTask.dueDate.toISOString() : null,
-        assignedBy: firstTask.assignedBy,
-        assignedTo: {
-          name: `${targetRole.toUpperCase()} Team (${groupMembers.length})`,
-          username: params.assignedToUsername,
-        },
-        status: firstTask.status,
-        priority: firstTask.priority,
-        createdAt: firstTask.createdAt.toISOString(),
-        updatedAt: firstTask.updatedAt.toISOString(),
-      };
-    }
+    return mapTaskToDTO(task);
   }
 
-  // Individual task assignment
+  // 2. Check if assigning to a role group (e.g. "group:librarian", "group:ict")
+  if (params.assignedToUsername.startsWith('group:')) {
+    const targetRole = params.assignedToUsername.replace('group:', '') as import('@/models/User').UserRole;
+    const task = await Task.create({
+      title: params.title.trim(),
+      description: params.description?.trim(),
+      dueDate: params.dueDate,
+      priority: params.priority,
+      status: 'todo',
+      targetGroup: targetRole,
+      assignedByRole: params.staffRole,
+      assignedToRole: targetRole,
+      isSelfAssigned: false,
+      assignedBy: {
+        name: params.staffName,
+        username: params.staffUsername,
+      },
+      assignedTo: {
+        name: `${targetRole.replace('_', ' ').toUpperCase()} Team`,
+        username: params.assignedToUsername,
+      },
+      comments: [],
+      likes: [],
+    });
+
+    const groupMembers = await User.find({ role: targetRole, active: true }, 'username').lean();
+    await Promise.all(
+      groupMembers
+        .filter((m) => m.username.toLowerCase() !== params.staffUsername.toLowerCase())
+        .map((member) =>
+          Notification.create({
+            recipientUsername: member.username.toLowerCase(),
+            senderUsername: params.staffUsername.toLowerCase(),
+            type: 'task_assigned',
+            title: 'New Team Task Assigned',
+            message: `@${params.staffUsername} assigned your team a task: "${params.title}" (Priority: ${params.priority})`,
+            link: '/dashboard/tasks',
+            read: false,
+          })
+        )
+    );
+
+    await logAuditEvent({
+      action: 'TASK_GROUP_CREATED',
+      performedBy: params.staffUsername,
+      performedByRole: params.staffRole,
+      targetEntity: 'Task',
+      targetId: String(task._id),
+      details: {
+        title: params.title,
+        groupRole: targetRole,
+        membersCount: groupMembers.length,
+      },
+    });
+
+    return mapTaskToDTO(task);
+  }
+
+  // 3. Individual task assignment
+  const isSelf = params.staffUsername.toLowerCase() === params.assignedToUsername.toLowerCase();
+  let targetUserRole = params.staffRole;
+  if (!isSelf) {
+    const targetUserDoc = await User.findOne({ username: params.assignedToUsername.toLowerCase() }, 'role').lean();
+    targetUserRole = targetUserDoc?.role || 'staff';
+  }
+
   const task = await Task.create({
     title: params.title.trim(),
     description: params.description?.trim(),
     dueDate: params.dueDate,
     priority: params.priority,
     status: 'todo',
+    assignedByRole: params.staffRole,
+    assignedToRole: targetUserRole,
+    isSelfAssigned: isSelf,
     assignedBy: {
       name: params.staffName,
       username: params.staffUsername,
@@ -489,8 +634,8 @@ export async function createTask(params: {
     likes: [],
   });
 
-  // Dispatch in-app notification to the assignee
-  if (params.assignedToUsername.toLowerCase() !== params.staffUsername.toLowerCase()) {
+  // Dispatch in-app notification to the assignee if not self
+  if (!isSelf) {
     await Notification.create({
       recipientUsername: params.assignedToUsername.toLowerCase(),
       senderUsername: params.staffUsername.toLowerCase(),
@@ -503,7 +648,7 @@ export async function createTask(params: {
   }
 
   await logAuditEvent({
-    action: 'TASK_CREATED',
+    action: isSelf ? 'TASK_SELF_CREATED' : 'TASK_CREATED',
     performedBy: params.staffUsername,
     performedByRole: params.staffRole,
     targetEntity: 'Task',
@@ -512,21 +657,11 @@ export async function createTask(params: {
       title: task.title,
       priority: task.priority,
       assignedTo: task.assignedTo.username,
+      isSelfAssigned: isSelf,
     },
   });
 
-  return {
-    id: String(task._id),
-    title: task.title,
-    description: task.description,
-    dueDate: task.dueDate ? task.dueDate.toISOString() : null,
-    assignedBy: task.assignedBy,
-    assignedTo: task.assignedTo,
-    status: task.status,
-    priority: task.priority,
-    createdAt: task.createdAt.toISOString(),
-    updatedAt: task.updatedAt.toISOString(),
-  };
+  return mapTaskToDTO(task);
 }
 
 export async function updateTaskStatus(params: {
@@ -558,7 +693,7 @@ export async function updateTaskStatus(params: {
       type: 'task_updated',
       title: 'Task Completed',
       message: `@${params.staffUsername} completed task "${task.title}".`,
-      link: '/dashboard/admin',
+      link: '/dashboard/tasks',
       read: false,
     });
   }
@@ -576,18 +711,7 @@ export async function updateTaskStatus(params: {
     },
   });
 
-  return {
-    id: String(task._id),
-    title: task.title,
-    description: task.description,
-    dueDate: task.dueDate ? task.dueDate.toISOString() : null,
-    assignedBy: task.assignedBy,
-    assignedTo: task.assignedTo,
-    status: task.status,
-    priority: task.priority,
-    createdAt: task.createdAt.toISOString(),
-    updatedAt: task.updatedAt.toISOString(),
-  };
+  return mapTaskToDTO(task);
 }
 
 export async function updateTaskDetails(params: {
@@ -627,7 +751,7 @@ export async function updateTaskDetails(params: {
         type: 'task_assigned',
         title: 'Task Re-assigned to You',
         message: `@${params.staffUsername} re-assigned task "${task.title}" to you.`,
-        link: '/dashboard/admin',
+        link: '/dashboard/tasks',
         read: false,
       });
     }
@@ -648,18 +772,7 @@ export async function updateTaskDetails(params: {
     },
   });
 
-  return {
-    id: String(task._id),
-    title: task.title,
-    description: task.description,
-    dueDate: task.dueDate ? task.dueDate.toISOString() : null,
-    assignedBy: task.assignedBy,
-    assignedTo: task.assignedTo,
-    status: task.status,
-    priority: task.priority,
-    createdAt: task.createdAt.toISOString(),
-    updatedAt: task.updatedAt.toISOString(),
-  };
+  return mapTaskToDTO(task);
 }
 
 

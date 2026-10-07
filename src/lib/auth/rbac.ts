@@ -26,19 +26,42 @@ export const ROLE_HIERARCHY_RANK: Record<UserRole, number> = {
   facility: 10,
 };
 
+export const LEADERSHIP_ROLES: UserRole[] = ['ima', 'country_manager', 'admin'];
+
+/**
+ * Check if a role has executive or administrative leadership privileges
+ */
+export function isLeadershipRole(role: UserRole | string): boolean {
+  return LEADERSHIP_ROLES.includes(role as UserRole);
+}
+
 /**
  * Task assignment hierarchy verification:
- * - IMA can assign tasks to herself, Country Manager, Admin, and all staff.
- * - Country Manager can assign tasks to Admin and all subordinate staff.
- * - Admin can assign tasks to himself and all subordinate staff.
- * - Other staff cannot assign tasks upward or across.
+ * - Assigning to self: always permitted for any authenticated staff role (private self-assigned task).
+ * - Leadership roles (IMA, Country Manager, Admin):
+ *   - IMA can assign to herself, Country Manager, Admin, all staff, and broadcast to 'all'.
+ *   - Country Manager can assign to Admin, all subordinate staff, and broadcast to 'all'.
+ *   - Admin can assign to himself, all subordinate staff, and broadcast to 'all'.
+ * - General staff (librarian, ict, cohort_lead, intern, asst_admin, facility, transcomm_author):
+ *   - Can ONLY assign tasks to themselves.
  */
 export function canAssignTaskTo(
   assignerRole: UserRole | string,
-  targetRole: UserRole | string
+  targetRoleOrGroup: UserRole | string,
+  assignerUsername?: string,
+  targetUsername?: string
 ): boolean {
+  // If assigning to self, always allowed for any staff role
+  if (
+    assignerUsername &&
+    targetUsername &&
+    assignerUsername.toLowerCase() === targetUsername.toLowerCase()
+  ) {
+    return true;
+  }
+
   const assigner = assignerRole as UserRole;
-  const target = targetRole as UserRole;
+  const target = targetRoleOrGroup as string;
 
   if (assigner === 'ima') {
     return true;
@@ -52,14 +75,28 @@ export function canAssignTaskTo(
     return target !== 'ima' && target !== 'country_manager';
   }
 
+  // Non-leadership roles cannot delegate to anyone else or groups
   return false;
 }
 
+export const ALL_STAFF_ROLES: UserRole[] = [
+  'ima',
+  'country_manager',
+  'admin',
+  'asst_admin',
+  'ict',
+  'librarian',
+  'cohort_lead',
+  'intern',
+  'facility',
+  'transcomm_author',
+];
+
 /**
- * Check if a role has task creation privileges (IMA, Country Manager, Admin)
+ * Check if a role has task creation privileges (All staff can create tasks; general staff create self-assigned tasks)
  */
 export function canCreateTask(role: UserRole | string): boolean {
-  return ['ima', 'country_manager', 'admin'].includes(role as UserRole);
+  return ALL_STAFF_ROLES.includes(role as UserRole);
 }
 
 export const ADMIN_ROLES: UserRole[] = ['ima', 'country_manager', 'admin', 'asst_admin'];

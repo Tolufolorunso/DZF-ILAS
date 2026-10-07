@@ -204,9 +204,27 @@ export default function TaskKanbanBoard({
                 ) : (
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                     {colTasks.map((t) => {
-                      const isMyTask =
+                      const isBroadcast =
+                        t.targetGroup === 'all' || t.assignedTo?.username === 'group:all';
+                      const isPrivate = Boolean(
+                        t.isSelfAssigned ||
+                          (t.assignedTo?.username &&
+                            t.assignedBy?.username &&
+                            t.assignedTo.username.toLowerCase() === t.assignedBy.username.toLowerCase())
+                      );
+                      const isMyTask = Boolean(
                         currentUsername &&
-                        t.assignedTo.username.toLowerCase() === currentUsername.toLowerCase();
+                          t.assignedTo?.username &&
+                          (t.assignedTo.username.toLowerCase() === currentUsername.toLowerCase() ||
+                            isBroadcast)
+                      );
+                      const isAuthor = Boolean(
+                        currentUsername &&
+                          t.assignedBy?.username &&
+                          t.assignedBy.username.toLowerCase() === currentUsername.toLowerCase()
+                      );
+                      const canEdit = Boolean(onEditTask && (canManage || isAuthor));
+                      const canDelete = Boolean(onDeleteTask && (canManage || isAuthor));
                       const isDragging = draggedTaskId === t.id;
 
                       return (
@@ -235,6 +253,40 @@ export default function TaskKanbanBoard({
                             transition: 'box-shadow 0.2s ease, border-color 0.2s ease, opacity 0.2s ease',
                           }}
                         >
+                          {/* Badges: Broadcast or Private */}
+                          {(isBroadcast || isPrivate) && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 1, flexWrap: 'wrap' }}>
+                              {isBroadcast && (
+                                <Chip
+                                  size="small"
+                                  label="👥 All Team Members"
+                                  sx={{
+                                    height: 22,
+                                    fontSize: '0.6875rem',
+                                    fontWeight: 800,
+                                    bgcolor: 'rgba(10, 25, 47, 0.08)',
+                                    color: dzfColors.navy[900],
+                                    border: `1px solid ${dzfColors.navy[200]}`,
+                                  }}
+                                />
+                              )}
+                              {isPrivate && (
+                                <Chip
+                                  size="small"
+                                  label="🔒 Private Task"
+                                  sx={{
+                                    height: 22,
+                                    fontSize: '0.6875rem',
+                                    fontWeight: 800,
+                                    bgcolor: '#fef9c3',
+                                    color: '#854d0e',
+                                    border: '1px solid #fde047',
+                                  }}
+                                />
+                              )}
+                            </Box>
+                          )}
+
                           {/* Title & Priority Badge */}
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1, gap: 1 }}>
                             <Typography
@@ -301,7 +353,7 @@ export default function TaskKanbanBoard({
                                     color: isMyTask ? dzfColors.maroon[900] : dzfColors.navy[700],
                                   }}
                                 >
-                                  @{t.assignedTo.username}
+                                  {isBroadcast ? 'All Team Members' : `@${t.assignedTo.username}`}
                                 </Typography>
                               </Box>
 
@@ -339,7 +391,7 @@ export default function TaskKanbanBoard({
                                 </IconButton>
                               </Tooltip>
 
-                              {onEditTask && canManage && (
+                              {canEdit && onEditTask && (
                                 <Tooltip title="Edit Task Details">
                                   <IconButton
                                     size="small"
@@ -369,7 +421,7 @@ export default function TaskKanbanBoard({
                                 </Tooltip>
                               )}
 
-                              {onDeleteTask && canManage && (
+                              {canDelete && onDeleteTask && (
                                 <Tooltip title="Delete Task">
                                   <IconButton
                                     size="small"

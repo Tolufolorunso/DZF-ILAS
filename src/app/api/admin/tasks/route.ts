@@ -19,7 +19,12 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status') || undefined;
     const limit = parseInt(searchParams.get('limit') || '50', 10);
 
-    const tasks = await listTasks({ status, limit });
+    const tasks = await listTasks({
+      status,
+      limit,
+      currentUserUsername: user.username,
+      currentUserRole: user.role,
+    });
     return NextResponse.json({ success: true, tasks }, { status: 200 });
   } catch (error) {
     console.error('[GET_TASKS_ERROR]', error);
@@ -32,7 +37,7 @@ export async function GET(req: NextRequest) {
 
 /**
  * POST /api/admin/tasks
- * Creates a new operational task assigned to a staff member.
+ * Creates a new operational task assigned to a staff member or self.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -41,12 +46,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Authentication required' }, { status: 401 });
     }
 
-    const { canCreateTask, canAssignTaskTo } = await import('@/lib/auth/rbac');
+    const { canCreateTask, canAssignTaskTo, isLeadershipRole } = await import('@/lib/auth/rbac');
     const { User } = await import('@/models/User');
 
     if (!canCreateTask(user.role)) {
       return NextResponse.json(
-        { success: false, error: 'You do not have privileges to assign operational tasks.' },
+        { success: false, error: 'You do not have privileges to create operational tasks.' },
         { status: 403 }
       );
     }
@@ -60,19 +65,36 @@ export async function POST(req: NextRequest) {
     }
 
     const targetUsername = String(body.assignedToUsername).trim();
+    const isSelf = targetUsername.toLowerCase() === user.username.toLowerCase();
+    const isLeadership = isLeadershipRole(user.role);
 
-    // Verify task assignment hierarchy
-    if (targetUsername.startsWith('group:')) {
+    // Non-leadership staff can ONLY assign tasks to themselves
+    if (!isLeadership && !isSelf) {
+      return NextResponse.json(
+        { success: false, error: 'Your role can only create private self-assigned tasks.' },
+        { status: 403 }
+      );
+    }
+
+    // Verify task assignment hierarchy for delegation
+    if (targetUsername === 'group:all') {
+      if (!isLeadership) {
+        return NextResponse.json(
+          { success: false, error: 'Only leadership can broadcast tasks to all team members.' },
+          { status: 403 }
+        );
+      }
+    } else if (targetUsername.startsWith('group:')) {
       const targetGroupRole = targetUsername.replace('group:', '');
-      if (!canAssignTaskTo(user.role, targetGroupRole)) {
+      if (!canAssignTaskTo(user.role, targetGroupRole, user.username, targetUsername)) {
         return NextResponse.json(
           { success: false, error: `Your role (${user.role}) cannot assign tasks to the ${targetGroupRole} group.` },
           { status: 403 }
         );
       }
-    } else {
+    } else if (!isSelf) {
       const targetUserDoc = await User.findOne({ username: targetUsername.toLowerCase() }, 'role name').lean();
-      if (targetUserDoc && !canAssignTaskTo(user.role, targetUserDoc.role)) {
+      if (targetUserDoc && !canAssignTaskTo(user.role, targetUserDoc.role, user.username, targetUsername)) {
         return NextResponse.json(
           {
             success: false,

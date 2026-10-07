@@ -16,6 +16,7 @@ import ListSubheader from '@mui/material/ListSubheader';
 import { dzfColors } from '@/theme/colors';
 import DZFButton from '@/components/ui/DZFButton';
 import type { ITaskItemDTO } from '@/lib/admin/types';
+import { isLeadershipRole } from '@/lib/auth/rbac';
 
 interface AssigneeOption {
   username: string;
@@ -39,6 +40,11 @@ interface TaskEditDialogProps {
   task: ITaskItemDTO | null;
   onClose: () => void;
   onSubmit: (taskId: string, payload: TaskUpdatePayload) => Promise<void>;
+  currentUser?: {
+    username: string;
+    name: string;
+    role: string;
+  };
 }
 
 export default function TaskEditDialog({
@@ -46,7 +52,9 @@ export default function TaskEditDialog({
   task,
   onClose,
   onSubmit,
+  currentUser,
 }: TaskEditDialogProps) {
+  const isLeadership = currentUser ? isLeadershipRole(currentUser.role) : false;
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [priority, setPriority] = React.useState<'low' | 'medium' | 'high'>('medium');
@@ -249,8 +257,14 @@ export default function TaskEditDialog({
             size="small"
             value={selectedAssignee}
             onChange={(e) => setSelectedAssignee(e.target.value)}
-            disabled={loading || loadingAssignees}
-            helperText={loadingAssignees ? 'Loading authorized staff...' : 'Leave unchanged to keep current assignee'}
+            disabled={loading || loadingAssignees || (Boolean(currentUser) && !isLeadership)}
+            helperText={
+              Boolean(currentUser) && !isLeadership
+                ? 'Only leadership may reassign tasks to other team members.'
+                : loadingAssignees
+                ? 'Loading authorized staff...'
+                : 'Leave unchanged to keep current assignee'
+            }
           >
             {loadingAssignees ? (
               <MenuItem disabled value="">

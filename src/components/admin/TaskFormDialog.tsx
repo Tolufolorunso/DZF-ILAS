@@ -13,8 +13,11 @@ import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import ListSubheader from '@mui/material/ListSubheader';
 
+import Chip from '@mui/material/Chip';
+
 import { dzfColors } from '@/theme/colors';
 import DZFButton from '@/components/ui/DZFButton';
+import { isLeadershipRole } from '@/lib/auth/rbac';
 
 interface AssigneeOption {
   username: string;
@@ -34,60 +37,87 @@ interface TaskFormDialogProps {
     assignedToUsername: string;
     assignedToName: string;
   }) => Promise<void>;
+  currentUser?: {
+    username: string;
+    name: string;
+    role: string;
+  };
 }
 
-export default function TaskFormDialog({ open, onClose, onSubmit }: TaskFormDialogProps) {
+export default function TaskFormDialog({ open, onClose, onSubmit, currentUser }: TaskFormDialogProps) {
+  const isLeadership = currentUser ? isLeadershipRole(currentUser.role) : false;
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [priority, setPriority] = React.useState<'low' | 'medium' | 'high'>('medium');
   const [dueDate, setDueDate] = React.useState('');
-  const [selectedAssignee, setSelectedAssignee] = React.useState<string>('');
+  const [selectedAssignee, setSelectedAssignee] = React.useState<string>(
+    currentUser && !isLeadership ? currentUser.username : ''
+  );
   const [assignees, setAssignees] = React.useState<AssigneeOption[]>([]);
   const [groups, setGroups] = React.useState<AssigneeOption[]>([]);
   const [loadingAssignees, setLoadingAssignees] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  // Load assignable staff and groups whenever dialog opens
+  // Initialize assignee based on user role when dialog opens
   React.useEffect(() => {
     if (open) {
+      if (currentUser && !isLeadership) {
+        setSelectedAssignee(currentUser.username);
+        return;
+      }
+
       let isMounted = true;
-      setLoadingAssignees(true);
-      fetch('/api/admin/users/assignees')
-        .then((res) => res.json())
-        .then((data) => {
+      const fetchAssignees = async () => {
+        try {
+          const res = await fetch('/api/admin/users/assignees');
+          const data = await res.json();
           if (isMounted && data.success) {
             setAssignees(data.assignees || []);
             setGroups(data.groups || []);
-            if (data.assignees?.length > 0 && !selectedAssignee) {
-              setSelectedAssignee(data.assignees[0].username);
+            if (!selectedAssignee) {
+              if (data.assignees?.length > 0) {
+                setSelectedAssignee(data.assignees[0].username);
+              } else if (data.groups?.length > 0) {
+                setSelectedAssignee(data.groups[0].username);
+              }
             }
           }
-        })
-        .catch((err) => {
+        } catch (err) {
           console.error('Failed to load assignees:', err);
-        })
-        .finally(() => {
+        } finally {
           if (isMounted) setLoadingAssignees(false);
-        });
+        }
+      };
+
+      queueMicrotask(() => {
+        if (isMounted) setLoadingAssignees(true);
+      });
+      fetchAssignees();
 
       return () => {
         isMounted = false;
       };
     }
-  }, [open, selectedAssignee]);
+  }, [open, currentUser, isLeadership, selectedAssignee]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !selectedAssignee) {
+    const finalAssignee = !isLeadership && currentUser ? currentUser.username : selectedAssignee;
+    if (!title.trim() || !finalAssignee) {
       setError('Title and Assigned Staff or Group are required.');
       return;
     }
 
     // Resolve name
-    const allOptions = [...groups, ...assignees];
-    const matched = allOptions.find((o) => o.username === selectedAssignee);
-    const assignedName = matched ? matched.name : selectedAssignee;
+    let assignedName = finalAssignee;
+    if (!isLeadership && currentUser) {
+      assignedName = currentUser.name;
+    } else {
+      const allOptions = [...groups, ...assignees];
+      const matched = allOptions.find((o) => o.username === finalAssignee);
+      assignedName = matched ? matched.name : finalAssignee;
+    }
 
     try {
       setLoading(true);
@@ -97,13 +127,15 @@ export default function TaskFormDialog({ open, onClose, onSubmit }: TaskFormDial
         description: description.trim() || undefined,
         priority,
         dueDate: dueDate || undefined,
-        assignedToUsername: selectedAssignee,
+        assignedToUsername: finalAssignee,
         assignedToName: assignedName,
       });
       setTitle('');
       setDescription('');
       setDueDate('');
-      setSelectedAssignee('');
+      if (isLeadership) {
+        setSelectedAssignee('');
+      }
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create task');
@@ -207,40 +239,86 @@ export default function TaskFormDialog({ open, onClose, onSubmit }: TaskFormDial
             />
           </Box>
 
-          <TextField
-            label="Assignee (Staff Member or Role Group)"
-            select
-            required
-            fullWidth
-            size="small"
-            value={selectedAssignee}
-            onChange={(e) => setSelectedAssignee(e.target.value)}
-            disabled={loading || loadingAssignees}
-            helperText={loadingAssignees ? 'Loading authorized staff...' : 'Select a team member or entire group to delegate to'}
-          >
-            {loadingAssignees ? (
-              <MenuItem disabled value="">
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <CircularProgress size={16} />
-                  <span>Loading staff from database...</span>
-                </Box>
-              </MenuItem>
-            ) : null}
+          {!isLeadership && currentUser ? (
+            <Box
+              sx={{
+                p: 2,
+                borderRadius: 2.5,
+                bgcolor: 'rgba(234, 179, 8, 0.08)',
+                border: '1.5px solid rgba(234, 179, 8, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 2,
+              }}
+            >
+              <Box>
+                <Typography variant="caption" sx={{ fontWeight: 800, color: '#854d0e', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Assignee (Self-Assigned)
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 800, color: dzfColors.navy[900], mt: 0.25 }}>
+                  {currentUser.name} (@{currentUser.username})
+                </Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.25 }}>
+                  Operational tasks you create are private personal checklists visible only to you.
+                </Typography>
+              </Box>
+              <Chip
+                size="small"
+                label="🔒 Private Task"
+                sx={{
+                  bgcolor: '#fef08a',
+                  color: '#854d0e',
+                  fontWeight: 700,
+                  fontSize: '0.75rem',
+                  border: '1px solid #fde047',
+                }}
+              />
+            </Box>
+          ) : (
+            <TextField
+              label="Assignee (Staff Member or Role Group)"
+              select
+              required
+              fullWidth
+              size="small"
+              value={selectedAssignee}
+              onChange={(e) => setSelectedAssignee(e.target.value)}
+              disabled={loading || loadingAssignees}
+              helperText={loadingAssignees ? 'Loading authorized staff...' : 'Select a team member or broadcast to All Team Members'}
+            >
+              {loadingAssignees ? (
+                <MenuItem disabled value="">
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CircularProgress size={16} />
+                    <span>Loading staff from database...</span>
+                  </Box>
+                </MenuItem>
+              ) : null}
 
-            {groups.length > 0 && <ListSubheader sx={{ fontWeight: 800 }}>Teams & Role Groups</ListSubheader>}
-            {groups.map((g) => (
-              <MenuItem key={g.username} value={g.username} sx={{ fontWeight: 600, color: dzfColors.maroon[900] }}>
-                👥 {g.name}
-              </MenuItem>
-            ))}
+              {groups.length > 0 && <ListSubheader sx={{ fontWeight: 800 }}>Teams & Role Groups</ListSubheader>}
+              {groups.map((g) => (
+                <MenuItem
+                  key={g.username}
+                  value={g.username}
+                  sx={{
+                    fontWeight: 700,
+                    color: g.username === 'group:all' ? dzfColors.navy[900] : dzfColors.maroon[900],
+                    bgcolor: g.username === 'group:all' ? 'rgba(10, 25, 47, 0.04)' : 'transparent',
+                  }}
+                >
+                  {g.username === 'group:all' ? '📢' : '👥'} {g.name}
+                </MenuItem>
+              ))}
 
-            {assignees.length > 0 && <ListSubheader sx={{ fontWeight: 800 }}>Individual Staff Members</ListSubheader>}
-            {assignees.map((a) => (
-              <MenuItem key={a.username} value={a.username}>
-                👤 {a.name} (@{a.username}) — <span style={{ textTransform: 'capitalize', color: '#64748b', marginLeft: 4 }}>{a.role.replace('_', ' ')}</span>
-              </MenuItem>
-            ))}
-          </TextField>
+              {assignees.length > 0 && <ListSubheader sx={{ fontWeight: 800 }}>Individual Staff Members</ListSubheader>}
+              {assignees.map((a) => (
+                <MenuItem key={a.username} value={a.username}>
+                  👤 {a.name} (@{a.username}) — <span style={{ textTransform: 'capitalize', color: '#64748b', marginLeft: 4 }}>{a.role.replace('_', ' ')}</span>
+                </MenuItem>
+              ))}
+            </TextField>
+          )}
         </DialogContent>
 
         <DialogActions sx={{ p: 2, flexShrink: 0 }}>

@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
     // Filter staff members based on task assignment hierarchy
     const permittedAssignees = users
-      .filter((u) => canAssignTaskTo(sessionUser.role, u.role))
+      .filter((u) => canAssignTaskTo(sessionUser.role, u.role, sessionUser.username, u.username))
       .map((u) => ({
         username: u.username,
         name: u.name,
@@ -40,7 +40,8 @@ export async function GET(req: NextRequest) {
       }));
 
     // Generate permissible role group targets
-    const candidateGroupRoles: { role: UserRole; label: string }[] = [
+    const candidateGroupRoles: { role: UserRole | 'all'; label: string }[] = [
+      { role: 'all', label: 'All Team Members' },
       { role: 'librarian', label: 'All Librarians' },
       { role: 'ict', label: 'All ICT Staff' },
       { role: 'asst_admin', label: 'All Assistant Admins' },
@@ -49,10 +50,10 @@ export async function GET(req: NextRequest) {
     ];
 
     const permittedGroups = candidateGroupRoles
-      .filter((g) => canAssignTaskTo(sessionUser.role, g.role))
+      .filter((g) => canAssignTaskTo(sessionUser.role, g.role, sessionUser.username))
       .map((g) => ({
-        username: `group:${g.role}`,
-        name: `${g.label} (Group)`,
+        username: g.role === 'all' ? 'group:all' : `group:${g.role}`,
+        name: g.role === 'all' ? 'All Team Members (Broadcast)' : `${g.label} (Group)`,
         role: g.role,
         isGroup: true,
       }));

@@ -71,6 +71,8 @@ export interface ITaskItemDTO {
   dueDate?: string | null;
   assignedBy: { name: string; username: string };
   assignedTo: { name: string; username: string };
+  targetGroup?: string;
+  isSelfAssigned?: boolean;
   status: 'todo' | 'inProgress' | 'completed' | 'archived';
   priority: 'low' | 'medium' | 'high';
   createdAt: string;
