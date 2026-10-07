@@ -46,6 +46,7 @@ import {
   EventFormDialog,
   AuditLogViewer,
   OperationalCalendar,
+  StaffActivationQueue,
 } from '@/components/admin';
 import type { KanbanStatus } from '@/components/admin/TaskKanbanBoard';
 import type { TaskUpdatePayload } from '@/components/admin/TaskEditDialog';
@@ -427,6 +428,7 @@ export default function AdminControlCenterClient({
             />
             <Tab label="Foundation Calendar Events" />
             <Tab label="System Audit Ledger" />
+            <Tab label="Staff Accounts & Activation" />
           </Tabs>
         </Box>
 
@@ -750,6 +752,16 @@ export default function AdminControlCenterClient({
         {tabIndex === 5 && (
           <Box>
             <AuditLogViewer initialLogs={initialAuditLogs} />
+          </Box>
+        )}
+
+        {/* TAB 6: Staff Accounts & Activation */}
+        {tabIndex === 6 && (
+          <Box>
+            <StaffActivationQueue
+              currentUsername={user.username}
+              canManage={user.role === 'admin' || user.role === 'ima' || user.role === 'country_manager'}
+            />
           </Box>
         )}
 

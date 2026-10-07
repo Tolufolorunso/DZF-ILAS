@@ -9,4 +9,4 @@ export { default as EventEditDialog } from './EventEditDialog';
 export { default as CalendarPdfUploadDialog } from './CalendarPdfUploadDialog';
 export { default as OperationalCalendar } from './OperationalCalendar';
 export { default as AuditLogViewer } from './AuditLogViewer';
-
+export { default as StaffActivationQueue } from './StaffActivationQueue';

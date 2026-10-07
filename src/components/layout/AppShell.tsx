@@ -42,6 +42,14 @@ const COLLAPSED_WIDTH = 72;
 
 import { useRouter, usePathname } from 'next/navigation';
 import type { ITokenPayload } from '@/lib/auth/jwt';
+import {
+  isAdmin,
+  canManageCirculation,
+  canManageCohorts,
+  canManageCompetitions,
+  canManageCertificates,
+  canPublishArticles,
+} from '@/lib/auth/rbac';
 
 export interface NavItem {
   id: string;
@@ -214,35 +222,62 @@ export function AppShell({
     staffRole ||
     (user?.role ? user.role.replace('_', ' ').toUpperCase() : 'Librarian');
 
+  const userRole = user?.role || (staffRole ? staffRole.toLowerCase().replace(' ', '_') : 'librarian');
+  const isSuperOrAdmin = isAdmin(userRole);
+
+  const workspaceItems: NavItem[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: <LayersIcon size={20} /> },
+    { id: 'catalog', label: 'Library Catalog', icon: <BookIcon size={20} />, badge: '1.3k' },
+    { id: 'inventory', label: 'Asset Inventory', icon: <LayersIcon size={20} /> },
+    { id: 'patrons', label: 'Patron Directory', icon: <UsersIcon size={20} />, badge: '583' },
+    { id: 'attendance', label: 'Attendant', icon: <BarcodeIcon size={20} /> },
+    { id: 'analytics', label: 'Leaderboard & Stats', icon: <TrophyIcon size={20} /> },
+  ];
+
+  const managementItems: NavItem[] = [];
+  if (isSuperOrAdmin || canManageCirculation(userRole)) {
+    managementItems.push({ id: 'circulations', label: 'Loans & Returns', icon: <ClockIcon size={20} />, badge: 'Loans', badgeVariant: 'warning' });
+    managementItems.push({ id: 'summaries', label: 'Book Summaries', icon: <ActivityIcon size={20} />, badge: 'Reviews', badgeVariant: 'primary' });
+  }
+  if (isSuperOrAdmin || canManageCohorts(userRole)) {
+    managementItems.push({ id: 'cohorts', label: 'Cohort Academy', icon: <UsersIcon size={20} />, badge: 'Academy' });
+  }
+  if (isSuperOrAdmin || canManageCompetitions(userRole)) {
+    managementItems.push({ id: 'competitions', label: 'Reading Competition', icon: <TrophyIcon size={20} />, badge: 'Contest', badgeVariant: 'warning' });
+  }
+  if (isSuperOrAdmin || canManageCertificates(userRole)) {
+    managementItems.push({ id: 'certificates', label: 'Certificate Studio', icon: <AwardIcon size={20} />, badge: 'Studio', badgeVariant: 'primary' });
+  }
+  if (isSuperOrAdmin || canPublishArticles(userRole)) {
+    managementItems.push({ id: 'transcomm', label: 'Transcomm Hub', icon: <BookIcon size={20} />, badge: 'Values', badgeVariant: 'primary' });
+  }
+
+  const systemItems: NavItem[] = [];
+  if (isSuperOrAdmin) {
+    systemItems.push({ id: 'admin', label: 'Staff Admin & Security', icon: <SettingsIcon size={20} /> });
+  }
+
   const navSections: NavSection[] = [
     {
       title: 'WORKSPACE',
-      items: [
-        { id: 'dashboard', label: 'Dashboard', icon: <LayersIcon size={20} /> },
-        { id: 'catalog', label: 'Library Catalog', icon: <BookIcon size={20} />, badge: '1.3k' },
-        { id: 'inventory', label: 'Asset Inventory', icon: <LayersIcon size={20} /> },
-        { id: 'patrons', label: 'Patron Directory', icon: <UsersIcon size={20} />, badge: '583' },
-        { id: 'attendance', label: 'Attendant', icon: <BarcodeIcon size={20} /> },
-        { id: 'analytics', label: 'Leaderboard & Stats', icon: <TrophyIcon size={20} /> },
-      ],
+      items: workspaceItems,
     },
-    {
-      title: 'MANAGEMENT',
-      items: [
-        { id: 'circulations', label: 'Loans & Returns', icon: <ClockIcon size={20} />, badge: 'Loans', badgeVariant: 'warning' },
-        { id: 'summaries', label: 'Book Summaries', icon: <ActivityIcon size={20} />, badge: 'Reviews', badgeVariant: 'primary' },
-        { id: 'cohorts', label: 'Cohort Academy', icon: <UsersIcon size={20} />, badge: 'Academy' },
-        { id: 'competitions', label: 'Reading Competition', icon: <TrophyIcon size={20} />, badge: 'Contest', badgeVariant: 'warning' },
-        { id: 'certificates', label: 'Certificate Studio', icon: <AwardIcon size={20} />, badge: 'Studio', badgeVariant: 'primary' },
-        { id: 'transcomm', label: 'Transcomm Hub', icon: <BookIcon size={20} />, badge: 'Values', badgeVariant: 'primary' },
-      ],
-    },
-    {
-      title: 'SYSTEM',
-      items: [
-        { id: 'admin', label: 'Staff Admin & Security', icon: <SettingsIcon size={20} /> },
-      ],
-    },
+    ...(managementItems.length > 0
+      ? [
+          {
+            title: 'MANAGEMENT',
+            items: managementItems,
+          },
+        ]
+      : []),
+    ...(systemItems.length > 0
+      ? [
+          {
+            title: 'SYSTEM',
+            items: systemItems,
+          },
+        ]
+      : []),
   ];
 
   const handleDrawerToggle = () => {

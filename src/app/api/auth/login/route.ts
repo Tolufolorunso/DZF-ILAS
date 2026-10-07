@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Your staff account has been deactivated. Please contact an administrator.',
+          error: 'Account pending activation. Please contact the Foundation Administrator to activate your account.',
         },
         { status: 403 }
       );

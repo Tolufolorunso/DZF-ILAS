@@ -5,7 +5,9 @@ import { extractTokenFromRequest, AUTH_COOKIE_NAME } from '@/lib/auth/session';
 // Public routes that never require authentication
 const PUBLIC_PATHS = [
   '/auth/login',
+  '/auth/register',
   '/api/auth/login',
+  '/api/auth/register',
   '/api/auth/logout',
   '/api/auth/seed',
   '/api/health',
@@ -30,8 +32,8 @@ export async function middleware(request: NextRequest) {
   const rawToken = extractTokenFromRequest(request);
   const user = rawToken ? await verifyToken(rawToken) : null;
 
-  // 2. If already logged in and visiting /auth/login, redirect to /dashboard
-  if (pathname === '/auth/login' && user) {
+  // 2. If already logged in and visiting auth pages, redirect to /dashboard
+  if ((pathname === '/auth/login' || pathname === '/auth/register') && user) {
     const dashboardUrl = new URL('/dashboard', request.url);
     return NextResponse.redirect(dashboardUrl);
   }
@@ -74,7 +76,20 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
-  // 6. User is authenticated - inject header claims for downstream route handlers
+  // 6. Role-based route guard for Administrative endpoints and pages
+  const isSuperOrAdmin = ['ima', 'country_manager', 'admin', 'asst_admin'].includes(user.role);
+  if (pathname.startsWith('/dashboard/admin') && !isSuperOrAdmin) {
+    const dashboardUrl = new URL('/dashboard', request.url);
+    return NextResponse.redirect(dashboardUrl);
+  }
+  if (pathname.startsWith('/api/admin') && !isSuperOrAdmin) {
+    return NextResponse.json(
+      { success: false, error: 'Unauthorized. Administrator privileges required.' },
+      { status: 403 }
+    );
+  }
+
+  // 7. User is authenticated - inject header claims for downstream route handlers
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set('x-user-id', user.userId);
   requestHeaders.set('x-user-role', user.role);

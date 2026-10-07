@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -241,6 +242,22 @@ function LoginForm() {
         >
           {loading ? 'Signing In...' : 'Sign In to Workspace'}
         </DZFButton>
+
+        <Box sx={{ textAlign: 'center', mt: 2 }}>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            New staff member?{' '}
+            <Link
+              href="/auth/register"
+              style={{
+                color: dzfColors.maroon[800],
+                fontWeight: 700,
+                textDecoration: 'none',
+              }}
+            >
+              Request Staff Account
+            </Link>
+          </Typography>
+        </Box>
       </Box>
 
       {/* Development Seed Helper */}

@@ -158,5 +158,11 @@ export function canDeleteBook(role: UserRole | string): boolean {
   return BOOK_DELETE_ROLES.includes(role as UserRole);
 }
 
+export const STAFF_ACTIVATION_ROLES: UserRole[] = ['ima', 'country_manager', 'admin'];
 
-
+/**
+ * Check if role has privileges to activate, deactivate, or delete staff accounts (IMA, Country Manager, Admin only)
+ */
+export function canActivateStaff(role: UserRole | string): boolean {
+  return STAFF_ACTIVATION_ROLES.includes(role as UserRole);
+}
