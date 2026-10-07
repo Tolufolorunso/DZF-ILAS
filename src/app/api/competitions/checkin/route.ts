@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth/session';
 import { canManageCompetitions } from '@/lib/auth/rbac';
 import { processCompetitionCheckin } from '@/lib/competitions/service';
+import { recordDailyAction } from '@/lib/audit/dailyActionService';
 
 /**
  * POST /api/competitions/checkin
@@ -51,6 +52,20 @@ export async function POST(req: NextRequest) {
       teacherVerified: Boolean(body.teacherVerified),
       teacherVerifiedBy: body.teacherVerifiedBy || user.name || user.username,
       gradedBy: user.name || user.username,
+    });
+
+    await recordDailyAction({
+      actionType: 'competition_entry',
+      actionTitle: `Graded competition book "${entry.bookTitle}" (${entry.grade}/100) for patron ${entry.patronBarcode}`,
+      performedBy: user.username,
+      performedByName: user.name || user.username,
+      performedByRole: user.role,
+      targetEntity: 'Competition',
+      targetId: String(entry._id),
+      reversiblePayload: {
+        competitionId: String(entry._id),
+      },
+      isReversible: true,
     });
 
     return NextResponse.json({

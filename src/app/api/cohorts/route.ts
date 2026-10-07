@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth/session';
 import { getAllCohortGroups, createCohortGroup } from '@/lib/cohorts/service';
+import { recordDailyAction } from '@/lib/audit/dailyActionService';
 
 /**
  * GET /api/cohorts
@@ -51,6 +52,20 @@ export async function POST(req: NextRequest) {
       active: body.active !== undefined ? body.active : true,
       order: body.order,
       createdBy: user.name || user.username,
+    });
+
+    await recordDailyAction({
+      actionType: 'cohort_action',
+      actionTitle: `Created cohort group "${newCohort.displayName || newCohort.cohortType}"`,
+      performedBy: user.username,
+      performedByName: user.name || user.username,
+      performedByRole: user.role,
+      targetEntity: 'Cohort',
+      targetId: String(newCohort._id || newCohort.cohortType),
+      reversiblePayload: {
+        cohortType: newCohort.cohortType,
+      },
+      isReversible: false,
     });
 
     return NextResponse.json({ success: true, cohort: newCohort }, { status: 201 });

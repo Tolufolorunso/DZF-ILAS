@@ -11,6 +11,7 @@ import TaskFormDialog from '@/components/admin/TaskFormDialog';
 import TaskEditDialog from '@/components/admin/TaskEditDialog';
 import { DZFButton } from '@/components';
 import { dzfColors } from '@/theme/colors';
+import Chip from '@mui/material/Chip';
 
 interface TasksWorkspaceClientProps {
   user: ITokenPayload;
@@ -24,6 +25,32 @@ export default function TasksWorkspaceClient({
   const [tasks, setTasks] = React.useState<ITaskItemDTO[]>(initialTasks);
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [selectedEditTask, setSelectedEditTask] = React.useState<ITaskItemDTO | null>(null);
+
+  // Real-time synchronization for task progression
+  const fetchRemoteTasks = React.useCallback(async () => {
+    if (typeof document !== 'undefined' && document.hidden) return;
+    if (selectedEditTask || isCreateOpen) return;
+
+    try {
+      const res = await fetch('/api/admin/tasks?limit=100');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.tasks)) {
+          setTasks((prev) => {
+            const hasChanged = JSON.stringify(prev) !== JSON.stringify(data.tasks);
+            return hasChanged ? data.tasks : prev;
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Real-time task sync warning:', err);
+    }
+  }, [selectedEditTask, isCreateOpen]);
+
+  React.useEffect(() => {
+    const timer = setInterval(fetchRemoteTasks, 8000);
+    return () => clearInterval(timer);
+  }, [fetchRemoteTasks]);
 
   const handleUpdateTaskStatus = async (id: string, newStatus: KanbanStatus) => {
     try {
@@ -124,13 +151,38 @@ export default function TasksWorkspaceClient({
             </Typography>
           </Box>
 
-          <DZFButton
-            variant="primary"
-            onClick={() => setIsCreateOpen(true)}
-            sx={{ fontWeight: 700 }}
-          >
-            + Create Task
-          </DZFButton>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+            <Chip
+              size="small"
+              icon={
+                <Box
+                  sx={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: '50%',
+                    bgcolor: '#16a34a',
+                    boxShadow: '0 0 6px rgba(22, 163, 74, 0.6)',
+                    ml: 0.75,
+                  }}
+                />
+              }
+              label="Live Sync Active"
+              sx={{
+                bgcolor: '#f0fdf4',
+                color: '#15803d',
+                fontWeight: 700,
+                fontSize: '0.75rem',
+                border: '1px solid #bbf7d0',
+              }}
+            />
+            <DZFButton
+              variant="primary"
+              onClick={() => setIsCreateOpen(true)}
+              sx={{ fontWeight: 700 }}
+            >
+              + Create Task
+            </DZFButton>
+          </Box>
         </Box>
 
         {/* 3-Column Drag-and-Drop Kanban Board */}

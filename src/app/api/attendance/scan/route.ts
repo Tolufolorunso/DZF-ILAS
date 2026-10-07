@@ -58,6 +58,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (result.success) {
+      const { recordDailyAction } = await import('@/lib/audit/dailyActionService');
+      await recordDailyAction({
+        actionType: 'attendance_scan',
+        actionTitle: `Logged attendance for ${result.patron?.fullName || 'Patron'} (${result.patron?.barcode || body.barcode}) in ${body.className || 'Library Session'}`,
+        performedBy: auth.username,
+        performedByName: auth.name || auth.username,
+        performedByRole: auth.role,
+        targetEntity: 'Attendance',
+        targetId: String((result.attendance as any)?._id || (result.attendance as any)?.id || ''),
+        reversiblePayload: {
+          attendanceId: String((result.attendance as any)?._id || (result.attendance as any)?.id || ''),
+          patronId: String((result.patron as any)?._id || (result.patron as any)?.id || ''),
+          pointsAwarded: (result.attendance as any)?.points || (typeof body.points === 'number' ? body.points : 2),
+        },
+        isReversible: true,
+      });
+    }
+
     return NextResponse.json(
       {
         success: true,

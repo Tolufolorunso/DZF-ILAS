@@ -228,6 +228,26 @@ export async function POST(req: NextRequest) {
       console.warn('Note: Could not create duplicate Inventory record:', invErr);
     }
 
+    try {
+      const { recordDailyAction } = await import('@/lib/audit/dailyActionService');
+      await recordDailyAction({
+        actionType: 'book_create',
+        actionTitle: `Acquired monograph "${newBook.title.mainTitle}" (Barcode: ${newBook.barcode})`,
+        performedBy: auth.username,
+        performedByName: auth.name || auth.username,
+        performedByRole: auth.role,
+        targetEntity: 'Cataloging',
+        targetId: newBook._id.toString(),
+        reversiblePayload: {
+          bookId: newBook._id.toString(),
+          barcode: newBook.barcode,
+        },
+        isReversible: true,
+      });
+    } catch (logErr) {
+      console.warn('DailyAction logging warning:', logErr);
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Book cataloged successfully',

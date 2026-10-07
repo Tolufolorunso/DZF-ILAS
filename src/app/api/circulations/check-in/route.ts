@@ -45,6 +45,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (result.success) {
+      const { recordDailyAction } = await import('@/lib/audit/dailyActionService');
+      const patronDisplay = result.patron
+        ? `${result.patron.firstname} ${result.patron.surname}`
+        : body.patronBarcode || 'Patron';
+      const bookDisplay = result.book?.title?.mainTitle || result.book?.title || body.bookBarcode || 'Monograph';
+
+      await recordDailyAction({
+        actionType: 'book_return',
+        actionTitle: `Checked in returned book "${bookDisplay}" from ${patronDisplay}`,
+        performedBy: auth.username,
+        performedByName: auth.name || auth.username,
+        performedByRole: auth.role,
+        targetEntity: 'Library',
+        targetId: result.book?.barcode || body.bookBarcode,
+        reversiblePayload: {
+          bookBarcode: result.book?.barcode || body.bookBarcode,
+          patronBarcode: result.patron?.barcode || body.patronBarcode,
+          patronName: patronDisplay,
+          pointsAwarded: result.pointsAwarded || 0,
+        },
+        isReversible: true,
+      });
+    }
+
     return NextResponse.json(
       {
         success: true,

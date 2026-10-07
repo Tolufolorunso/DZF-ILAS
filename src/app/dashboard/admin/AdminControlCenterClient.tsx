@@ -114,6 +114,17 @@ export default function AdminControlCenterClient({
     }
   };
 
+  // Live polling for tasks when viewing Operational Tasks tab
+  React.useEffect(() => {
+    if (tabIndex !== 3) return;
+    const timer = setInterval(() => {
+      if (typeof document !== 'undefined' && !document.hidden && !selectedEditTask && !taskDialogOpen) {
+        refreshTasks();
+      }
+    }, 8000);
+    return () => clearInterval(timer);
+  }, [tabIndex, selectedEditTask, taskDialogOpen]);
+
   // Lock toggle handler
   const handleToggleLock = async (lock: boolean, reason: string) => {
     const res = await fetch('/api/admin/overrides/circulation-lock', {
@@ -761,6 +772,33 @@ export default function AdminControlCenterClient({
         {/* TAB 5: System Audit Ledger */}
         {tabIndex === 5 && (
           <Box>
+            <Box
+              sx={{
+                mb: 3,
+                p: 2.5,
+                borderRadius: '16px',
+                bgcolor: '#fff',
+                border: `1px solid ${dzfColors.navy[200]}`,
+                boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: 2,
+              }}
+            >
+              <Box>
+                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: dzfColors.navy[900] }}>
+                  Live Staff Daily Actions Stream & Reversible Undo
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary', maxWidth: 700 }}>
+                  View real-time staff operations across attendance, circulation, cataloging, patrons, tasks, and cohorts with instant programmatic same-day undo before the 12:00 AM midnight cutoff.
+                </Typography>
+              </Box>
+              <DZFButton variant="primary" onClick={() => router.push('/dashboard/admin/daily-actions')}>
+                Open Daily Actions Console →
+              </DZFButton>
+            </Box>
             <AuditLogViewer initialLogs={initialAuditLogs} />
           </Box>
         )}

@@ -444,3 +444,14 @@ export function InfoIcon({ size = 18, color = 'currentColor', ...props }: IconPr
     </svg>
   );
 }
+
+export function UndoIcon({ size = 18, color = 'currentColor', ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M3 7v6h6" />
+      <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+    </svg>
+  );
+}
+
+

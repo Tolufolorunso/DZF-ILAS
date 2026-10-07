@@ -225,8 +225,10 @@ export function AppShell({
                             ? 'certificates'
                             : pathname.startsWith('/dashboard/transcomm') || pathname.startsWith('/transcomm/manage')
                               ? 'transcomm'
-                              : pathname.startsWith('/dashboard/admin') || pathname.startsWith('/admin')
-                                ? 'admin'
+                              : pathname.startsWith('/dashboard/admin/daily-actions')
+                                ? 'daily-actions'
+                                : pathname.startsWith('/dashboard/admin') || pathname.startsWith('/admin')
+                                  ? 'admin'
                                 : pathname.startsWith('/dashboard/patrons') || pathname.startsWith('/patrons')
                                   ? 'patrons'
                                   : 'dashboard');
@@ -271,6 +273,7 @@ export function AppShell({
   const systemItems: NavItem[] = [];
   if (isSuperOrAdmin) {
     systemItems.push({ id: 'admin', label: 'Staff Admin & Security', icon: <SettingsIcon size={20} /> });
+    systemItems.push({ id: 'daily-actions', label: 'Daily Actions Audit', icon: <ActivityIcon size={20} />, badge: 'Live', badgeVariant: 'warning' });
   }
 
   const navSections: NavSection[] = [
@@ -319,6 +322,7 @@ export function AppShell({
       else if (id === 'certificates') router.push('/dashboard/certificates');
       else if (id === 'transcomm') router.push('/dashboard/transcomm');
       else if (id === 'admin') router.push('/dashboard/admin');
+      else if (id === 'daily-actions') router.push('/dashboard/admin/daily-actions');
     }
     if (isMobile) {
       setMobileOpen(false);

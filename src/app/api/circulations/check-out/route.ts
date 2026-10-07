@@ -50,6 +50,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (result.success && result.loan) {
+      const { recordDailyAction } = await import('@/lib/audit/dailyActionService');
+      const patronDisplay = result.patron
+        ? `${result.patron.firstname} ${result.patron.surname}`
+        : String(body.patronBarcode);
+      await recordDailyAction({
+        actionType: 'book_checkout',
+        actionTitle: `Checked out "${result.loan.bookTitle || body.bookBarcode}" to ${patronDisplay}`,
+        performedBy: auth.username,
+        performedByName: auth.name || auth.username,
+        performedByRole: auth.role,
+        targetEntity: 'Library',
+        targetId: (result.loan as any).id || String((result.loan as any)._id || ''),
+        reversiblePayload: {
+          loanId: (result.loan as any).id || (result.loan as any)._id,
+          bookBarcode: String(body.bookBarcode),
+          patronBarcode: String(body.patronBarcode),
+        },
+        isReversible: true,
+      });
+    }
+
     return NextResponse.json(
       {
         success: true,

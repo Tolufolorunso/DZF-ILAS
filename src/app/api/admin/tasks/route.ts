@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth/session';
 import { listTasks, createTask } from '@/lib/admin/service';
+import { recordDailyAction } from '@/lib/audit/dailyActionService';
 
 export const dynamic = 'force-dynamic';
 
@@ -118,6 +119,20 @@ export async function POST(req: NextRequest) {
       staffUsername: user.username,
       staffName: user.name || user.username,
       staffRole: user.role,
+    });
+
+    await recordDailyAction({
+      actionType: 'task_create',
+      actionTitle: `Created task "${task.title}" for ${task.assignedTo?.name || task.assignedTo?.username || targetUsername}`,
+      performedBy: user.username,
+      performedByName: user.name || user.username,
+      performedByRole: user.role,
+      targetEntity: 'Task',
+      targetId: task.id,
+      reversiblePayload: {
+        taskId: task.id,
+      },
+      isReversible: true,
     });
 
     return NextResponse.json(

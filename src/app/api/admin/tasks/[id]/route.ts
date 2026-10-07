@@ -5,6 +5,7 @@ import { updateTaskStatus } from '@/lib/admin/service';
 import { Task } from '@/models/Task';
 import { connectDB } from '@/lib/db';
 import { logAuditEvent } from '@/lib/admin/service';
+import { recordDailyAction } from '@/lib/audit/dailyActionService';
 
 export const dynamic = 'force-dynamic';
 
@@ -94,6 +95,23 @@ export async function PATCH(
       });
     } else {
       return NextResponse.json({ success: false, error: 'No valid update fields provided.' }, { status: 400 });
+    }
+
+    if (updated && existingTask.status !== updated.status) {
+      await recordDailyAction({
+        actionType: 'task_status_change',
+        actionTitle: `Changed status of task "${existingTask.title}" from ${existingTask.status} to ${updated.status}`,
+        performedBy: user.username,
+        performedByName: user.name || user.username,
+        performedByRole: user.role,
+        targetEntity: 'Task',
+        targetId: String(existingTask._id),
+        reversiblePayload: {
+          taskId: String(existingTask._id),
+          previousStatus: existingTask.status,
+        },
+        isReversible: true,
+      });
     }
 
     return NextResponse.json(

@@ -4,6 +4,7 @@ import connectDB from '@/lib/db';
 import { Cataloging, Library, Hold, Inventory } from '@/models';
 import { getSessionUser } from '@/lib/auth/session';
 import { canManageCatalog, canDeleteBook } from '@/lib/auth/rbac';
+import { recordDailyAction } from '@/lib/audit/dailyActionService';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -96,6 +97,7 @@ export async function PUT(req: NextRequest, context: RouteContext) {
         { status: 404 }
       );
     }
+    const previousState = book.toObject();
 
     // Update allowable fields
     if (body.mainTitle) book.title.mainTitle = body.mainTitle.trim();
@@ -131,6 +133,21 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     }
 
     await book.save();
+
+    await recordDailyAction({
+      actionType: 'book_update',
+      actionTitle: `Updated monograph details for "${book.title.mainTitle}" (Barcode: ${book.barcode})`,
+      performedBy: auth.username,
+      performedByName: auth.name || auth.username,
+      performedByRole: auth.role,
+      targetEntity: 'Cataloging',
+      targetId: book._id.toString(),
+      reversiblePayload: {
+        bookId: book._id.toString(),
+        previousState,
+      },
+      isReversible: true,
+    });
 
     return NextResponse.json({
       success: true,
@@ -223,10 +240,26 @@ export async function DELETE(req: NextRequest, context: RouteContext) {
       );
     }
 
+    const deletedBook = book.toObject();
+
     // Safe deletion: remove monograph and clean up associated inventory copies
     await Cataloging.deleteOne({ _id: book._id });
     await Inventory.deleteMany({ $or: [{ bookId: book._id }, { barcode: book.barcode }] });
     await Hold.deleteMany({ $or: [{ bookId: book._id }, { bookBarcode: book.barcode }] });
+
+    await recordDailyAction({
+      actionType: 'book_delete',
+      actionTitle: `Deleted monograph "${deletedBook.title?.mainTitle || book.barcode}" (Barcode: ${book.barcode})`,
+      performedBy: auth.username,
+      performedByName: auth.name || auth.username,
+      performedByRole: auth.role,
+      targetEntity: 'Cataloging',
+      targetId: book._id.toString(),
+      reversiblePayload: {
+        deletedBook,
+      },
+      isReversible: true,
+    });
 
     return NextResponse.json({
       success: true,

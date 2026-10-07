@@ -4,6 +4,7 @@ import { Patron } from '@/models/Patron';
 import { Cohort } from '@/models/Cohort';
 import { getSessionUser } from '@/lib/auth/session';
 import { generateNextPatronBarcode } from '@/lib/patron/barcode';
+import { recordDailyAction } from '@/lib/audit/dailyActionService';
 
 export const dynamic = 'force-dynamic';
 
@@ -250,6 +251,21 @@ export async function POST(request: NextRequest) {
     });
 
     await newPatron.save();
+
+    await recordDailyAction({
+      actionType: 'patron_create',
+      actionTitle: `Registered patron ${newPatron.firstname} ${newPatron.surname} (${newPatron.barcode})`,
+      performedBy: sessionUser.username,
+      performedByName: sessionUser.name,
+      performedByRole: sessionUser.role,
+      targetEntity: 'Patron',
+      targetId: String(newPatron._id),
+      reversiblePayload: {
+        patronId: String(newPatron._id),
+        barcode: newPatron.barcode,
+      },
+      isReversible: true,
+    });
 
     // If cohort was specified by Admin/ICT, enroll student into the cohort
     if (cohortId) {

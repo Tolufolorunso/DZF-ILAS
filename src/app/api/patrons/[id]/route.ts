@@ -5,6 +5,7 @@ import { Patron } from '@/models/Patron';
 import { Library } from '@/models/Library';
 import { getSessionUser } from '@/lib/auth/session';
 import { canUpdatePatron, canDeletePatron } from '@/lib/auth/rbac';
+import { recordDailyAction } from '@/lib/audit/dailyActionService';
 
 export const dynamic = 'force-dynamic';
 
@@ -152,6 +153,21 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    await recordDailyAction({
+      actionType: 'patron_update',
+      actionTitle: `Updated patron profile for ${updatedPatron.firstname} ${updatedPatron.surname} (${updatedPatron.barcode})`,
+      performedBy: sessionUser.username,
+      performedByName: sessionUser.name,
+      performedByRole: sessionUser.role,
+      targetEntity: 'Patron',
+      targetId: String(updatedPatron._id),
+      reversiblePayload: {
+        patronId: String(updatedPatron._id),
+        previousState: existing.toObject(),
+      },
+      isReversible: true,
+    });
+
     return NextResponse.json({
       success: true,
       message: 'Patron profile updated successfully.',
@@ -230,6 +246,22 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
         { $set: { isDeleted: true, active: false } }
       );
     }
+
+    await recordDailyAction({
+      actionType: 'patron_delete',
+      actionTitle: `Deleted patron ${patron.firstname} ${patron.surname} (${patron.barcode})`,
+      performedBy: sessionUser.username,
+      performedByName: sessionUser.name,
+      performedByRole: sessionUser.role,
+      targetEntity: 'Patron',
+      targetId: String(patron._id),
+      reversiblePayload: {
+        patronId: String(patron._id),
+        deletedPatron: patron.toObject(),
+        wasHardDelete: isHard,
+      },
+      isReversible: true,
+    });
 
     return NextResponse.json({
       success: true,
