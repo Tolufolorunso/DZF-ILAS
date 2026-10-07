@@ -156,7 +156,16 @@ function PatronEditForm({
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form
+      onSubmit={handleSubmit}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        maxHeight: 'calc(100vh - 48px)',
+        overflow: 'hidden',
+      }}
+    >
         {/* Modal Header */}
         <DialogTitle
           sx={{
@@ -166,6 +175,7 @@ function PatronEditForm({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
+            flexShrink: 0,
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
@@ -209,7 +219,15 @@ function PatronEditForm({
           </IconButton>
         </DialogTitle>
 
-        <DialogContent dividers sx={{ p: { xs: 2.5, sm: 3.5 }, backgroundColor: '#fafafa' }}>
+        <DialogContent
+          dividers
+          sx={{
+            p: { xs: 2.5, sm: 3.5 },
+            backgroundColor: '#fafafa',
+            flex: '1 1 auto',
+            overflowY: 'auto',
+          }}
+        >
           {error && (
             <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
               {error}
@@ -515,7 +533,7 @@ function PatronEditForm({
           )}
         </DialogContent>
 
-        <DialogActions sx={{ p: 2.5, backgroundColor: '#ffffff', borderTop: `1px solid ${dzfColors.surfaces.border}` }}>
+        <DialogActions sx={{ p: 2.5, backgroundColor: '#ffffff', borderTop: `1px solid ${dzfColors.surfaces.border}`, flexShrink: 0 }}>
           <DZFButton variant="secondary" onClick={onClose} disabled={saving}>
             Cancel
           </DZFButton>
@@ -551,6 +569,9 @@ export default function PatronEditModal({
           borderRadius: 3,
           boxShadow: '0 20px 60px rgba(0, 0, 0, 0.25)',
           overflow: 'hidden',
+          maxHeight: 'calc(100vh - 48px)',
+          display: 'flex',
+          flexDirection: 'column',
         },
       }}
     >

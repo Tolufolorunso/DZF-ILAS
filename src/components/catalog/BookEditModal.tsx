@@ -134,7 +134,16 @@ function BookEditForm({ book, onClose, onSuccess }: BookEditFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form
+      onSubmit={handleSubmit}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        maxHeight: 'calc(100vh - 48px)',
+        overflow: 'hidden',
+      }}
+    >
       <DialogTitle
         sx={{
           display: 'flex',
@@ -143,6 +152,7 @@ function BookEditForm({ book, onClose, onSuccess }: BookEditFormProps) {
           borderBottom: `1px solid ${dzfColors.surfaces.border}`,
           py: 2,
           px: 3,
+          flexShrink: 0,
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -175,7 +185,15 @@ function BookEditForm({ book, onClose, onSuccess }: BookEditFormProps) {
         </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3, backgroundColor: '#ffffff' }}>
+      <DialogContent
+        dividers
+        sx={{
+          p: 3,
+          backgroundColor: '#ffffff',
+          flex: '1 1 auto',
+          overflowY: 'auto',
+        }}
+      >
         {error && (
           <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2 }}>
             {error}
@@ -379,7 +397,7 @@ function BookEditForm({ book, onClose, onSuccess }: BookEditFormProps) {
         </Grid>
       </DialogContent>
 
-      <DialogActions sx={{ p: 2.5, borderTop: `1px solid ${dzfColors.surfaces.border}`, gap: 1 }}>
+      <DialogActions sx={{ p: 2.5, borderTop: `1px solid ${dzfColors.surfaces.border}`, gap: 1, flexShrink: 0 }}>
         <DZFButton variant="soft" onClick={onClose} disabled={saving}>
           Cancel
         </DZFButton>
@@ -418,6 +436,9 @@ export default function BookEditModal({
             borderRadius: 3,
             boxShadow: '0 24px 48px rgba(0, 0, 0, 0.2)',
             overflow: 'hidden',
+            maxHeight: 'calc(100vh - 48px)',
+            display: 'flex',
+            flexDirection: 'column',
           },
         },
       }}

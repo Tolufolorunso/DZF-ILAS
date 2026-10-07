@@ -35,6 +35,7 @@ import {
   LogOutIcon,
   AwardIcon,
   CalendarIcon,
+  CheckCircleIcon,
 } from '@/components/ui/DZFIcons';
 import DZFBadge from '@/components/ui/DZFBadge';
 
@@ -178,9 +179,17 @@ export function AppShell({
         console.error('Failed to mark notification read', err);
       }
     }
-    if (notif.link) {
-      handleCloseNotifications();
-      router.push(notif.link);
+    handleCloseNotifications();
+    let targetLink = notif.link;
+    if (notif.type === 'calendar_milestone') {
+      targetLink = '/dashboard/calendar';
+    } else if (notif.type === 'task_assigned' || notif.type === 'task_updated') {
+      targetLink = '/dashboard/tasks';
+    } else if (targetLink === '/dashboard/admin' && !isSuperOrAdmin) {
+      targetLink = '/dashboard';
+    }
+    if (targetLink) {
+      router.push(targetLink);
     }
   };
 
@@ -192,33 +201,35 @@ export function AppShell({
     activeNavId ||
     (pathname === '/dashboard'
       ? 'dashboard'
-      : pathname.startsWith('/dashboard/catalog') || pathname.startsWith('/catalog')
-      ? 'catalog'
-      : pathname.startsWith('/dashboard/inventory') || pathname.startsWith('/inventory')
-      ? 'inventory'
-      : pathname.startsWith('/dashboard/circulations') || pathname.startsWith('/circulations')
-      ? 'circulations'
-      : pathname.startsWith('/dashboard/summaries') || pathname.startsWith('/summaries')
-      ? 'summaries'
-      : pathname.startsWith('/dashboard/attendance') || pathname.startsWith('/attendance')
-      ? 'attendance'
-      : pathname.startsWith('/dashboard/leaderboard') || pathname.startsWith('/leaderboard')
-      ? 'analytics'
-      : pathname.startsWith('/dashboard/calendar')
-      ? 'calendar'
-      : pathname.startsWith('/dashboard/cohorts') || pathname.startsWith('/cohorts')
-      ? 'cohorts'
-      : pathname.startsWith('/dashboard/competitions') || pathname.startsWith('/competitions')
-      ? 'competitions'
-      : pathname.startsWith('/dashboard/certificates') || pathname.startsWith('/certificates')
-      ? 'certificates'
-      : pathname.startsWith('/dashboard/transcomm') || pathname.startsWith('/transcomm/manage')
-      ? 'transcomm'
-      : pathname.startsWith('/dashboard/admin') || pathname.startsWith('/admin')
-      ? 'admin'
-      : pathname.startsWith('/dashboard/patrons') || pathname.startsWith('/patrons')
-      ? 'patrons'
-      : 'dashboard');
+      : pathname.startsWith('/dashboard/tasks')
+        ? 'tasks'
+        : pathname.startsWith('/dashboard/catalog') || pathname.startsWith('/catalog')
+          ? 'catalog'
+          : pathname.startsWith('/dashboard/inventory') || pathname.startsWith('/inventory')
+            ? 'inventory'
+            : pathname.startsWith('/dashboard/circulations') || pathname.startsWith('/circulations')
+              ? 'circulations'
+              : pathname.startsWith('/dashboard/summaries') || pathname.startsWith('/summaries')
+                ? 'summaries'
+                : pathname.startsWith('/dashboard/attendance') || pathname.startsWith('/attendance')
+                  ? 'attendance'
+                  : pathname.startsWith('/dashboard/leaderboard') || pathname.startsWith('/leaderboard')
+                    ? 'analytics'
+                    : pathname.startsWith('/dashboard/calendar')
+                      ? 'calendar'
+                      : pathname.startsWith('/dashboard/cohorts') || pathname.startsWith('/cohorts')
+                        ? 'cohorts'
+                        : pathname.startsWith('/dashboard/competitions') || pathname.startsWith('/competitions')
+                          ? 'competitions'
+                          : pathname.startsWith('/dashboard/certificates') || pathname.startsWith('/certificates')
+                            ? 'certificates'
+                            : pathname.startsWith('/dashboard/transcomm') || pathname.startsWith('/transcomm/manage')
+                              ? 'transcomm'
+                              : pathname.startsWith('/dashboard/admin') || pathname.startsWith('/admin')
+                                ? 'admin'
+                                : pathname.startsWith('/dashboard/patrons') || pathname.startsWith('/patrons')
+                                  ? 'patrons'
+                                  : 'dashboard');
 
   const displayName = staffName || user?.name || 'Staff Member';
   const displayRole =
@@ -230,12 +241,13 @@ export function AppShell({
 
   const workspaceItems: NavItem[] = [
     { id: 'dashboard', label: 'Dashboard', icon: <LayersIcon size={20} /> },
+    { id: 'tasks', label: 'Task Board', icon: <CheckCircleIcon size={20} /> },
     { id: 'catalog', label: 'Library Catalog', icon: <BookIcon size={20} />, badge: '1.3k' },
-    { id: 'inventory', label: 'Asset Inventory', icon: <LayersIcon size={20} /> },
     { id: 'patrons', label: 'Patron Directory', icon: <UsersIcon size={20} />, badge: '583' },
     { id: 'attendance', label: 'Attendant', icon: <BarcodeIcon size={20} /> },
     { id: 'analytics', label: 'Leaderboard & Stats', icon: <TrophyIcon size={20} /> },
     { id: 'calendar', label: 'Operational Calendar', icon: <CalendarIcon size={20} /> },
+    { id: 'inventory', label: 'Asset Inventory', icon: <LayersIcon size={20} /> },
   ];
 
   const managementItems: NavItem[] = [];
@@ -268,19 +280,19 @@ export function AppShell({
     },
     ...(managementItems.length > 0
       ? [
-          {
-            title: 'MANAGEMENT',
-            items: managementItems,
-          },
-        ]
+        {
+          title: 'MANAGEMENT',
+          items: managementItems,
+        },
+      ]
       : []),
     ...(systemItems.length > 0
       ? [
-          {
-            title: 'SYSTEM',
-            items: systemItems,
-          },
-        ]
+        {
+          title: 'SYSTEM',
+          items: systemItems,
+        },
+      ]
       : []),
   ];
 
@@ -293,6 +305,7 @@ export function AppShell({
       onNavigate(id);
     } else {
       if (id === 'dashboard') router.push('/dashboard');
+      else if (id === 'tasks') router.push('/dashboard/tasks');
       else if (id === 'catalog') router.push('/dashboard/catalog');
       else if (id === 'inventory') router.push('/dashboard/inventory');
       else if (id === 'circulations') router.push('/dashboard/circulations');
@@ -537,391 +550,391 @@ export function AppShell({
   return (
     <AppShellContext.Provider value={true}>
       <Box sx={{ display: 'flex', minHeight: '100vh', backgroundColor: dzfColors.surfaces.canvas }}>
-      {/* Top Header */}
-      <AppBar
-        position="fixed"
-        sx={{
-          width: { md: `calc(100% - ${sidebarWidth}px)` },
-          ml: { md: `${sidebarWidth}px` },
-          backgroundColor: '#ffffff',
-          color: dzfColors.surfaces.textPrimary,
-          borderBottom: `1px solid ${dzfColors.surfaces.border}`,
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
-          transition: 'width 0.2s ease, margin 0.2s ease',
-          zIndex: (theme) => theme.zIndex.drawer + 1,
-        }}
-      >
-        <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, md: 3 } }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <IconButton
-              color="inherit"
-              aria-label="open drawer"
-              edge="start"
-              onClick={isMobile ? handleDrawerToggle : () => setCollapsed(!collapsed)}
-              sx={{ color: dzfColors.navy[700] }}
-            >
-              <MenuIcon size={22} />
-            </IconButton>
-
-            <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 1 }}>
-              <DZFBadge label="Foundation Station AAoJ" variant="info" dot />
-              <DZFBadge label="Active Session" variant="success" dot />
-            </Box>
-          </Box>
-
-          {/* Quick Actions & Profile */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <Box
-              sx={{
-                display: { xs: 'none', md: 'flex' },
-                alignItems: 'center',
-                gap: 1,
-                px: 1.5,
-                py: 0.5,
-                borderRadius: '8px',
-                backgroundColor: dzfColors.surfaces.canvas,
-                border: `1px solid ${dzfColors.surfaces.border}`,
-                color: dzfColors.surfaces.textMuted,
-                cursor: 'pointer',
-              }}
-            >
-              <SearchIcon size={16} />
-              <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
-                Global Search (Ctrl + K)
-              </Typography>
-            </Box>
-
-            <IconButton
-              size="small"
-              aria-label="notifications"
-              onClick={handleOpenNotifications}
-              sx={{
-                p: 1,
-                borderRadius: '8px',
-                border: `1px solid ${dzfColors.surfaces.border}`,
-                color: dzfColors.navy[700],
-              }}
-            >
-              <Badge
-                badgeContent={unreadCount}
-                color="error"
-                max={99}
-                sx={{
-                  '& .MuiBadge-badge': {
-                    fontSize: '0.625rem',
-                    height: 16,
-                    minWidth: 16,
-                    px: 0.5,
-                  },
-                }}
-              >
-                <BellIcon size={18} />
-              </Badge>
-            </IconButton>
-
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 1 }}>
-              <Avatar
-                sx={{
-                  width: 32,
-                  height: 32,
-                  backgroundColor: dzfColors.maroon[900],
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                }}
-              >
-                {displayName.charAt(0)}
-              </Avatar>
-              <Typography
-                variant="body2"
-                sx={{
-                  fontWeight: 600,
-                  fontSize: '0.8125rem',
-                  color: dzfColors.navy[700],
-                  display: { xs: 'none', sm: 'block' },
-                }}
-              >
-                {displayName.split(' ')[0]}
-              </Typography>
-            </Box>
-
-            <IconButton
-              size="small"
-              onClick={handleLogoutAction}
-              title="Log out"
-              sx={{
-                p: 1,
-                borderRadius: '8px',
-                border: `1px solid ${dzfColors.surfaces.border}`,
-                color: dzfColors.maroon[700],
-                '&:hover': {
-                  backgroundColor: 'rgba(111, 17, 17, 0.05)',
-                },
-              }}
-            >
-              <LogOutIcon size={18} />
-            </IconButton>
-          </Box>
-        </Toolbar>
-      </AppBar>
-
-      {/* Navigation Drawer Container (Allocates space in flex layout so main content never slips underneath) */}
-      <Box
-        component="nav"
-        sx={{
-          width: { md: sidebarWidth },
-          flexShrink: { md: 0 },
-          transition: 'width 0.2s ease',
-        }}
-        aria-label="DZF-ILAS staff sidebar"
-      >
-        {/* Mobile Drawer */}
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{ keepMounted: true }}
+        {/* Top Header */}
+        <AppBar
+          position="fixed"
           sx={{
-            display: { xs: 'block', md: 'none' },
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: SIDEBAR_WIDTH,
-              backgroundColor: dzfColors.navy[950],
-              color: '#ffffff',
-            },
-          }}
-        >
-          {sidebarContent}
-        </Drawer>
-
-        {/* Desktop Persistent Sidebar */}
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: 'none', md: 'block' },
-            '& .MuiDrawer-paper': {
-              boxSizing: 'border-box',
-              width: sidebarWidth,
-              borderRight: '1px solid rgba(255, 255, 255, 0.08)',
-              backgroundColor: dzfColors.navy[950],
-              color: '#ffffff',
-              transition: 'width 0.2s ease',
-              overflowX: 'hidden',
-            },
-          }}
-          open
-        >
-          {sidebarContent}
-        </Drawer>
-      </Box>
-
-      {/* Main Content Area */}
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          width: { xs: '100%', md: `calc(100% - ${sidebarWidth}px)` },
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          backgroundColor: dzfColors.surfaces.canvas,
-          transition: 'width 0.2s ease',
-          overflowX: 'hidden',
-        }}
-      >
-        {/* Spacer for fixed AppBar */}
-        <Toolbar sx={{ minHeight: '64px' }} />
-
-        {/* Content canvas with professional symmetric margins and padding */}
-        <Box
-          sx={{
-            flex: 1,
-            py: { xs: 2.5, sm: 3, md: 4 },
-            px: { xs: 2, sm: 3.5, md: 4, lg: 6 },
-            maxWidth: '1600px',
-            width: '100%',
-            mx: 'auto',
-            boxSizing: 'border-box',
-          }}
-        >
-          {children}
-        </Box>
-      </Box>
-
-      {/* Notifications Popover */}
-      <Popover
-        open={Boolean(notifAnchor)}
-        anchorEl={notifAnchor}
-        onClose={handleCloseNotifications}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        slotProps={{
-          paper: {
-            sx: {
-              width: { xs: 320, sm: 380 },
-              maxHeight: 520,
-              borderRadius: '16px',
-              boxShadow: '0 12px 36px rgba(11, 29, 46, 0.2)',
-              border: `1px solid ${dzfColors.surfaces.border}`,
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-            },
-          },
-        }}
-      >
-        {/* Popover Header */}
-        <Box
-          sx={{
-            p: 2,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
+            width: { md: `calc(100% - ${sidebarWidth}px)` },
+            ml: { md: `${sidebarWidth}px` },
+            backgroundColor: '#ffffff',
+            color: dzfColors.surfaces.textPrimary,
             borderBottom: `1px solid ${dzfColors.surfaces.border}`,
-            backgroundColor: dzfColors.surfaces.canvas,
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+            transition: 'width 0.2s ease, margin 0.2s ease',
+            zIndex: (theme) => theme.zIndex.drawer + 1,
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: dzfColors.navy[900] }}>
-              Notifications
-            </Typography>
-            {unreadCount > 0 && (
-              <Chip
-                label={`${unreadCount} new`}
-                size="small"
-                sx={{
-                  height: 20,
-                  fontSize: '0.6875rem',
-                  fontWeight: 700,
-                  backgroundColor: dzfColors.maroon[900],
-                  color: '#ffffff',
-                }}
-              />
-            )}
-          </Box>
-
-          {unreadCount > 0 && (
-            <Button
-              size="small"
-              onClick={handleMarkAllRead}
-              disabled={isUpdatingNotifs}
-              sx={{
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                color: dzfColors.navy[700],
-                textTransform: 'none',
-                p: 0.5,
-                minWidth: 0,
-                '&:hover': { backgroundColor: 'transparent', color: dzfColors.navy[950], textDecoration: 'underline' },
-              }}
-            >
-              Mark all read
-            </Button>
-          )}
-        </Box>
-
-        {/* Notifications List */}
-        <Box sx={{ overflowY: 'auto', flex: 1, maxHeight: 420 }}>
-          {notifications.length === 0 ? (
-            <Box sx={{ p: 4, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-              <Box
-                sx={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: '50%',
-                  backgroundColor: dzfColors.surfaces.canvas,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: dzfColors.surfaces.textMuted,
-                  mb: 0.5,
-                }}
+          <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, md: 3 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <IconButton
+                color="inherit"
+                aria-label="open drawer"
+                edge="start"
+                onClick={isMobile ? handleDrawerToggle : () => setCollapsed(!collapsed)}
+                sx={{ color: dzfColors.navy[700] }}
               >
-                <BellIcon size={22} />
+                <MenuIcon size={22} />
+              </IconButton>
+
+              <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 1 }}>
+                <DZFBadge label="Foundation Station AAoJ" variant="info" dot />
+                <DZFBadge label="Active Session" variant="success" dot />
               </Box>
-              <Typography variant="body2" sx={{ fontWeight: 700, color: dzfColors.navy[900] }}>
-                No notifications yet
-              </Typography>
-              <Typography variant="caption" sx={{ color: dzfColors.surfaces.textMuted, maxWidth: 220 }}>
-                You&apos;ll be alerted when operational tasks are assigned to you.
-              </Typography>
             </Box>
-          ) : (
-            notifications.map((notif) => (
+
+            {/* Quick Actions & Profile */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
               <Box
-                key={notif.id}
-                onClick={() => handleNotificationClick(notif)}
                 sx={{
-                  p: 1.75,
-                  borderBottom: `1px solid ${dzfColors.surfaces.border}`,
+                  display: { xs: 'none', md: 'flex' },
+                  alignItems: 'center',
+                  gap: 1,
+                  px: 1.5,
+                  py: 0.5,
+                  borderRadius: '8px',
+                  backgroundColor: dzfColors.surfaces.canvas,
+                  border: `1px solid ${dzfColors.surfaces.border}`,
+                  color: dzfColors.surfaces.textMuted,
                   cursor: 'pointer',
-                  backgroundColor: notif.read ? '#ffffff' : 'rgba(2, 132, 199, 0.04)',
-                  borderLeft: notif.read ? '3px solid transparent' : `3px solid ${dzfColors.gold[500]}`,
-                  transition: 'background-color 0.15s ease',
-                  '&:hover': {
-                    backgroundColor: notif.read ? '#f8fafc' : 'rgba(2, 132, 199, 0.08)',
-                  },
                 }}
               >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5, gap: 1 }}>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      fontWeight: notif.read ? 600 : 800,
-                      color: notif.read ? dzfColors.navy[700] : dzfColors.navy[950],
-                      fontSize: '0.8125rem',
-                      lineHeight: 1.3,
-                      flex: 1,
-                    }}
-                  >
-                    {notif.title}
-                  </Typography>
-                  {!notif.read && (
-                    <Box
-                      sx={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: '50%',
-                        backgroundColor: dzfColors.gold[500],
-                        flexShrink: 0,
-                        mt: 0.5,
-                      }}
-                    />
-                  )}
-                </Box>
+                <SearchIcon size={16} />
+                <Typography variant="body2" sx={{ fontSize: '0.8125rem' }}>
+                  Global Search (Ctrl + K)
+                </Typography>
+              </Box>
 
+              <IconButton
+                size="small"
+                aria-label="notifications"
+                onClick={handleOpenNotifications}
+                sx={{
+                  p: 1,
+                  borderRadius: '8px',
+                  border: `1px solid ${dzfColors.surfaces.border}`,
+                  color: dzfColors.navy[700],
+                }}
+              >
+                <Badge
+                  badgeContent={unreadCount}
+                  color="error"
+                  max={99}
+                  sx={{
+                    '& .MuiBadge-badge': {
+                      fontSize: '0.625rem',
+                      height: 16,
+                      minWidth: 16,
+                      px: 0.5,
+                    },
+                  }}
+                >
+                  <BellIcon size={18} />
+                </Badge>
+              </IconButton>
+
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, pl: 1 }}>
+                <Avatar
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    backgroundColor: dzfColors.maroon[900],
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                  }}
+                >
+                  {displayName.charAt(0)}
+                </Avatar>
                 <Typography
                   variant="body2"
                   sx={{
-                    color: dzfColors.surfaces.textSecondary,
-                    fontSize: '0.75rem',
-                    lineHeight: 1.4,
-                    mb: 0.75,
+                    fontWeight: 600,
+                    fontSize: '0.8125rem',
+                    color: dzfColors.navy[700],
+                    display: { xs: 'none', sm: 'block' },
                   }}
                 >
-                  {notif.message}
+                  {displayName.split(' ')[0]}
                 </Typography>
-
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="caption" sx={{ fontSize: '0.6875rem', color: dzfColors.navy[700], fontWeight: 600 }}>
-                    From: @{notif.senderUsername}
-                  </Typography>
-                  <Typography variant="caption" sx={{ fontSize: '0.6875rem', color: dzfColors.surfaces.textMuted }}>
-                    {new Date(notif.createdAt).toLocaleDateString(undefined, {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </Typography>
-                </Box>
               </Box>
-            ))
-          )}
+
+              <IconButton
+                size="small"
+                onClick={handleLogoutAction}
+                title="Log out"
+                sx={{
+                  p: 1,
+                  borderRadius: '8px',
+                  border: `1px solid ${dzfColors.surfaces.border}`,
+                  color: dzfColors.maroon[700],
+                  '&:hover': {
+                    backgroundColor: 'rgba(111, 17, 17, 0.05)',
+                  },
+                }}
+              >
+                <LogOutIcon size={18} />
+              </IconButton>
+            </Box>
+          </Toolbar>
+        </AppBar>
+
+        {/* Navigation Drawer Container (Allocates space in flex layout so main content never slips underneath) */}
+        <Box
+          component="nav"
+          sx={{
+            width: { md: sidebarWidth },
+            flexShrink: { md: 0 },
+            transition: 'width 0.2s ease',
+          }}
+          aria-label="DZF-ILAS staff sidebar"
+        >
+          {/* Mobile Drawer */}
+          <Drawer
+            variant="temporary"
+            open={mobileOpen}
+            onClose={handleDrawerToggle}
+            ModalProps={{ keepMounted: true }}
+            sx={{
+              display: { xs: 'block', md: 'none' },
+              '& .MuiDrawer-paper': {
+                boxSizing: 'border-box',
+                width: SIDEBAR_WIDTH,
+                backgroundColor: dzfColors.navy[950],
+                color: '#ffffff',
+              },
+            }}
+          >
+            {sidebarContent}
+          </Drawer>
+
+          {/* Desktop Persistent Sidebar */}
+          <Drawer
+            variant="permanent"
+            sx={{
+              display: { xs: 'none', md: 'block' },
+              '& .MuiDrawer-paper': {
+                boxSizing: 'border-box',
+                width: sidebarWidth,
+                borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+                backgroundColor: dzfColors.navy[950],
+                color: '#ffffff',
+                transition: 'width 0.2s ease',
+                overflowX: 'hidden',
+              },
+            }}
+            open
+          >
+            {sidebarContent}
+          </Drawer>
         </Box>
-      </Popover>
-    </Box>
-  </AppShellContext.Provider>
-);
+
+        {/* Main Content Area */}
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            width: { xs: '100%', md: `calc(100% - ${sidebarWidth}px)` },
+            minHeight: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            backgroundColor: dzfColors.surfaces.canvas,
+            transition: 'width 0.2s ease',
+            overflowX: 'hidden',
+          }}
+        >
+          {/* Spacer for fixed AppBar */}
+          <Toolbar sx={{ minHeight: '64px' }} />
+
+          {/* Content canvas with professional symmetric margins and padding */}
+          <Box
+            sx={{
+              flex: 1,
+              py: { xs: 2.5, sm: 3, md: 4 },
+              px: { xs: 2, sm: 3.5, md: 4, lg: 6 },
+              maxWidth: '1600px',
+              width: '100%',
+              mx: 'auto',
+              boxSizing: 'border-box',
+            }}
+          >
+            {children}
+          </Box>
+        </Box>
+
+        {/* Notifications Popover */}
+        <Popover
+          open={Boolean(notifAnchor)}
+          anchorEl={notifAnchor}
+          onClose={handleCloseNotifications}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          slotProps={{
+            paper: {
+              sx: {
+                width: { xs: 320, sm: 380 },
+                maxHeight: 520,
+                borderRadius: '16px',
+                boxShadow: '0 12px 36px rgba(11, 29, 46, 0.2)',
+                border: `1px solid ${dzfColors.surfaces.border}`,
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+              },
+            },
+          }}
+        >
+          {/* Popover Header */}
+          <Box
+            sx={{
+              p: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              borderBottom: `1px solid ${dzfColors.surfaces.border}`,
+              backgroundColor: dzfColors.surfaces.canvas,
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 800, color: dzfColors.navy[900] }}>
+                Notifications
+              </Typography>
+              {unreadCount > 0 && (
+                <Chip
+                  label={`${unreadCount} new`}
+                  size="small"
+                  sx={{
+                    height: 20,
+                    fontSize: '0.6875rem',
+                    fontWeight: 700,
+                    backgroundColor: dzfColors.maroon[900],
+                    color: '#ffffff',
+                  }}
+                />
+              )}
+            </Box>
+
+            {unreadCount > 0 && (
+              <Button
+                size="small"
+                onClick={handleMarkAllRead}
+                disabled={isUpdatingNotifs}
+                sx={{
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  color: dzfColors.navy[700],
+                  textTransform: 'none',
+                  p: 0.5,
+                  minWidth: 0,
+                  '&:hover': { backgroundColor: 'transparent', color: dzfColors.navy[950], textDecoration: 'underline' },
+                }}
+              >
+                Mark all read
+              </Button>
+            )}
+          </Box>
+
+          {/* Notifications List */}
+          <Box sx={{ overflowY: 'auto', flex: 1, maxHeight: 420 }}>
+            {notifications.length === 0 ? (
+              <Box sx={{ p: 4, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                <Box
+                  sx={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: '50%',
+                    backgroundColor: dzfColors.surfaces.canvas,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: dzfColors.surfaces.textMuted,
+                    mb: 0.5,
+                  }}
+                >
+                  <BellIcon size={22} />
+                </Box>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: dzfColors.navy[900] }}>
+                  No notifications yet
+                </Typography>
+                <Typography variant="caption" sx={{ color: dzfColors.surfaces.textMuted, maxWidth: 220 }}>
+                  You&apos;ll be alerted when operational tasks are assigned to you.
+                </Typography>
+              </Box>
+            ) : (
+              notifications.map((notif) => (
+                <Box
+                  key={notif.id}
+                  onClick={() => handleNotificationClick(notif)}
+                  sx={{
+                    p: 1.75,
+                    borderBottom: `1px solid ${dzfColors.surfaces.border}`,
+                    cursor: 'pointer',
+                    backgroundColor: notif.read ? '#ffffff' : 'rgba(2, 132, 199, 0.04)',
+                    borderLeft: notif.read ? '3px solid transparent' : `3px solid ${dzfColors.gold[500]}`,
+                    transition: 'background-color 0.15s ease',
+                    '&:hover': {
+                      backgroundColor: notif.read ? '#f8fafc' : 'rgba(2, 132, 199, 0.08)',
+                    },
+                  }}
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.5, gap: 1 }}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        fontWeight: notif.read ? 600 : 800,
+                        color: notif.read ? dzfColors.navy[700] : dzfColors.navy[950],
+                        fontSize: '0.8125rem',
+                        lineHeight: 1.3,
+                        flex: 1,
+                      }}
+                    >
+                      {notif.title}
+                    </Typography>
+                    {!notif.read && (
+                      <Box
+                        sx={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: '50%',
+                          backgroundColor: dzfColors.gold[500],
+                          flexShrink: 0,
+                          mt: 0.5,
+                        }}
+                      />
+                    )}
+                  </Box>
+
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: dzfColors.surfaces.textSecondary,
+                      fontSize: '0.75rem',
+                      lineHeight: 1.4,
+                      mb: 0.75,
+                    }}
+                  >
+                    {notif.message}
+                  </Typography>
+
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="caption" sx={{ fontSize: '0.6875rem', color: dzfColors.navy[700], fontWeight: 600 }}>
+                      From: @{notif.senderUsername}
+                    </Typography>
+                    <Typography variant="caption" sx={{ fontSize: '0.6875rem', color: dzfColors.surfaces.textMuted }}>
+                      {new Date(notif.createdAt).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </Typography>
+                  </Box>
+                </Box>
+              ))
+            )}
+          </Box>
+        </Popover>
+      </Box>
+    </AppShellContext.Provider>
+  );
 }
 
 export default AppShell;

@@ -179,6 +179,40 @@ DZF-ILAS is a ground-up rewrite delivering:
   - **Staff Birthdays:** Add `birthMonth` (1–12) and `birthDay` (1–31) dropdowns (month & day only, no birth year required) to the staff registration form (`/auth/register`), User schema, and Admin staff directory.
   - **Purge Hardcoded Data:** Remove static/mock fallback calendar fixtures, ensuring all views query live MongoDB collections with clean empty states.
 
+### Phase 9: Staff Task Workspace, Navigation Reordering, Modal Scrolling & Delegation Intelligence (New)
+
+- **Workspace Navigation Reordering & Notification Deep-Linking:**
+  - **Sidebar Order (`WORKSPACE` Section):**
+    1. Dashboard (`/dashboard`)
+    2. Task Board (`/dashboard/tasks`)
+    3. Library Catalog (`/dashboard/catalog`)
+    4. Patron Directory (`/dashboard/patrons`)
+    5. Attendant (`/dashboard/attendance`)
+    6. Leaderboard & Stats (`/dashboard/leaderboard`)
+    7. Operational Calendar (`/dashboard/calendar`)
+    8. Asset Inventory (`/dashboard/inventory`) — moved below Operational Calendar.
+  - **Contextual Notification Deep-Linking:**
+    - AppShell notification bell clicks navigate directly to target operational workspaces (`/dashboard/tasks` for task assignments/updates, `/dashboard/calendar` for calendar milestones and reminders).
+    - Eliminates dead-end redirects to the restricted `/dashboard/admin` path for non-administrative staff roles.
+
+- **Dialog & Form Layout Scrolling Fix:**
+  - Resolve viewport clipping and scrollbar lock in `PatronEditModal`, `BookEditModal`, and related edit dialogs.
+  - Enforce a flex column container on `<form>` (`maxHeight: calc(100vh - 64px)`, `display: flex`, `flexDirection: column`) and configure `<DialogContent dividers>` with `overflowY: auto` and `flex: 1`.
+  - Pin DialogTitle and DialogActions persistently while allowing smooth scrolling across all demographic, school, parent, and catalog fields.
+
+- **Staff Task Board Workspace & Role-Scoped Visibility Engine:**
+  - **Dedicated Workspace Route (`/dashboard/tasks`):**
+    - Accessible to all authenticated staff roles directly under Dashboard in the AppShell navigation.
+    - Renders the full interactive 3-column Kanban board (`To Do`, `In Progress`, `Completed`) with HTML5 drag-and-drop status transitions, task filtering, and creation modal.
+  - **Staff Self-Assignment & Private Task Scope:**
+    - Regular staff members (`librarian`, `ict`, `cohort_lead`, `intern`, `asst_admin`) can create tasks assigned strictly to themselves.
+    - Personal self-assigned tasks are private: visible and manageable exclusively by the author.
+  - **Leadership Delegation & "All Team Members" Broadcast:**
+    - Leadership roles (`ima`, `country_manager`, `admin`) can delegate tasks to individuals, specific departments, or **"All Team Members"** (`group:all`), which broadcasts the task to every active staff member.
+  - **Role-Scoped Privacy Enforcement in `listTasks`:**
+    - Private 1-on-1 tasks (e.g. IMA -> Country Manager, IMA -> Admin, or Admin -> individual subordinate) are visible only to the assignee and the assigner.
+    - Group and broadcast tasks (`group:all`, `group:librarian`, etc.) are visible to all members of that designated group.
+
 ## 4. Data - What are we storing?
 
 All 15 core production entities plus Phase 5 model extensions:

@@ -261,7 +261,7 @@ function LoginForm() {
       </Box>
 
       {/* Development Seed Helper */}
-      <Box
+      {/* <Box
         sx={{
           mt: 3.5,
           pt: 2.5,
@@ -283,7 +283,7 @@ function LoginForm() {
         >
           {seeding ? 'Seeding Default Accounts...' : 'Seed Default Accounts (admin / librarian)'}
         </DZFButton>
-      </Box>
+      </Box> */}
     </Card>
   );
 }

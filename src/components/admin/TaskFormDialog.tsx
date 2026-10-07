@@ -118,10 +118,30 @@ export default function TaskFormDialog({ open, onClose, onSubmit }: TaskFormDial
       onClose={loading ? undefined : onClose}
       maxWidth="sm"
       fullWidth
-      slotProps={{ paper: { sx: { borderRadius: '16px', p: 1 } } }}
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: '16px',
+            p: 1,
+            maxHeight: 'calc(100vh - 48px)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          },
+        },
+      }}
     >
-      <form onSubmit={handleSubmit}>
-        <DialogTitle sx={{ pb: 1 }}>
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+          maxHeight: 'calc(100vh - 64px)',
+          overflow: 'hidden',
+        }}
+      >
+        <DialogTitle sx={{ pb: 1, flexShrink: 0 }}>
           <Typography variant="h6" sx={{ fontWeight: 800, color: dzfColors.navy[900] }}>
             Create Operational Task
           </Typography>
@@ -130,7 +150,7 @@ export default function TaskFormDialog({ open, onClose, onSubmit }: TaskFormDial
           </Typography>
         </DialogTitle>
 
-        <DialogContent dividers sx={{ py: 2.5, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <DialogContent dividers sx={{ py: 2.5, display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 auto', overflowY: 'auto' }}>
           {error && (
             <Alert severity="error" sx={{ borderRadius: '8px' }}>
               {error}
@@ -223,7 +243,7 @@ export default function TaskFormDialog({ open, onClose, onSubmit }: TaskFormDial
           </TextField>
         </DialogContent>
 
-        <DialogActions sx={{ p: 2 }}>
+        <DialogActions sx={{ p: 2, flexShrink: 0 }}>
           <DZFButton variant="secondary" onClick={onClose} disabled={loading}>
             Cancel
           </DZFButton>

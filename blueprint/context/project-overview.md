@@ -1,23 +1,23 @@
 # DZF-ILAS - Project Overview
 
-<!-- blueprint:source-hash 83db94252472b98ac947c5491468972c3834a226a55f91be4096262285faf8ac -->
+<!-- blueprint:source-hash 86a9886352cedd22b947dfb2ae10415fb9871cc16110a161ee9b54186d97db35 -->
 
 > Centralized internal staff workspace and REST API backend for the Dzuels Educational Foundation (DZF), managing academic library cataloging, patron identity, circulation, and academy engagement.
 
 ## Problem
 
-The Dzuels Educational Foundation operates a high-volume academic library and learning center in Nigeria, managing 2,300+ catalog items, 670+ patrons, active book circulation, student digital literacy cohorts, reading competitions, and values publication. The legacy system suffered from fragmented auth patterns, unindexed database schemas, transaction desynchronization during circulations, and edge runtime failures. DZF-ILAS (Dzuels Integrated Library & Administrative System) provides a clean, unified Next.js web application and REST API backend for an upcoming companion Android mobile client. Phase 5 delivered shell modernizations, `/dashboard/*` reorganization, dynamic registration, monthly loan caps, and catalog acquisition studios. Phase 6 refined patron workflows with an Ijero Ekiti school directory, typed deletion security guards, interactive column sorting, and 60×40mm thermal bulk printing. Phase 7 introduced operational staff task governance (Kanban board, role-restricted assignment, notification bell alerts), a yearly foundation operational calendar with PDF ingestion and multi-stage alerts (30-day, 14-day, 7-day), staff self-registration with Admin-Only activation, top-to-bottom role hierarchy access control, and an isolated POS thermal label print engine. Phase 8 expands calendar capabilities with flexible multi-date CSV ingestion and an institutional read-only workspace route (`/dashboard/calendar`), rebrands the platform to DZF-ILAS, enforces strict SEO indexing rules ensuring only public Transcomm articles are indexed by search engines, adds staff birthday tracking (month and day), and purges hardcoded fallback data.
+The Dzuels Educational Foundation operates a high-volume academic library and learning center in Nigeria, managing 2,300+ catalog items, 670+ patrons, active book circulation, student digital literacy cohorts, reading competitions, and values publication. The legacy system suffered from fragmented auth patterns, unindexed database schemas, transaction desynchronization during circulations, and edge runtime failures. DZF-ILAS (Dzuels Integrated Library & Administrative System) provides a clean, unified Next.js web application and REST API backend for an upcoming companion Android mobile client. Phase 5 delivered shell modernizations, `/dashboard/*` reorganization, dynamic registration, monthly loan caps, and catalog acquisition studios. Phase 6 refined patron workflows with an Ijero Ekiti school directory, typed deletion security guards, interactive column sorting, and 60×40mm thermal bulk printing. Phase 7 introduced operational staff task governance (Kanban board, role-restricted assignment, notification bell alerts), a yearly foundation operational calendar with PDF ingestion and multi-stage alerts (30-day, 14-day, 7-day), staff self-registration with Admin-Only activation, top-to-bottom role hierarchy access control, and an isolated POS thermal label print engine. Phase 8 expanded calendar capabilities with multi-date CSV ingestion and an institutional read-only workspace route (`/dashboard/calendar`), rebranded the platform to DZF-ILAS, enforced strict SEO indexing rules ensuring only public Transcomm articles are indexed by search engines, added staff birthday tracking, and purged hardcoded fallback data. Phase 9 introduces a dedicated staff Task Board workspace (`/dashboard/tasks`), reorders the primary WORKSPACE navigation, repairs edit dialog viewport scrolling (patrons and books), deep-links notification alerts directly to relevant operational contexts, and establishes a role-scoped task delegation and privacy engine.
 
 ## Users & Role Hierarchy
 
 Top-to-bottom institutional hierarchy:
 1. **IMA (`ima`):** Institutional Oversight & International Management; can assign tasks to herself, Country Manager, Admin, and all staff.
 2. **Country Manager (`country_manager`):** Executive national operations; can assign tasks to Admin and all subordinate staff.
-3. **Super Administrator (`admin`):** Oversees the website and operational workflows; solely authorized to activate pending staff accounts and perform system-wide administrative overrides. Can assign tasks to himself and subordinates.
+3. **Super Administrator (`admin`):** Oversees website and operational workflows; solely authorized to activate pending staff accounts and perform system-wide administrative overrides. Can assign tasks to himself and subordinates.
 4. **Assistant Administrator (`asst_admin`):** Operations support, circulation locks, patron/catalog management.
 5. **ICT Officer (`ict`):** Technical operations, hardware scanners, system settings, patron and catalog management.
 6. **Librarian (`librarian`):** Monograph cataloging, loan checkouts/returns/renewals, hold queues, webcam registration, thermal label printing.
-7. **Intern / Staff (`intern`, `facility`, `cohort_lead`, `transcomm_author`):** Floor tasks, attendance marking, cohort rosters, and editorial contributions.
+7. **Intern / Staff (`intern`, `facility`, `cohort_lead`, `transcomm_author`):** Floor tasks, attendance marking, cohort rosters, personal task management, and editorial contributions.
 8. **Patrons (Beneficiaries):** Students (Primary to Senior Secondary), Teachers, Staff, and Community Guests.
 
 ## Usage model
@@ -57,6 +57,8 @@ Top-to-bottom institutional hierarchy:
 25. **Isolated POS Thermal Label Printing Engine** - Overhaul thermal print execution using an isolated hidden iframe pipeline for Xprinter XP-365B and thermal roll printers, eliminating Next.js root wrapper CSS hiding bugs and guaranteeing 100% visible print previews.
 26. **Operational Calendar CSV Ingestion & Staff Workspace Route** - Upload and extract foundation calendar milestones from CSV files (supporting Date, Event, Participants, Focal Person, Remarks, and multi-date activity stages), interactive review table before saving, Event schema enrichment, and dedicated read-only operational calendar workspace route (`/dashboard/calendar`) positioned under Leaderboard in the AppShell navigation.
 27. **DZF-ILAS Platform Rebranding, SEO Privacy Rules, Staff Birthdays & Data Cleanup** - Rebrand entire platform to DZF-ILAS (Dzuels Integrated Library & Administrative System) across UI, metadata, and configuration; enforce strict SEO robots rules ensuring only `/transcomm` is indexed by search engines while all internal routes are noindex; add birthdate (month and day only) to staff registration and directory; and purge all hardcoded mock/fallback calendar data across views.
+28. **Workspace Navigation Reordering, Notification Deep-Linking & Modal Form Scrolling Fix** - Reorder the AppShell WORKSPACE sidebar (Dashboard -> Task Board -> Library Catalog -> Patron Directory -> Attendant -> Leaderboard -> Calendar -> Inventory), update in-app notification bell clicks to deep-link directly to contextual targets (`/dashboard/tasks`, `/dashboard/calendar`) instead of admin-only routes, and fix form viewport height and scroll clipping in `PatronEditModal`, `BookEditModal`, and related edit dialogs using flex-column maxHeight and auto-scrolling content containers.
+29. **Staff Task Board Workspace, "All Team Members" Delegation & Role-Scoped Visibility Engine** - Implement dedicated staff task workspace route (`/dashboard/tasks`) with interactive 3-column Kanban board, expand task creation privileges allowing regular staff (`librarian`, `ict`, `cohort_lead`, `intern`, `asst_admin`) to create and manage private personal tasks, add "All Team Members" (`group:all`) broadcast delegation for leadership (`ima`, `country_manager`, `admin`), and enforce strict role-scoped task visibility in `listTasks` so private 1-on-1 tasks remain confidential while departmental and team-wide tasks are visible across all group members.
 
 ## Data model
 
@@ -69,84 +71,91 @@ Top-to-bottom institutional hierarchy:
 - `phone` (string, optional)
 - `birthMonth` (number, optional, 1-12)
 - `birthDay` (number, optional, 1-31)
-- `active` (boolean, default: false for new registrations, true for activated staff)
-- `createdAt`, `updatedAt` (Date)
+- `active` (boolean, default: false)
+- `createdAt` / `updatedAt` (Date)
+
+### Patron
+- `_id` (ObjectId)
+- `barcode` (string, 8 digits, `YYYY` + 4-digit sequence, unique)
+- `passportPhoto` (string, Cloudinary secure URL)
+- `firstname`, `surname`, `middlename` (string)
+- `patronType` (enum: `'student' | 'teacher' | 'staff' | 'guest'`)
+- `gender` (enum: `'male' | 'female'`)
+- `studentSchoolInfo` ({ schoolName, currentClass, schoolAddress })
+- `parentInfo` ({ parentName, parentPhoneNumber, relationshipToPatron, parentEmail })
+- `employerInfo` ({ employerName, schoolAddress })
+- `points` (number, default: 0)
+- `active` (boolean, default: true)
+- `createdAt` / `updatedAt` (Date)
+
+### Cataloging (Monograph)
+- `_id` (ObjectId)
+- `title` ({ mainTitle, subtitle })
+- `author` ({ mainAuthor, additionalAuthors: string[] })
+- `publicationInfo` ({ publisher, place, year })
+- `classification` (string, Dewey Decimal, e.g. "800.718")
+- `barcode` (string, unique accession barcode)
+- `shelfLocation` (string)
+- `copiesTotal` (number)
+- `copiesAvailable` (number)
+- `ISBN` (string, optional)
+- `createdAt` / `updatedAt` (Date)
+
+### Library (Circulation Loan)
+- `_id` (ObjectId)
+- `patronId` (ObjectId ref Patron)
+- `bookId` (ObjectId ref Cataloging)
+- `patronBarcode` (string)
+- `bookBarcode` (string)
+- `issueDate` (Date)
+- `dueDate` (Date)
+- `returnDate` (Date, optional)
+- `status` (enum: `'issued' | 'returned' | 'overdue' | 'renewed'`)
+- `eventTitle` (string, optional, for reading competition loans)
+- `pointsAwarded` (number: 3, 1, or 0)
+- `renewalsCount` (number, default: 0)
+- `createdAt` / `updatedAt` (Date)
 
 ### Task
 - `_id` (ObjectId)
 - `title` (string, required)
 - `description` (string, optional)
-- `priority` (enum: `'low' | 'medium' | 'high'`, default: 'medium')
-- `status` (enum: `'todo' | 'in_progress' | 'completed'`, default: 'todo', indexed)
 - `dueDate` (Date, optional)
-- `assignedTo` (string, username or role group identifier, required, indexed)
-- `assignedBy` (string, username of assigner, required)
-- `createdAt`, `updatedAt` (Date)
+- `priority` (enum: `'low' | 'medium' | 'high'`)
+- `status` (enum: `'todo' | 'in_progress' | 'completed'`)
+- `assignedBy` ({ name: string, username: string })
+- `assignedTo` ({ name: string, username: string })
+- `comments` (array)
+- `likes` (array)
+- `createdAt` / `updatedAt` (Date)
 
-### OperationalEvent / CalendarEvent
+### Event (Operational Calendar)
 - `_id` (ObjectId)
-- `title` (string, required)
-- `description` (string, optional)
-- `startDate` / `eventDate` (Date, required, indexed)
+- `eventName` (string, required)
+- `startDate` (Date, required)
 - `endDate` (Date, optional)
+- `academicYear` (string, e.g. "2026-2027")
 - `participants` (string, optional)
 - `focalPerson` (string, optional)
 - `remarks` (string, optional)
-- `category` (enum: `'academy' | 'library' | 'board' | 'inspection' | 'holiday' | 'competition' | 'general'`, indexed)
-- `year` (number, e.g. 2026, 2027, indexed)
-- `sourcePdfUrl` / `sourceCsvUrl` (string, optional)
-- `alertHorizons` / `alertsSent` (object: `{ oneMonth: boolean, twoWeeks: boolean, oneWeek: boolean }`)
-- `createdBy` (string)
-- `createdAt`, `updatedAt` (Date)
+- `targetAudience` (string, optional)
+- `alertsSent` ({ stage30: boolean, stage14: boolean, stage7: boolean })
+- `createdAt` / `updatedAt` (Date)
 
 ### Notification
 - `_id` (ObjectId)
-- `recipientUsername` (string, required, indexed)
+- `recipientUsername` (string, required, index)
 - `senderUsername` (string, required)
-- `type` (enum: `'task_assigned' | 'task_updated' | 'calendar_milestone' | 'account_pending' | 'system'`)
+- `type` (enum: `'task_assigned' | 'calendar_milestone' | 'account_activated' | 'system'`)
 - `title` (string, required)
 - `message` (string, required)
 - `link` (string, optional)
-- `read` (boolean, default: false, indexed)
-- `createdAt` (Date, default: Date.now)
+- `read` (boolean, default: false)
+- `createdAt` / `updatedAt` (Date)
 
-### Patron
-- `_id` (ObjectId)
-- `barcode` (string, unique, indexed, regex `/^\d{8}$/`, format: `YYYY` + 4-digit sequence)
-- `firstname`, `surname` (string, required)
-- `gender` (enum: `'male' | 'female'`)
-- `patronType` (enum: `'student' | 'teacher' | 'staff' | 'guest'`, indexed)
-- `class` (string, optional)
-- `active` (boolean, default: true, indexed)
-- `points` (number, default: 0)
-- `image_url` (object: `{ secure_url: string, public_id: string }`)
-- `parentGuardian` (object, optional: `{ name: string, phone: string, relationship: string, address: string }`)
-- `schoolInfo` (object, optional: `{ schoolName: string, classGrade: string, schoolAddress?: string }`)
-- `createdAt`, `updatedAt` (Date)
+## Tech Stack & Architecture
 
-### Cataloging & Inventory
-- `Cataloging`: `{ barcode, title, subtitle, author, classification (Dewey), controlNumber, isbn, isCheckedOut, copiesTotal, copiesAvailable, shelfLocation }`
-- `Inventory`: `{ bookId, itemBarcode, condition, status, acquisitionDate }`
-
-### Circulation (Library Loan)
-- `Library`: `{ patronId, patronBarcode, bookId, bookBarcode, bookTitle, issueDate, dueDate, returnDate, renewalsCount, status: 'borrowed'|'returned'|'overdue'|'lost', eventTitle, pointsAwarded, issuedBy, receivedBy }`
-
-### Academic Operations
-- `BookSummary`: `{ patronId, bookId, summaryText, keyLearnings, status, pointsAwarded, reviewedBy, reviewFeedback, reviewedAt }`
-- `Attendance`: `{ patronId, patronBarcode, patronName, classType, className, classDate, attendanceTime, markedBy, points, cohortId }`
-- `Cohort` & `CohortGroup`: `{ cohortType, displayName, description, active, students, googleSpreadsheetId }`
-- `Competition`: `{ title, sessionKey, categories, participants, isPublished, publishedAt }`
-- `MonthlyActivity`: `{ patronId, monthYear, summaryPoints, attendancePoints, competitionPoints, circulationPoints, totalScore, rank }`
-- `TranscommArticle`: `{ title, slug, content, excerpt, author, category, drnicerValue, published, publishedAt }`
-
-### Governance & System
-- `SystemSetting`: `{ emergencyCirculationLock, circulationLockReason, lockedBy, lockedAt }`
-- `AuditLog` / `AdminAuditLog`: `{ action, performedBy, performedByRole, targetEntity, targetId, details, createdAt }`
-- `Requisition`: `{ title, description, department, estimatedCost, status, requestedBy }`
-
-## Tech stack
-
-- **Next.js 16 (App Router) & React 19:** Server Components by default, Client Components for interactive UI, Route Handlers (`src/app/api/...`) for REST endpoints.
+- **Next.js 16 (App Router):** Fast SSR, dynamic Route Handlers, and client React 19 components.
 - **TypeScript:** Strict type checking across domain models, props, and API request/response contracts.
 - **Material UI (`@mui/material`, `@mui/material-nextjs`):** Custom design system built on MUI primitives using Emotion engine.
 - **MongoDB & Mongoose:** Document database with cached singleton connection pool and compound indexes.
@@ -171,18 +180,19 @@ Not applicable. DZF-ILAS is a 100% internal non-profit educational and library m
   - `/auth/login` - Staff credential sign-in
   - `/auth/register` - Staff self-registration with birth month/day and pending admin activation
   - `/dashboard` - Summary counters, circulation stats, gender ratios, upcoming milestones
+  - `/dashboard/tasks` - Dedicated staff task workspace with interactive 3-column Kanban board
   - `/dashboard/catalog` & `/dashboard/catalog/acquire` - Monograph inventory and acquisition studio
   - `/dashboard/patrons` & `/dashboard/patrons/register` - Patron directory, dynamic registration, Xprinter XP-365B bulk printing
   - `/dashboard/circulations` - Barcode loan transactions, checkout, return, holds, overdues
   - `/dashboard/attendance` - Barcode scanner interface ("Attendant")
   - `/dashboard/leaderboard` - Activity metrics and patron leaderboard
   - `/dashboard/calendar` - Dedicated staff operational calendar matrix & agenda stream
+  - `/dashboard/inventory` - Foundation asset inventory and equipment logs
   - `/dashboard/cohorts` - Digital literacy cohorts, student rosters, Google Sheets sync
   - `/dashboard/competitions` - Live competition judging and broadcast results
   - `/dashboard/certificates` - Vector certificate studio & export pipeline
   - `/dashboard/transcomm` - Staff editorial management for DRNICER articles
   - `/dashboard/admin` - Staff RBAC accounts, emergency circulation overrides, audit ledger, CSV/PDF calendar ingestion tools
-  - `/dashboard/admin/tasks` - Operational staff tasks Kanban board with drag-and-drop
 
 ## Deployment
 

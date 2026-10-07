@@ -429,7 +429,7 @@ export async function createTask(params: {
               type: 'task_assigned',
               title: 'New Team Task Assigned',
               message: `@${params.staffUsername} assigned your team a task: "${params.title}" (Priority: ${params.priority})`,
-              link: '/dashboard/admin',
+              link: '/dashboard/tasks',
               read: false,
             });
           }
@@ -497,7 +497,7 @@ export async function createTask(params: {
       type: 'task_assigned',
       title: 'New Operational Task Assigned',
       message: `@${params.staffUsername} assigned you a task: "${params.title}" (Priority: ${params.priority})`,
-      link: '/dashboard/admin',
+      link: '/dashboard/tasks',
       read: false,
     });
   }

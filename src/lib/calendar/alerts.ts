@@ -124,7 +124,7 @@ export async function evaluateCalendarAlerts(referenceDate: Date = new Date()): 
           type: 'calendar_milestone',
           title: alertTitle,
           message: alertMessage,
-          link: '/dashboard/admin',
+          link: '/dashboard/calendar',
           read: false,
         });
       }
