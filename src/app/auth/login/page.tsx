@@ -147,7 +147,7 @@ function LoginForm() {
             mt: 0.5,
           }}
         >
-          Integrated Library & Learning System
+          Integrated Library & Administrative System
         </Typography>
 
         <Box sx={{ mt: 1.5 }}>

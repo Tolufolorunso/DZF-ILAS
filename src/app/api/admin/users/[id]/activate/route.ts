@@ -67,7 +67,7 @@ export async function PATCH(
         senderUsername: sessionUser.username,
         type: 'system',
         title: '🎉 Staff Account Activated',
-        message: `Welcome, ${user.name}! Your account has been approved and activated with role "${user.role.toUpperCase()}". You now have access to the DZF-ILLS workspace.`,
+        message: `Welcome, ${user.name}! Your account has been approved and activated with role "${user.role.toUpperCase()}". You now have access to the DZF-ILAS workspace.`,
         link: '/dashboard',
         read: false,
       });

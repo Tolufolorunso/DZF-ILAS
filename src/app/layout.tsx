@@ -3,8 +3,21 @@ import ThemeRegistry from '@/theme/ThemeRegistry';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'DZF-ILLS | Dzuels Integrated Library & Learning System',
+  title: 'DZF-ILAS | Dzuels Integrated Library & Administrative System',
   description: 'Internal staff workspace and digital library system for Dzuels Educational Foundation.',
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'none',
+      'max-snippet': -1,
+    },
+  },
   icons: {
     icon: [
       { url: '/images/logo.png', type: 'image/png' },

@@ -26,6 +26,8 @@ export interface IUser {
   active: boolean;
   role: UserRole;
   dateOfBirth?: Date;
+  birthMonth?: number;
+  birthDay?: number;
   userImg?: IUserImage;
   createdAt: Date;
   updatedAt: Date;
@@ -82,6 +84,16 @@ const UserSchema = new Schema<IUserDocument>(
     },
     dateOfBirth: {
       type: Date,
+    },
+    birthMonth: {
+      type: Number,
+      min: 1,
+      max: 12,
+    },
+    birthDay: {
+      type: Number,
+      min: 1,
+      max: 31,
     },
     userImg: {
       secure_url: { type: String },

@@ -5,7 +5,7 @@ import { previewNextPatronBarcode } from '@/lib/patron/barcode';
 import PatronRegisterClient from './PatronRegisterClient';
 
 export const metadata = {
-  title: 'Register Patron | DZF-ILLS',
+  title: 'Register Patron | DZF-ILAS',
   description: 'Enroll new library patron with live webcam photo capture, barcode assignment, and thermal label printing.',
 };
 

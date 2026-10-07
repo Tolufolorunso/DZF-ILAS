@@ -125,7 +125,7 @@ export default function HomePageClient({
                     letterSpacing: '-0.01em',
                   }}
                 >
-                  DZF-ILLS
+                  DZF-ILAS
                 </Typography>
                 <Typography
                   variant="caption"
@@ -138,7 +138,7 @@ export default function HomePageClient({
                     display: 'block',
                   }}
                 >
-                  Dzuels Integrated Library & Learning System
+                  Dzuels Integrated Library & Administrative System
                 </Typography>
               </Box>
             </Box>
@@ -244,7 +244,7 @@ export default function HomePageClient({
                   color: '#ffffff',
                 }}
               >
-                Welcome to Dzuels Integrated Library & Learning System
+                Welcome to Dzuels Integrated Library & Administrative System
               </Typography>
               <Typography
                 variant="body1"
@@ -874,7 +874,7 @@ export default function HomePageClient({
                 </Typography>
               </Box>
               <Typography variant="body2" sx={{ color: '#94a3b8', maxWidth: 460 }}>
-                Integrated Library & Learning System (DZF-ILLS) — Station AAoJ. Fostering literacy, academic discipline, and technological empowerment.
+                Integrated Library & Administrative System (DZF-ILAS) — Station AAoJ. Fostering literacy, academic discipline, and technological empowerment.
               </Typography>
             </Grid>
 

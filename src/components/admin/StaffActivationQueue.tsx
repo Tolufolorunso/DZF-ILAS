@@ -34,8 +34,18 @@ export interface IStaffUser {
   phone: string;
   role: string;
   active: boolean;
+  birthMonth?: number;
+  birthDay?: number;
   createdAt?: string;
   updatedAt?: string;
+}
+
+function formatStaffBirthday(month?: number, day?: number): string | null {
+  if (!month || !day) return null;
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const mStr = months[month - 1];
+  if (!mStr) return null;
+  return `${mStr} ${day}`;
 }
 
 interface StaffActivationQueueProps {
@@ -422,7 +432,7 @@ export default function StaffActivationQueue({ currentUsername, canManage }: Sta
                         @{pending.username} &bull; 📞 {pending.phone}
                       </Typography>
 
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1, mt: 1 }}>
                         <Typography variant="caption" sx={{ color: '#64748B', fontWeight: 600 }}>
                           Requested Role:
                         </Typography>
@@ -437,6 +447,19 @@ export default function StaffActivationQueue({ currentUsername, canManage }: Sta
                             height: 22,
                           }}
                         />
+                        {formatStaffBirthday(pending.birthMonth, pending.birthDay) && (
+                          <Chip
+                            size="small"
+                            label={`🎂 ${formatStaffBirthday(pending.birthMonth, pending.birthDay)}`}
+                            sx={{
+                              bgcolor: '#FEF3C7',
+                              color: '#92400E',
+                              fontWeight: 700,
+                              fontSize: '0.72rem',
+                              height: 22,
+                            }}
+                          />
+                        )}
                       </Box>
                     </Box>
                   </Box>
@@ -559,6 +582,7 @@ export default function StaffActivationQueue({ currentUsername, canManage }: Sta
                 <TableCell sx={{ fontWeight: 800 }}>Username</TableCell>
                 <TableCell sx={{ fontWeight: 800 }}>Contact Phone</TableCell>
                 <TableCell sx={{ fontWeight: 800 }}>Assigned Role</TableCell>
+                <TableCell sx={{ fontWeight: 800 }}>Birthday</TableCell>
                 <TableCell sx={{ fontWeight: 800, textAlign: 'center' }}>Account Status</TableCell>
                 <TableCell sx={{ fontWeight: 800, textAlign: 'right' }}>Actions</TableCell>
               </TableRow>
@@ -566,13 +590,13 @@ export default function StaffActivationQueue({ currentUsername, canManage }: Sta
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 6 }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
                     <CircularProgress size={28} sx={{ color: dzfColors.navy[900] }} />
                   </TableCell>
                 </TableRow>
               ) : filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
                     No staff members match the current filter criteria.
                   </TableCell>
                 </TableRow>
@@ -633,6 +657,27 @@ export default function StaffActivationQueue({ currentUsername, canManage }: Sta
                             height: 22,
                           }}
                         />
+                      </TableCell>
+
+                      {/* Birthday */}
+                      <TableCell>
+                        {formatStaffBirthday(u.birthMonth, u.birthDay) ? (
+                          <Chip
+                            size="small"
+                            label={`🎂 ${formatStaffBirthday(u.birthMonth, u.birthDay)}`}
+                            sx={{
+                              bgcolor: '#FEF3C7',
+                              color: '#92400E',
+                              fontWeight: 700,
+                              fontSize: '0.72rem',
+                              height: 22,
+                            }}
+                          />
+                        ) : (
+                          <Typography variant="caption" sx={{ color: '#94A3B8' }}>
+                            —
+                          </Typography>
+                        )}
                       </TableCell>
 
                       {/* Status */}
@@ -751,7 +796,7 @@ export default function StaffActivationQueue({ currentUsername, canManage }: Sta
 
           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
             Role permissions dictate which navigation sections and administrative actions this staff member can access
-            within the DZF-ILLS workspace.
+            within the DZF-ILAS workspace.
           </Typography>
         </DialogContent>
 

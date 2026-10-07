@@ -122,7 +122,7 @@ export default function ThermalBookLabel({
             mt: 0.2,
           }}
         >
-          ILLS • Library Book Spine & Cover Label
+          ILAS • Library Book Spine & Cover Label
         </Typography>
       </Box>
 

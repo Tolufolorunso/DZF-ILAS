@@ -28,6 +28,21 @@ const AVAILABLE_ROLES = [
   { value: 'facility', label: 'Facility Maintenance' },
 ];
 
+const MONTH_OPTIONS = [
+  { value: 1, label: 'January' },
+  { value: 2, label: 'February' },
+  { value: 3, label: 'March' },
+  { value: 4, label: 'April' },
+  { value: 5, label: 'May' },
+  { value: 6, label: 'June' },
+  { value: 7, label: 'July' },
+  { value: 8, label: 'August' },
+  { value: 9, label: 'September' },
+  { value: 10, label: 'October' },
+  { value: 11, label: 'November' },
+  { value: 12, label: 'December' },
+];
+
 export default function RegisterPage() {
   const router = useRouter();
 
@@ -35,6 +50,8 @@ export default function RegisterPage() {
   const [username, setUsername] = React.useState('');
   const [phone, setPhone] = React.useState('');
   const [requestedRole, setRequestedRole] = React.useState('librarian');
+  const [birthMonth, setBirthMonth] = React.useState<number | ''>('');
+  const [birthDay, setBirthDay] = React.useState<number | ''>('');
   const [password, setPassword] = React.useState('');
   const [confirmPassword, setConfirmPassword] = React.useState('');
   const [showPassword, setShowPassword] = React.useState(false);
@@ -42,6 +59,11 @@ export default function RegisterPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [isSuccess, setIsSuccess] = React.useState(false);
   const [registeredUsername, setRegisteredUsername] = React.useState('');
+
+  const maxDaysForMonth = React.useMemo(() => {
+    if (!birthMonth) return 31;
+    return [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][Number(birthMonth) - 1];
+  }, [birthMonth]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,6 +95,8 @@ export default function RegisterPage() {
           username: username.trim().toLowerCase(),
           phone: phone.trim(),
           requestedRole,
+          birthMonth: birthMonth !== '' ? Number(birthMonth) : undefined,
+          birthDay: birthDay !== '' ? Number(birthDay) : undefined,
           password,
         }),
       });
@@ -147,7 +171,7 @@ export default function RegisterPage() {
             Staff Self-Registration
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
-            Dzuels Educational Foundation &bull; Integrated Library System
+            Dzuels Educational Foundation &bull; DZF-ILAS
           </Typography>
         </Box>
 
@@ -255,6 +279,62 @@ export default function RegisterPage() {
                     </MenuItem>
                   ))}
                 </TextField>
+              </Box>
+
+              {/* Staff Birthday Section (Month and Day only) */}
+              <Box sx={{ p: 1.5, bgcolor: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                <Typography variant="caption" sx={{ fontWeight: 700, color: dzfColors.navy[900], display: 'block', mb: 1 }}>
+                  🎂 Birthday (Month &amp; Day only)
+                </Typography>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.5 }}>
+                  <TextField
+                    select
+                    label="Birth Month"
+                    size="small"
+                    value={birthMonth}
+                    onChange={(e) => {
+                      const m = e.target.value === '' ? '' : Number(e.target.value);
+                      setBirthMonth(m);
+                      if (birthDay && m) {
+                        const maxD = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
+                        if (Number(birthDay) > maxD) setBirthDay(maxD);
+                      }
+                    }}
+                    fullWidth
+                    slotProps={{ select: { displayEmpty: true } }}
+                  >
+                    <MenuItem value="">
+                      <em>-- Select Month --</em>
+                    </MenuItem>
+                    {MONTH_OPTIONS.map((m) => (
+                      <MenuItem key={m.value} value={m.value}>
+                        {m.label}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+
+                  <TextField
+                    select
+                    label="Birth Day"
+                    size="small"
+                    value={birthDay}
+                    onChange={(e) => setBirthDay(e.target.value === '' ? '' : Number(e.target.value))}
+                    fullWidth
+                    slotProps={{ select: { displayEmpty: true } }}
+                  >
+                    <MenuItem value="">
+                      <em>-- Select Day --</em>
+                    </MenuItem>
+                    {Array.from({ length: maxDaysForMonth }, (_, i) => i + 1).map((d) => (
+                      <MenuItem key={d} value={d}>
+                        {d}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                </Box>
+                <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.75, fontSize: '0.72rem' }}>
+                  Used for foundation birthday celebrations. No birth year is required.
+                </Typography>
               </Box>
 
               <DZFInput

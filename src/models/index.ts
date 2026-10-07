@@ -1,4 +1,4 @@
-// Barrel export for all DZF-ILLS domain Mongoose models and type definitions
+// Barrel export for all DZF-ILAS domain Mongoose models and type definitions
 
 export * from './User';
 export * from './Patron';

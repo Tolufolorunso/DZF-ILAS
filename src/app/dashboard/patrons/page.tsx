@@ -6,7 +6,7 @@ import AppShell from '@/components/layout/AppShell';
 import PatronListClient from './PatronListClient';
 
 export const metadata = {
-  title: 'Patron Directory | DZF-ILLS',
+  title: 'Patron Directory | DZF-ILAS',
   description: 'Manage library patrons, live photo capture, and 60x40mm thermal roll barcode printing.',
 };
 

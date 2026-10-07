@@ -27,6 +27,39 @@ interface DashboardClientProps {
 export default function DashboardClient({ user }: DashboardClientProps) {
   const router = useRouter();
   const [activeNav, setActiveNav] = React.useState('dashboard');
+  const [stats, setStats] = React.useState<{
+    patrons: number;
+    books: number;
+    activeLoans: number;
+    attendanceCount: number;
+  } | null>(null);
+  const [statsLoading, setStatsLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    let mounted = true;
+    fetch('/api/public/stats')
+      .then((res) => res.json())
+      .then((data) => {
+        if (mounted && data.success && data.stats) {
+          setStats({
+            patrons: data.stats.patrons || 0,
+            books: data.stats.books || 0,
+            activeLoans: data.stats.activeLoans || 0,
+            attendanceCount: data.stats.attendanceCount || 0,
+          });
+        }
+      })
+      .catch((err) => {
+        console.error('[STATS_FETCH_ERROR]', err);
+      })
+      .finally(() => {
+        if (mounted) setStatsLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -100,7 +133,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
                 lineHeight: 1.6,
               }}
             >
-              Dzuels Integrated Library & Learning System central workspace. Circulation
+              Dzuels Integrated Library & Administrative System (DZF-ILAS) central workspace. Circulation
               desks, barcode attendance scanners, and digital academy cohorts are operating normally.
             </Typography>
 
@@ -142,9 +175,8 @@ export default function DashboardClient({ user }: DashboardClientProps) {
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <DZFStatCard
               title="Registered Patrons"
-              value="674"
-              subtitle="Active Patrons"
-              trend={{ value: "+12 this month", positive: true }}
+              value={statsLoading ? '...' : (stats?.patrons ?? 0).toLocaleString()}
+              subtitle="Active Patrons in DB"
               accentColor="navy"
               icon={<UsersIcon size={24} color={dzfColors.navy[700]} />}
             />
@@ -152,9 +184,8 @@ export default function DashboardClient({ user }: DashboardClientProps) {
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <DZFStatCard
               title="Cataloged Volumes"
-              value="2,342"
+              value={statsLoading ? '...' : (stats?.books ?? 0).toLocaleString()}
               subtitle="Dewey System Active"
-              trend={{ value: "+45 new acquisitions", positive: true }}
               accentColor="maroon"
               icon={<BookIcon size={24} color={dzfColors.maroon[700]} />}
             />
@@ -162,9 +193,8 @@ export default function DashboardClient({ user }: DashboardClientProps) {
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <DZFStatCard
               title="Active Loans"
-              value="148"
+              value={statsLoading ? '...' : (stats?.activeLoans ?? 0).toLocaleString()}
               subtitle="Circulating Copies"
-              trend={{ value: "6 due today", neutral: true }}
               accentColor="gold"
               icon={<ClockIcon size={24} color={dzfColors.gold[500]} />}
             />
@@ -172,9 +202,8 @@ export default function DashboardClient({ user }: DashboardClientProps) {
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <DZFStatCard
               title="Today's Attendance"
-              value="56"
-              subtitle="High-Speed Scanner"
-              trend={{ value: "+18% vs last week", positive: true }}
+              value={statsLoading ? '...' : (stats?.attendanceCount ?? 0).toLocaleString()}
+              subtitle="All Recorded Check-ins"
               accentColor="success"
               icon={<BarcodeIcon size={24} color={dzfColors.status.success.badge} />}
             />

@@ -13,7 +13,7 @@ for optional tool settings.
 
 ## What this is
 
-DZF-ILLS (Dzuels Integrated Library & Learning System) is an internal staff web application designed as a modern academic SaaS and digital workspace.
+DZF-ILAS (Dzuels Integrated Library & Administrative System) is an internal staff web application designed as a modern academic SaaS and digital workspace.
 
 This project is built with the **AI Blueprint**, a workflow layer, not an
 app skeleton. The workflow is defined by the local skills and context files below.

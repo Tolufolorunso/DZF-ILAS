@@ -4,8 +4,8 @@ import { getSessionUser } from '@/lib/auth/session';
 import { AppShell } from '@/components/layout/AppShell';
 
 export const metadata = {
-  title: 'Staff Dashboard | DZF-ILLS',
-  description: 'Dzuels Integrated Library & Learning System central workspace',
+  title: 'Staff Dashboard | DZF-ILAS',
+  description: 'Dzuels Integrated Library & Administrative System central workspace',
 };
 
 export default async function DashboardLayout({

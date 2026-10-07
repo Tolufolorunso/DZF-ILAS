@@ -1,6 +1,6 @@
-# DZF-ILLS
+# DZF-ILAS
 
-Dzuels Integrated Library & Learning System — an internal staff web application designed as a modern academic SaaS and digital workspace.
+Dzuels Integrated Library & Administrative System — an internal staff web application designed as a modern academic SaaS and digital workspace.
 
 ## Getting Started
 

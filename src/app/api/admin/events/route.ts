@@ -18,8 +18,10 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const limit = parseInt(searchParams.get('limit') || '50', 10);
+    const yearParam = searchParams.get('academicYear');
+    const academicYear = yearParam ? parseInt(yearParam, 10) : undefined;
 
-    const events = await listEvents({ limit });
+    const events = await listEvents({ academicYear, limit });
     return NextResponse.json({ success: true, events }, { status: 200 });
   } catch (error) {
     console.error('[GET_EVENTS_ERROR]', error);

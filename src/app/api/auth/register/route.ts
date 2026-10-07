@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, username, password, phone, requestedRole, dateOfBirth } = body;
+    const { name, username, password, phone, requestedRole, dateOfBirth, birthMonth, birthDay } = body;
 
     // Validate Full Name
     if (!name || String(name).trim().length < 2) {
@@ -65,6 +65,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate Birth Month & Day (month and day only, no year)
+    let parsedBirthMonth: number | undefined = undefined;
+    let parsedBirthDay: number | undefined = undefined;
+
+    if (birthMonth !== undefined && birthMonth !== null && birthMonth !== '') {
+      const m = parseInt(String(birthMonth), 10);
+      if (isNaN(m) || m < 1 || m > 12) {
+        return NextResponse.json(
+          { success: false, error: 'Birth Month must be between 1 (January) and 12 (December).' },
+          { status: 400 }
+        );
+      }
+      parsedBirthMonth = m;
+    }
+
+    if (birthDay !== undefined && birthDay !== null && birthDay !== '') {
+      const d = parseInt(String(birthDay), 10);
+      if (isNaN(d) || d < 1 || d > 31) {
+        return NextResponse.json(
+          { success: false, error: 'Birth Day must be between 1 and 31.' },
+          { status: 400 }
+        );
+      }
+      parsedBirthDay = d;
+    }
+
+    if (parsedBirthMonth && parsedBirthDay) {
+      const maxDays = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][parsedBirthMonth - 1];
+      if (parsedBirthDay > maxDays) {
+        return NextResponse.json(
+          { success: false, error: `Invalid day ${parsedBirthDay} for the selected month (maximum is ${maxDays}).` },
+          { status: 400 }
+        );
+      }
+    }
+
     // Validate Role (defaults to 'intern' if unspecified or invalid)
     let assignedRole: UserRole = 'intern';
     if (requestedRole && ALL_ROLES.includes(requestedRole as UserRole)) {
@@ -97,6 +133,8 @@ export async function POST(request: NextRequest) {
       role: assignedRole,
       active: false, // Inactive by default; requires administrator activation
       dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
+      birthMonth: parsedBirthMonth,
+      birthDay: parsedBirthDay,
     });
 
     // Alert all active administrators regarding new pending staff registration

@@ -374,7 +374,7 @@ export function AppShell({
                 letterSpacing: '-0.01em',
               }}
             >
-              DZF-ILLS
+              DZF-ILAS
             </Typography>
             <Typography
               variant="caption"
@@ -387,7 +387,7 @@ export function AppShell({
                 display: 'block',
               }}
             >
-              Library & Learning
+              Library & Administration
             </Typography>
           </Box>
         )}
@@ -672,7 +672,7 @@ export function AppShell({
           flexShrink: { md: 0 },
           transition: 'width 0.2s ease',
         }}
-        aria-label="DZF-ILLS staff sidebar"
+        aria-label="DZF-ILAS staff sidebar"
       >
         {/* Mobile Drawer */}
         <Drawer

@@ -57,7 +57,7 @@ export function TranscommPublicHeader() {
                   color: dzfColors.navy[700],
                 }}
               >
-                DZF-ILLS
+                DZF-ILAS
               </Typography>
               <Typography
                 variant="caption"

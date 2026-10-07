@@ -18,7 +18,7 @@ import DZFButton from '@/components/ui/DZFButton';
 import { AlertTriangleIcon } from '@/components/ui/DZFIcons';
 
 export const metadata = {
-  title: 'Admin Control Center | DZF-ILLS',
+  title: 'Admin Control Center | DZF-ILAS',
   description: 'Executive administration, circulation overrides, requisition review, and system audit logs.',
 };
 

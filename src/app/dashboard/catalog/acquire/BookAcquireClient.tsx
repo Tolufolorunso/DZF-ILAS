@@ -616,7 +616,7 @@ export default function BookAcquireClient({
                       placeholder="Leave blank to use auto-generated"
                       value={customBarcode}
                       onChange={(e) => setCustomBarcode(e.target.value)}
-                      helperText="Scan physical barcode label or let DZF-ILLS generate the institutional barcode sequence."
+                      helperText="Scan physical barcode label or let DZF-ILAS generate the institutional barcode sequence."
                       fullWidth
                     />
                   </Grid>
