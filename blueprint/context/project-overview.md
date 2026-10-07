@@ -1,19 +1,19 @@
 # DZF-ILAS - Project Overview
 
-<!-- blueprint:source-hash 86a9886352cedd22b947dfb2ae10415fb9871cc16110a161ee9b54186d97db35 -->
+<!-- blueprint:source-hash e84eea217ef1b7e593b5d94bcebbfb2073345d87b8316ff889d5ad1b0f0c4873 -->
 
 > Centralized internal staff workspace and REST API backend for the Dzuels Educational Foundation (DZF), managing academic library cataloging, patron identity, circulation, and academy engagement.
 
 ## Problem
 
-The Dzuels Educational Foundation operates a high-volume academic library and learning center in Nigeria, managing 2,300+ catalog items, 670+ patrons, active book circulation, student digital literacy cohorts, reading competitions, and values publication. The legacy system suffered from fragmented auth patterns, unindexed database schemas, transaction desynchronization during circulations, and edge runtime failures. DZF-ILAS (Dzuels Integrated Library & Administrative System) provides a clean, unified Next.js web application and REST API backend for an upcoming companion Android mobile client. Phase 5 delivered shell modernizations, `/dashboard/*` reorganization, dynamic registration, monthly loan caps, and catalog acquisition studios. Phase 6 refined patron workflows with an Ijero Ekiti school directory, typed deletion security guards, interactive column sorting, and 60×40mm thermal bulk printing. Phase 7 introduced operational staff task governance (Kanban board, role-restricted assignment, notification bell alerts), a yearly foundation operational calendar with PDF ingestion and multi-stage alerts (30-day, 14-day, 7-day), staff self-registration with Admin-Only activation, top-to-bottom role hierarchy access control, and an isolated POS thermal label print engine. Phase 8 expanded calendar capabilities with multi-date CSV ingestion and an institutional read-only workspace route (`/dashboard/calendar`), rebranded the platform to DZF-ILAS, enforced strict SEO indexing rules ensuring only public Transcomm articles are indexed by search engines, added staff birthday tracking, and purged hardcoded fallback data. Phase 9 introduces a dedicated staff Task Board workspace (`/dashboard/tasks`), reorders the primary WORKSPACE navigation, repairs edit dialog viewport scrolling (patrons and books), deep-links notification alerts directly to relevant operational contexts, and establishes a role-scoped task delegation and privacy engine.
+The Dzuels Educational Foundation operates an academic library and learning center in Nigeria, managing 2,300+ catalog items, 670+ patrons, active book circulation, student digital literacy cohorts, reading competitions, and values publication. DZF-ILAS (Dzuels Integrated Library & Administrative System) provides a clean, unified Next.js web application and REST API backend. Phases 1-9 delivered cataloging, patron barcode identity, circulation gamification, cohort Google Sheets synchronization, competition scoring, certificate studio, operational calendar ingestion, staff self-registration, and a Kanban task workspace. Phase 10 introduces circulation safety confirmation modals (return/renew), a 5-day default loan period, patron phone optional and parent phone required rules, an automated annual August 31st student grade progression ladder, a live daily staff activity stream at `/dashboard/admin/daily-actions` with same-day reversible undo for Admin (concealing IMA and Country Manager actions, with a 12:00 AM midnight cutoff), and real-time task progression oversight for assigners.
 
 ## Users & Role Hierarchy
 
 Top-to-bottom institutional hierarchy:
 1. **IMA (`ima`):** Institutional Oversight & International Management; can assign tasks to herself, Country Manager, Admin, and all staff.
 2. **Country Manager (`country_manager`):** Executive national operations; can assign tasks to Admin and all subordinate staff.
-3. **Super Administrator (`admin`):** Oversees website and operational workflows; solely authorized to activate pending staff accounts and perform system-wide administrative overrides. Can assign tasks to himself and subordinates.
+3. **Super Administrator (`admin`):** Oversees website and operations; activates staff accounts, inspects daily action streams, undos same-day staff actions until midnight, and executes overrides.
 4. **Assistant Administrator (`asst_admin`):** Operations support, circulation locks, patron/catalog management.
 5. **ICT Officer (`ict`):** Technical operations, hardware scanners, system settings, patron and catalog management.
 6. **Librarian (`librarian`):** Monograph cataloging, loan checkouts/returns/renewals, hold queues, webcam registration, thermal label printing.
@@ -24,41 +24,43 @@ Top-to-bottom institutional hierarchy:
 
 - **Scale & Performance:** 670+ registered patrons, 2,300+ catalog items, daily attendance batches, and real-time competition leaderboards.
 - **Reachability & Trust:** Authenticated internal staff platform (`/dashboard/*`). Staff identities verified via JWT sessions. Public marketing/reading routes (`/`, `/transcomm`).
-- **SEO & Search Indexing:** Strict privacy configuration: only `/transcomm` and `/transcomm/*` are indexed by Google and search engines (`index, follow`); all internal staff routes (`/dashboard/*`, `/auth/*`, `/api/*`, `/`) are strictly disallowed and marked `noindex, nofollow`.
-- **Dual-Mode API Interoperability:** Consumed concurrently by the Next.js web frontend (HTTP-only `ils_token` cookies) and the Android mobile app (`Authorization: Bearer <token>`).
-- **Hardware Integration:** Instant input support for physical USB/Bluetooth barcode scanners with automatic submit triggers; continuous 60mm × 40mm roll printing on Xprinter XP-365B thermal label printers via an isolated iframe print pipeline.
+- **SEO & Search Indexing:** Strict privacy: only `/transcomm` and `/transcomm/*` are indexed (`index, follow`); all staff routes (`/dashboard/*`, `/auth/*`, `/api/*`, `/`) are `noindex, nofollow`.
+- **Dual-Mode API Interoperability:** Consumed concurrently by Next.js web frontend (`ils_token` cookie) and Android mobile app (`Authorization: Bearer <token>`).
+- **Hardware Integration:** Instant input for USB/Bluetooth barcode scanners; continuous 60mm × 40mm roll printing on Xprinter XP-365B thermal label printers via an isolated iframe print pipeline.
 
 ## Features
 
-1. **Design System & Reusable UI Components** - Material UI theme (`src/theme/`) with DZF tokens (Maroon `#6f1111`, Navy `#17324d`, Gold `#cca349`), buttons, inputs, barcode scanner input, headers, badges, and data tables.
-2. **Complete Domain Data Models & Database Infrastructure** - Cached MongoDB connection pool (`src/lib/db.ts`) and TypeScript Mongoose models with validation, compound indexes, and relationship helpers for all 15 production schemas.
-3. **Staff Authentication, Session Management & Dual-Mode REST API** - Staff login, bcrypt password hashing, JWT generation, RBAC guards, and dual-auth middleware (cookies for web, bearer tokens for Android).
-4. **Patron Lifecycle, Photo Capture & 60x40 Thermal Barcode Studio** - Webcam photo capture & Cloudinary upload, 8-digit barcode sequence (`YYYY` + 4 digits), 60×40mm thermal label layout, and mobile search endpoints.
+1. **Design System & Reusable UI Components** - Theme tokens (`src/theme/`), layout components, inputs, scanner input, badges, and data tables.
+2. **Complete Domain Data Models & Database Infrastructure** - Cached MongoDB connection pool (`src/lib/db.ts`) and TypeScript Mongoose models with validation and compound indexes.
+3. **Staff Authentication, Session Management & Dual-Mode REST API** - Staff login, bcrypt hashing, JWT sessions, RBAC guards, and dual-auth middleware (cookies for web, bearer tokens for Android).
+4. **Patron Lifecycle, Photo Capture & 60x40 Thermal Barcode Studio** - Webcam capture, Cloudinary upload, 8-digit barcode sequence (`YYYY`+4 digits), 60×40mm thermal label layout, search endpoints.
 5. **Cataloging & Library Inventory Management** - Book acquisition wizard, Dewey Decimal classification, author/publisher indexing, barcode copy labeling, and catalog search REST endpoints.
-6. **Circulation Engine** - Barcode-driven loan checkout, checkin/return processing, renewal limits, hold reservations, overdue calculation, and circulation audit logs.
+6. **Circulation Engine** - Barcode-driven loan checkout, return processing, renewal limits, hold reservations, overdue calculation, and audit logs.
 7. **Book Summary Moderation & Gamification Scoring** - Patron summary submission, librarian moderation queue, feedback scoring (+2 to +10 points), and activity point crediting.
-8. **Barcode Attendance Scanner & Class Session Tracking** - High-speed scanner attendance logging for daily library visitors and digital academy classes with mobile Android scanner support.
-9. **Monthly Activity Aggregator & Leaderboard System** - Automated monthly score calculation, patron rank tier badges, celebratory podium leaderboard views, and leaderboard REST feed.
+8. **Barcode Attendance Scanner & Class Session Tracking** - High-speed scanner attendance logging for daily library visitors and digital academy classes with mobile scanner support.
+9. **Monthly Activity Aggregator & Leaderboard System** - Automated monthly score calculation, patron rank tier badges, celebratory podium views, and leaderboard REST feed.
 10. **Cohort Academy & Google Sheets Cloud Synchronization** - Cohort batch creation, student enrollment rosters, and automated two-way Google Sheets synchronization.
 11. **Reading Competition Results & Live Scoring Engine** - Competition session setup across grade categories (SS1-3, JSS1-3, P1-6), judge scoring API, and real-time public leaderboard display.
 12. **Certificate Studio & Vector Export Pipeline** - Digital literacy and competition certificate generation with vector templates, dynamic signature/gold seal placement, and high-resolution PDF/PNG exports.
 13. **Transcomm Values & Leadership Knowledge Hub** - Editorial article publishing platform covering DRNICER values, leadership insights, rich text editing, and read API for mobile apps.
 14. **Admin Control Center, Overrides & System Analytics** - Emergency circulation locks/overrides, staff requisition approvals, internal operational tasks, audit ledgers, and public statistics API (`/api/public/stats`).
-15. **Global Shell Modernization, Skeleton Loading, Public Transcomm & Brand Favicon** - Full-width header and footer canvases on `/` with 1200px centered body, high-contrast Operating Instructions button, official DZF favicon, public access for `/transcomm`, sidebar link renamed to "Attendant", and modern MUI Skeleton loaders.
-16. **Dashboard Route Reorganization & Backward-Compatible Redirects** - Consolidate staff workspaces under `/dashboard/*` with automatic 307 redirects from legacy paths and updated AppShell navigation state.
-17. **Patron Lifecycle Enhancements, Dynamic Registration & Strict RBAC** - Passport photo thumbnails in patron lists, dynamic registration form conditioning on `patronType` (school details and parent info for students), and strict RBAC.
-18. **Circulation Gamification, Monthly Student Loan Caps & Competition Event Tagging** - Checkout workflow supporting optional Event Title, 4-book monthly limit for students, timely return activity points on check-in (+3 on/before due date, +1 within 2 days late, 0 after), and enhanced Holds/Overdues controls.
-19. **Catalog Acquisition Studio & Monograph Lifecycle Management** - Redesigned book acquisition studio with Dewey Decimal selector, real-time barcode copy preview, and staff book update/deletion capabilities with active loan protection.
-20. **Patron Registration Streamlining, School Directory, Deletion Safeguards & Table Sorting** - Predefined 22 Ijero Ekiti schools dropdown with auto-address fill, typed confirmation security guards (`DELETE`) for patron/book deletions, and interactive column sorting.
-21. **Xprinter XP-365B Thermal Barcode Studio & Date-Range Bulk Print Pipeline** - Standard 60mm × 40mm thermal label format (Top: "Dzuels Foundation", Middle: barcode, Bottom: "Name: <firstname>, <Surname>") with zero browser margin CSS and date-range bulk continuous roll printing in `/dashboard/patrons`.
-22. **Operational Staff Tasks Enrichment & Drag-and-Drop Kanban Board** - Task assignment role hierarchy (IMA -> Country Manager -> Admin -> Staff), active staff DB assignee dropdown (individual or role group) with 'Assigned By' attribution, 3-column drag-and-drop Kanban workflow (To Do, In Progress, Completed), task CRUD, and real-time AppShell notification bell alerts.
-23. **Foundation Operational Calendar, PDF Ingestion & Multi-Stage Alert Pipeline** - Yearly 12-month calendar matrix (2027 ready), yearly calendar PDF upload with automated milestone extraction and interactive edit/confirmation table, and multi-stage advance alerts (1 month, 2 weeks, 1 week) delivered via the header notification bell.
-24. **Staff Self-Registration, Admin-Only Activation & Role Hierarchy Access Control** - Staff registration page (`/auth/register`) creating inactive accounts, strict Admin-Only account activation dashboard, and full top-to-bottom role access enforcement (IMA -> Country Manager -> Admin -> Asst Admin -> ICT -> Librarian -> Intern) filtering AppShell navigation and securing routes.
-25. **Isolated POS Thermal Label Printing Engine** - Overhaul thermal print execution using an isolated hidden iframe pipeline for Xprinter XP-365B and thermal roll printers, eliminating Next.js root wrapper CSS hiding bugs and guaranteeing 100% visible print previews.
-26. **Operational Calendar CSV Ingestion & Staff Workspace Route** - Upload and extract foundation calendar milestones from CSV files (supporting Date, Event, Participants, Focal Person, Remarks, and multi-date activity stages), interactive review table before saving, Event schema enrichment, and dedicated read-only operational calendar workspace route (`/dashboard/calendar`) positioned under Leaderboard in the AppShell navigation.
-27. **DZF-ILAS Platform Rebranding, SEO Privacy Rules, Staff Birthdays & Data Cleanup** - Rebrand entire platform to DZF-ILAS (Dzuels Integrated Library & Administrative System) across UI, metadata, and configuration; enforce strict SEO robots rules ensuring only `/transcomm` is indexed by search engines while all internal routes are noindex; add birthdate (month and day only) to staff registration and directory; and purge all hardcoded mock/fallback calendar data across views.
-28. **Workspace Navigation Reordering, Notification Deep-Linking & Modal Form Scrolling Fix** - Reorder the AppShell WORKSPACE sidebar (Dashboard -> Task Board -> Library Catalog -> Patron Directory -> Attendant -> Leaderboard -> Calendar -> Inventory), update in-app notification bell clicks to deep-link directly to contextual targets (`/dashboard/tasks`, `/dashboard/calendar`) instead of admin-only routes, and fix form viewport height and scroll clipping in `PatronEditModal`, `BookEditModal`, and related edit dialogs using flex-column maxHeight and auto-scrolling content containers.
-29. **Staff Task Board Workspace, "All Team Members" Delegation & Role-Scoped Visibility Engine** - Implement dedicated staff task workspace route (`/dashboard/tasks`) with interactive 3-column Kanban board, expand task creation privileges allowing regular staff (`librarian`, `ict`, `cohort_lead`, `intern`, `asst_admin`) to create and manage private personal tasks, add "All Team Members" (`group:all`) broadcast delegation for leadership (`ima`, `country_manager`, `admin`), and enforce strict role-scoped task visibility in `listTasks` so private 1-on-1 tasks remain confidential while departmental and team-wide tasks are visible across all group members.
+15. **Global Shell Modernization, Skeleton Loading, Public Transcomm & Brand Favicon** - Full-width header/footer on `/`, Operating Instructions, DZF favicon, public `/transcomm`, Attendant sidebar link, and MUI Skeleton loaders.
+16. **Dashboard Route Reorganization & Backward-Compatible Redirects** - Consolidate staff workspaces under `/dashboard/*` with automatic 307 redirects from legacy paths and updated AppShell navigation.
+17. **Patron Lifecycle Enhancements, Dynamic Registration & Strict RBAC** - Passport photo thumbnails, dynamic registration form conditioning on `patronType` (school and parent details for students), and strict RBAC.
+18. **Circulation Gamification, Monthly Student Loan Caps & Competition Event Tagging** - Checkout workflow supporting optional Event Title, 4-book monthly limit for students, timely return activity points on check-in (+3 on/before due, +1 within 2 days late, 0 after), and enhanced Holds/Overdues controls.
+19. **Catalog Acquisition Studio & Monograph Lifecycle Management** - Book acquisition studio with Dewey Decimal selector, real-time barcode copy preview, and staff book update/deletion with active loan protection.
+20. **Patron Registration Streamlining, School Directory, Deletion Safeguards & Table Sorting** - Predefined 22 Ijero Ekiti schools dropdown, typed confirmation security guards (`DELETE`) for deletions, and interactive column sorting.
+21. **Xprinter XP-365B Thermal Barcode Studio & Date-Range Bulk Print Pipeline** - Standard 60mm × 40mm thermal label format with zero browser margin CSS and date-range bulk continuous roll printing in `/dashboard/patrons`.
+22. **Operational Staff Tasks Enrichment & Drag-and-Drop Kanban Board** - Task assignment role hierarchy (IMA -> Country Manager -> Admin -> Staff), active staff DB assignee dropdown, 3-column drag-and-drop Kanban workflow, and notification bell alerts.
+23. **Foundation Operational Calendar, PDF Ingestion & Multi-Stage Alert Pipeline** - Yearly 12-month calendar matrix, yearly calendar PDF upload with automated milestone extraction, and multi-stage advance alerts (1 month, 2 weeks, 1 week) via notification bell.
+24. **Staff Self-Registration, Admin-Only Activation & Role Hierarchy Access Control** - Staff registration page (`/auth/register`) creating inactive accounts, strict Admin-Only account activation dashboard, and full top-to-bottom role access enforcement filtering AppShell navigation.
+25. **Isolated POS Thermal Label Printing Engine** - Isolated hidden iframe pipeline for Xprinter XP-365B and thermal roll printers, eliminating Next.js root wrapper CSS hiding bugs and guaranteeing 100% visible print previews.
+26. **Operational Calendar CSV Ingestion & Staff Workspace Route** - Upload and extract foundation calendar milestones from CSV files, interactive review table, Event schema enrichment, and dedicated read-only calendar workspace (`/dashboard/calendar`).
+27. **DZF-ILAS Platform Rebranding, SEO Privacy Rules, Staff Birthdays & Data Cleanup** - Rebrand platform to DZF-ILAS across UI, metadata, and config; strict SEO robots rules indexing only `/transcomm`; add birthdate to staff registration/directory; purge mock calendar data.
+28. **Workspace Navigation Reordering, Notification Deep-Linking & Modal Form Scrolling Fix** - Reorder sidebar (Dashboard -> Task Board -> Library Catalog -> Patron Directory -> Attendant -> Leaderboard -> Calendar -> Inventory), deep-link notifications to contextual targets (`/dashboard/tasks`, `/dashboard/calendar`), and fix modal scroll clipping.
+29. **Staff Task Board Workspace, "All Team Members" Delegation & Role-Scoped Visibility Engine** - Dedicated staff task workspace route (`/dashboard/tasks`) with interactive 3-column Kanban board, expand task creation to regular staff for personal tasks, "All Team Members" (`group:all`) broadcast delegation for leadership, and role-scoped task visibility.
+30. **Circulation Return/Renew Confirmation Modals, 5-Day Loan Defaults & Annual Academic Promotion Engine** - Implement dedicated book return and loan renewal confirmation dialogs in `/dashboard/circulation` displaying monograph, patron and due date overdue status with customizable extension days, update global default circulation loan period from 2 to 5 days, enforce patron phone optional and parent phone required across registration and profile updates, and build automated annual August 31st student grade promotion engine (Primary 1-6 -> JSS 1-3 -> SS 1-3 -> Out-of-School) preserving non-student and out-of-school accounts.
+31. **Staff Daily Live Action Stream, Same-Day Undo Engine & Assigner Real-Time Task Progression** - Build dedicated live activity audit console at `/dashboard/admin/daily-actions` under System Administration & Security tracking staff attendance, checkouts, returns, record updates, deletions, monographs, patron registrations, cohort actions and competitions with same-day reversible undo capability for Admin until midnight cutoff (concealing IMA and Country Manager actions from Admin view and undo), and implement real-time task progression tracking on `/dashboard/tasks` enabling assignees to transition cards live and assigners to monitor live lane advancement.
 
 ## Data model
 
@@ -81,8 +83,9 @@ Top-to-bottom institutional hierarchy:
 - `firstname`, `surname`, `middlename` (string)
 - `patronType` (enum: `'student' | 'teacher' | 'staff' | 'guest'`)
 - `gender` (enum: `'male' | 'female'`)
+- `phone` (string, optional)
 - `studentSchoolInfo` ({ schoolName, currentClass, schoolAddress })
-- `parentInfo` ({ parentName, parentPhoneNumber, relationshipToPatron, parentEmail })
+- `parentInfo` ({ parentName, parentPhoneNumber: string (required), relationshipToPatron, parentEmail })
 - `employerInfo` ({ employerName, schoolAddress })
 - `points` (number, default: 0)
 - `active` (boolean, default: true)
@@ -108,7 +111,7 @@ Top-to-bottom institutional hierarchy:
 - `patronBarcode` (string)
 - `bookBarcode` (string)
 - `issueDate` (Date)
-- `dueDate` (Date)
+- `dueDate` (Date, default 5 days from issue)
 - `returnDate` (Date, optional)
 - `status` (enum: `'issued' | 'returned' | 'overdue' | 'renewed'`)
 - `eventTitle` (string, optional, for reading competition loans)
@@ -122,12 +125,30 @@ Top-to-bottom institutional hierarchy:
 - `description` (string, optional)
 - `dueDate` (Date, optional)
 - `priority` (enum: `'low' | 'medium' | 'high'`)
-- `status` (enum: `'todo' | 'in_progress' | 'completed'`)
+- `status` (enum: `'todo' | 'inProgress' | 'completed' | 'archived'`)
 - `assignedBy` ({ name: string, username: string })
 - `assignedTo` ({ name: string, username: string })
+- `targetGroup` (string, optional, e.g. `'all'`, `'librarian'`)
+- `assignedByRole` (string, optional)
+- `assignedToRole` (string, optional)
+- `isSelfAssigned` (boolean, default: false)
 - `comments` (array)
 - `likes` (array)
 - `createdAt` / `updatedAt` (Date)
+
+### DailyAction (Reversible Staff Audit Log)
+- `_id` (ObjectId)
+- `actionType` (string, e.g. `'attendance_scan'`, `'book_checkout'`, `'book_return'`, `'patron_create'`, `'patron_update'`, `'record_delete'`)
+- `performedBy` (string, username)
+- `performedByRole` (string, user role)
+- `targetEntity` (string, e.g. `'Library'`, `'Patron'`, `'Attendance'`, `'Cataloging'`)
+- `targetId` (string)
+- `reversiblePayload` (object, snapshot of pre-action state or reversible data)
+- `isUndone` (boolean, default: false)
+- `undoneAt` (Date, optional)
+- `undoneBy` (string, optional)
+- `dayTimestamp` (string, date key YYYY-MM-DD)
+- `createdAt` (Date)
 
 ### Event (Operational Calendar)
 - `_id` (ObjectId)
@@ -171,9 +192,9 @@ Not applicable. DZF-ILAS is a 100% internal non-profit educational and library m
 ## UI/UX
 
 - **Design Language:** Modern Academic SaaS / Digital Workspace.
-- **Palette & Contrast:** Midnight Navy (`#0b1d2e`), Scholastic Navy (`#17324d`), Brand Maroon (`#6f1111`), Academic Gold (`#cca349`), crisp high-contrast text meeting WCAG AA standards.
-- **Layout Architecture:** Full-width header and footer bands on public `/` with 1200px centered body; dedicated sidebar allocation on `/dashboard/*`.
-- **Loading UX:** Next.js `loading.tsx` route skeletons using Material UI Skeleton components with brand shimmer.
+- **Palette & Contrast:** Midnight Navy (`#0b1d2e`), Scholastic Navy (`#17324d`), Brand Maroon (`#6f1111`), Academic Gold (`#cca349`), WCAG AA compliant.
+- **Layout Architecture:** Full-width header and footer bands on public `/` with 1200px centered body; dedicated sidebar on `/dashboard/*`.
+- **Loading UX:** Next.js `loading.tsx` route skeletons using Material UI Skeleton components.
 - **Core Routes:**
   - `/` - Public welcome board with system overview, rules, and live database stats
   - `/transcomm` & `/transcomm/[slug]` - Public DRNICER leadership knowledge hub (indexed by search engines)
@@ -183,7 +204,7 @@ Not applicable. DZF-ILAS is a 100% internal non-profit educational and library m
   - `/dashboard/tasks` - Dedicated staff task workspace with interactive 3-column Kanban board
   - `/dashboard/catalog` & `/dashboard/catalog/acquire` - Monograph inventory and acquisition studio
   - `/dashboard/patrons` & `/dashboard/patrons/register` - Patron directory, dynamic registration, Xprinter XP-365B bulk printing
-  - `/dashboard/circulations` - Barcode loan transactions, checkout, return, holds, overdues
+  - `/dashboard/circulations` - Barcode loan transactions, checkout, return, holds, overdues, with return/renewal confirmation dialogs
   - `/dashboard/attendance` - Barcode scanner interface ("Attendant")
   - `/dashboard/leaderboard` - Activity metrics and patron leaderboard
   - `/dashboard/calendar` - Dedicated staff operational calendar matrix & agenda stream
@@ -192,7 +213,8 @@ Not applicable. DZF-ILAS is a 100% internal non-profit educational and library m
   - `/dashboard/competitions` - Live competition judging and broadcast results
   - `/dashboard/certificates` - Vector certificate studio & export pipeline
   - `/dashboard/transcomm` - Staff editorial management for DRNICER articles
-  - `/dashboard/admin` - Staff RBAC accounts, emergency circulation overrides, audit ledger, CSV/PDF calendar ingestion tools
+  - `/dashboard/admin` - Staff accounts, emergency circulation overrides, audit ledger, calendar tools
+  - `/dashboard/admin/daily-actions` - Staff daily live activity stream & same-day reversible undo console (Admin only)
 
 ## Deployment
 

@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const dueDays = typeof body.dueDays === 'number' ? body.dueDays : 2;
+    const dueDays = typeof body.dueDays === 'number' ? body.dueDays : 5;
     const eventTitle = body.eventTitle ? String(body.eventTitle).trim() : undefined;
 
     const result = await executeCheckout({

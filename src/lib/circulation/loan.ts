@@ -191,7 +191,7 @@ export async function validateCheckoutEligibility(
 export async function executeCheckout({
   patronBarcode,
   bookBarcode,
-  dueDays = 2,
+  dueDays = 5,
   eventTitle,
   issuedByUserId,
 }: {
@@ -210,7 +210,7 @@ export async function executeCheckout({
 
   const { patron, book } = validation;
   const now = new Date();
-  const effectiveDueDays = Math.max(1, dueDays || 2);
+  const effectiveDueDays = Math.max(1, dueDays || 5);
   const dueDate = new Date(now.getTime() + effectiveDueDays * 24 * 60 * 60 * 1000);
 
   const patronFullName = `${patron.firstname} ${patron.surname}`.trim();
@@ -515,12 +515,12 @@ export async function executeCheckIn({
 }
 
 /**
- * Renews an active book loan, extending the dueDate by extendDays (default 2 days).
+ * Renews an active book loan, extending the dueDate by extendDays (default 5 days).
  */
 export async function executeRenewal({
   bookBarcode,
   loanId,
-  extendDays = 2,
+  extendDays = 5,
 }: {
   bookBarcode?: string;
   loanId?: string;
@@ -584,7 +584,7 @@ export async function executeRenewal({
   }
 
   const baseDate = loan.dueDate && loan.dueDate > new Date() ? loan.dueDate : new Date();
-  const effectiveDays = Math.max(1, extendDays || 2);
+  const effectiveDays = Math.max(1, extendDays || 5);
   const newDueDate = new Date(baseDate.getTime() + effectiveDays * 24 * 60 * 60 * 1000);
 
   loan.renewalsCount = currentRenewals + 1;

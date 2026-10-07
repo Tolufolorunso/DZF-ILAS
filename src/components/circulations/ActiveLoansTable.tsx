@@ -21,6 +21,8 @@ import {
   RefreshIcon,
 } from '@/components';
 import { ActiveLoanDTO } from '@/lib/circulation/loan';
+import { ReturnConfirmModal } from './ReturnConfirmModal';
+import { RenewalModal } from './RenewalModal';
 
 interface ActiveLoansTableProps {
   onDataChanged?: () => void;
@@ -38,6 +40,11 @@ export function ActiveLoansTable({ onDataChanged }: ActiveLoansTableProps) {
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
   const [actionId, setActionId] = React.useState<string | null>(null);
   const [reloadKey, setReloadKey] = React.useState(0);
+
+  // Modal dialog states
+  const [returnModalLoan, setReturnModalLoan] = React.useState<ActiveLoanDTO | null>(null);
+  const [renewModalLoan, setRenewModalLoan] = React.useState<ActiveLoanDTO | null>(null);
+  const [submittingModal, setSubmittingModal] = React.useState(false);
 
   React.useEffect(() => {
     let active = true;
@@ -74,16 +81,17 @@ export function ActiveLoansTable({ onDataChanged }: ActiveLoansTableProps) {
     };
   }, [overdueOnly, reloadKey]);
 
-  const handleReturn = async (loan: ActiveLoanDTO) => {
+  const handleConfirmReturn = async () => {
+    if (!returnModalLoan) return;
     try {
-      setActionId(loan.id);
-      setActionSuccess(null);
+      setSubmittingModal(true);
       setError(null);
+      setActionSuccess(null);
 
       const res = await fetch('/api/circulations/check-in', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookBarcode: loan.bookBarcode }),
+        body: JSON.stringify({ bookBarcode: returnModalLoan.bookBarcode }),
       });
 
       const data = await res.json();
@@ -99,27 +107,29 @@ export function ActiveLoansTable({ onDataChanged }: ActiveLoansTableProps) {
       else ptsLabel = ' (0 Pts: overdue return)';
       const holdNote = data.holdNotice ? ` • ⚠️ Reserved for ${data.holdNotice.patronName}!` : '';
 
-      setActionSuccess(`"${loan.bookTitle}" returned successfully!${ptsLabel}${holdNote}`);
+      setActionSuccess(`"${returnModalLoan.bookTitle}" returned successfully!${ptsLabel}${holdNote}`);
+      setReturnModalLoan(null);
       setReloadKey((prev) => prev + 1);
       if (onDataChanged) onDataChanged();
     } catch (err) {
       console.error('Return error:', err);
       setError('Network error during check-in.');
     } finally {
-      setActionId(null);
+      setSubmittingModal(false);
     }
   };
 
-  const handleRenew = async (loan: ActiveLoanDTO) => {
+  const handleConfirmRenew = async (extendDays: number) => {
+    if (!renewModalLoan) return;
     try {
-      setActionId(loan.id);
-      setActionSuccess(null);
+      setSubmittingModal(true);
       setError(null);
+      setActionSuccess(null);
 
       const res = await fetch('/api/circulations/renew', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookBarcode: loan.bookBarcode, extendDays: 2 }),
+        body: JSON.stringify({ bookBarcode: renewModalLoan.bookBarcode, extendDays }),
       });
 
       const data = await res.json();
@@ -129,13 +139,14 @@ export function ActiveLoansTable({ onDataChanged }: ActiveLoansTableProps) {
       }
 
       setActionSuccess(`Loan renewed! New due date: ${new Date(data.newDueDate).toLocaleDateString()}.`);
+      setRenewModalLoan(null);
       setReloadKey((prev) => prev + 1);
       if (onDataChanged) onDataChanged();
     } catch (err) {
       console.error('Renewal error:', err);
       setError('Network error during renewal.');
     } finally {
-      setActionId(null);
+      setSubmittingModal(false);
     }
   };
 
@@ -293,9 +304,7 @@ export function ActiveLoansTable({ onDataChanged }: ActiveLoansTableProps) {
             <DZFButton
               variant="primary"
               size="small"
-              disabled={isBusy}
-              loading={isBusy}
-              onClick={() => handleReturn(row)}
+              onClick={() => setReturnModalLoan(row)}
               startIcon={<CheckCircleIcon size={14} />}
             >
               Return
@@ -304,8 +313,8 @@ export function ActiveLoansTable({ onDataChanged }: ActiveLoansTableProps) {
             <DZFButton
               variant="soft"
               size="small"
-              disabled={isBusy || row.renewalsCount >= 2}
-              onClick={() => handleRenew(row)}
+              disabled={row.renewalsCount >= 2}
+              onClick={() => setRenewModalLoan(row)}
               startIcon={<RefreshIcon size={14} />}
             >
               Renew
@@ -388,6 +397,23 @@ export function ActiveLoansTable({ onDataChanged }: ActiveLoansTableProps) {
         onPageSizeChange={setRowsPerPage}
         loading={loading}
         emptyTitle="No active library loans found."
+      />
+
+      {/* Modals for Return & Renewal Confirmation */}
+      <ReturnConfirmModal
+        open={Boolean(returnModalLoan)}
+        onClose={() => setReturnModalLoan(null)}
+        onConfirm={handleConfirmReturn}
+        loading={submittingModal}
+        loan={returnModalLoan}
+      />
+
+      <RenewalModal
+        open={Boolean(renewModalLoan)}
+        onClose={() => setRenewModalLoan(null)}
+        onConfirm={handleConfirmRenew}
+        loading={submittingModal}
+        loan={renewModalLoan}
       />
     </Box>
   );

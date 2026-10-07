@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const extendDays = typeof body.extendDays === 'number' ? body.extendDays : 2;
+    const extendDays = typeof body.extendDays === 'number' ? body.extendDays : 5;
 
     const result = await executeRenewal({
       bookBarcode: body.bookBarcode ? String(body.bookBarcode) : undefined,

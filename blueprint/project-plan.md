@@ -213,6 +213,60 @@ DZF-ILAS is a ground-up rewrite delivering:
     - Private 1-on-1 tasks (e.g. IMA -> Country Manager, IMA -> Admin, or Admin -> individual subordinate) are visible only to the assignee and the assigner.
     - Group and broadcast tasks (`group:all`, `group:librarian`, etc.) are visible to all members of that designated group.
 
+### Phase 6: Circulation Confirmation Dialogs, Academic Promotion, Daily Action Undo & Task Progression Oversight (New)
+
+- **Circulation Return & Renewal Confirmation Dialogs (`/dashboard/circulation`):**
+  - **Return Confirmation Modal:**
+    - Triggered whenever staff click the "Return" button on an active loan.
+    - Displays full contextual details: Book Title, Accession/Barcode Number, Shelf Location, Patron Name, Patron Barcode, Class/Grade, and Loan Due Date.
+    - Prominently displays an **On-Time** vs. **Overdue** indicator badge with overdue penalty context if applicable.
+    - Requires explicit staff confirmation before executing check-in.
+  - **Renewal Configuration Modal:**
+    - Triggered whenever staff click the "Renew" button on an active loan.
+    - Displays book and patron details, current due date, and previous renewal counts.
+    - Provides an editable input and quick buttons for "Number of Days to Extend" to compute the new target due date.
+    - Updates circulation status with newly computed due date and logs renewal transaction.
+  - **5-Day Default Loan Period:**
+    - Global default due date period updated from 2 days to **5 days** across `/api/circulation/issue` and client checkout form date pickers.
+
+- **Patron Phone Rules & Annual Academic Promotion Engine:**
+  - **Contact Information Validation:**
+    - Patron's own phone number: **Optional** (both in new patron registration `/dashboard/patrons/register` and patron profile updates).
+    - Parent/Guardian phone number: **Mandatory** (`required: true`) across patron registration and edit modal.
+  - **Annual August 31st Promotion Engine:**
+    - Automatically executed on the last day of August (August 31st, 23:59:59) to advance student academic classes.
+    - Progression ladder:
+      - Primary: `Pry 1` $\rightarrow$ `Pry 2` $\rightarrow$ `Pry 3` $\rightarrow$ `Pry 4` $\rightarrow$ `Pry 5` $\rightarrow$ `Pry 6` $\rightarrow$ `JSS 1`
+      - Junior Secondary: `JSS 1` $\rightarrow$ `JSS 2` $\rightarrow$ `JSS 3` $\rightarrow$ `SS 1`
+      - Senior Secondary: `SS 1` $\rightarrow$ `SS 2` $\rightarrow$ `SS 3` $\rightarrow$ `out-of-school`
+    - Invariants: Non-student patron types (Teachers, Staff, Guests) and students already marked `out-of-school` remain completely untouched.
+    - Includes manual dry-run preview and trigger in System Administration settings for testing and verification.
+
+- **Staff Daily Live Action Stream & Midnight Reversible Undo Engine (`/dashboard/admin/daily-actions`):**
+  - **Action Recording Engine:**
+    - Captures operational actions performed by all staff throughout the day:
+      - Daily attendance scans & check-ins
+      - Circulation checkout & return transactions
+      - Monograph acquisitions, updates, and deletions
+      - Patron registrations, updates, and deletions
+      - Cohort additions, roster changes, and session logs
+      - Reading competition scoring and category setups
+    - Stores reversible state snapshots (e.g. previous field values, deleted document payload, reversed circulation transaction flags).
+  - **Admin Same-Day Undo Capability:**
+    - Admin can inspect live daily operations and click **"Undo Action"** to reverse eligible operations performed during the day (Admin inclusive).
+  - **Executive Privacy & Governance Boundary:**
+    - Actions performed by **IMA** and **Country Manager** are strictly concealed: Admin **cannot** see or undo actions executed by IMA or Country Manager.
+  - **Midnight Auto-Reset (12:00 AM Cutoff):**
+    - At 12:00 AM midnight (00:00:00 local time), active daily undo privileges expire. Past-day entries transition permanently to read-only tamper-evident audit history with no further undo capability.
+  - **Navigation Integration:**
+    - Accessible directly at `/dashboard/admin/daily-actions`, linked under the **System Admin & Security** section in AppShell.
+
+- **Real-Time Task Progression & Assigner Oversight (`/dashboard/tasks`):**
+  - **Live Kanban Status Transitions:**
+    - Assigned staff can move cards live between `To Do` $\rightarrow$ `In Progress` $\rightarrow$ `Completed`.
+  - **Assigner Live Progress Visibility:**
+    - Staff who assign a task (and leadership delegators) see real-time status progression, current column position, and update timestamps across the board.
+
 ## 4. Data - What are we storing?
 
 All 15 core production entities plus Phase 5 model extensions:

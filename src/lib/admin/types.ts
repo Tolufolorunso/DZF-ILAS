@@ -23,6 +23,8 @@ export interface ISystemSettingsDTO {
   allowMultipleLoansOverride: boolean;
   maintenanceMode: boolean;
   announcementBanner: string;
+  lastPromotionYear?: number;
+  lastPromotionDate?: string | null;
   updatedAt: string;
 }
 

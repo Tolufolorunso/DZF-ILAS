@@ -191,6 +191,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Student contact requirements
+    if (patronType === 'student') {
+      const parentPhone = parentInfo?.parentPhoneNumber ? String(parentInfo.parentPhoneNumber).trim() : '';
+      if (!parentPhone) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Parent or guardian phone number is required for student registration.',
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     // Role-based Cohort enrollment check
     if (cohortId) {
       const allowedRoles = ['admin', 'ict'];
@@ -213,7 +227,7 @@ export async function POST(request: NextRequest) {
       surname: surname.trim(),
       middlename: middlename?.trim() || undefined,
       email: email?.trim()?.toLowerCase() || undefined,
-      phoneNumber: phoneNumber?.trim() || '08000000000',
+      phoneNumber: phoneNumber?.trim() || undefined,
       gender: gender || 'male',
       address: address?.trim() || undefined,
       dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,

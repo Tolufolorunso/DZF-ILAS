@@ -10,6 +10,8 @@ export interface ISystemSetting {
   allowMultipleLoansOverride: boolean;
   maintenanceMode: boolean;
   announcementBanner?: string;
+  lastPromotionYear?: number;
+  lastPromotionDate?: Date;
   updatedBy?: string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -25,6 +27,8 @@ export interface ISystemSettingDocument extends Document<string> {
   allowMultipleLoansOverride: boolean;
   maintenanceMode: boolean;
   announcementBanner?: string;
+  lastPromotionYear?: number;
+  lastPromotionDate?: Date;
   updatedBy?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -69,6 +73,12 @@ const SystemSettingSchema = new Schema<ISystemSettingDocument>(
       type: String,
       default: '',
       trim: true,
+    },
+    lastPromotionYear: {
+      type: Number,
+    },
+    lastPromotionDate: {
+      type: Date,
     },
     updatedBy: {
       type: String,

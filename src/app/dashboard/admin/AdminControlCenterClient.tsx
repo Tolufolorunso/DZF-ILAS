@@ -47,6 +47,7 @@ import {
   AuditLogViewer,
   OperationalCalendar,
   StaffActivationQueue,
+  AcademicPromotionCard,
 } from '@/components/admin';
 import type { KanbanStatus } from '@/components/admin/TaskKanbanBoard';
 import type { TaskUpdatePayload } from '@/components/admin/TaskEditDialog';
@@ -599,6 +600,15 @@ export default function AdminControlCenterClient({
                 )}
               </Box>
             </Card>
+
+            {/* Academic Promotion Engine Card */}
+            <AcademicPromotionCard
+              settings={settings}
+              onSettingsUpdated={(newSettings) =>
+                setSettings((prev) => ({ ...prev, ...newSettings }))
+              }
+              onNotification={setNotification}
+            />
 
             {/* Patron Override Card */}
             <PatronOverrideCard />

@@ -94,8 +94,8 @@ export default function PatronRegisterClient({
       return;
     }
 
-    if (!phoneNumber.trim()) {
-      setError('Contact phone number is required.');
+    if (patronType === 'student' && !parentPhone.trim()) {
+      setError('Parent or guardian contact phone number is required for student registration.');
       return;
     }
 
@@ -431,8 +431,7 @@ export default function PatronRegisterClient({
 
               <Grid size={{ xs: 12, sm: 4 }}>
                 <DZFInput
-                  label="Contact Phone"
-                  required
+                  label="Contact Phone (Optional)"
                   placeholder="080XXXXXXXX"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
@@ -587,6 +586,7 @@ export default function PatronRegisterClient({
                   <Grid size={{ xs: 12, sm: 6 }}>
                     <DZFInput
                       label="Parent Contact Phone"
+                      required
                       placeholder="080XXXXXXXX"
                       value={parentPhone}
                       onChange={(e) => setParentPhone(e.target.value)}

@@ -93,8 +93,8 @@ function PatronEditForm({
       return;
     }
 
-    if (!phoneNumber.trim()) {
-      setError('Contact phone number is required.');
+    if (patronType === 'student' && !parentPhoneNumber.trim()) {
+      setError('Parent or guardian contact phone number is required for student profiles.');
       return;
     }
 
@@ -281,8 +281,8 @@ function PatronEditForm({
               </Grid>
               <Grid size={{ xs: 12, sm: 4 }}>
                 <DZFInput
-                  label="Phone Number"
-                  required
+                  label="Phone Number (Optional)"
+                  placeholder="080XXXXXXXX (Optional)"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   fullWidth
@@ -462,6 +462,7 @@ function PatronEditForm({
                   <Grid size={{ xs: 12, sm: 6 }}>
                     <DZFInput
                       label="Parent Phone Number"
+                      required
                       placeholder="080XXXXXXXX"
                       value={parentPhoneNumber}
                       onChange={(e) => setParentPhoneNumber(e.target.value)}

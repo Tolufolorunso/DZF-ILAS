@@ -52,6 +52,8 @@ export async function getSystemSettings(): Promise<ISystemSettingsDTO> {
     allowMultipleLoansOverride: setting.allowMultipleLoansOverride || false,
     maintenanceMode: setting.maintenanceMode || false,
     announcementBanner: setting.announcementBanner || '',
+    lastPromotionYear: setting.lastPromotionYear,
+    lastPromotionDate: setting.lastPromotionDate ? setting.lastPromotionDate.toISOString() : null,
     updatedAt: setting.updatedAt.toISOString(),
   };
 }
@@ -128,6 +130,8 @@ export async function toggleCirculationLock(params: {
     allowMultipleLoansOverride: setting.allowMultipleLoansOverride || false,
     maintenanceMode: setting.maintenanceMode || false,
     announcementBanner: setting.announcementBanner || '',
+    lastPromotionYear: setting.lastPromotionYear,
+    lastPromotionDate: setting.lastPromotionDate ? setting.lastPromotionDate.toISOString() : null,
     updatedAt: setting.updatedAt.toISOString(),
   };
 }

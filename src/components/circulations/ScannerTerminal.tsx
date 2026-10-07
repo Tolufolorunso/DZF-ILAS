@@ -23,6 +23,8 @@ import {
   RefreshIcon,
   UsersIcon,
 } from '@/components';
+import { ReturnConfirmModal } from './ReturnConfirmModal';
+import { RenewalModal } from './RenewalModal';
 
 interface PatronData {
   id: string;
@@ -75,8 +77,11 @@ export function ScannerTerminal({ onTransactionComplete }: ScannerTerminalProps)
 
   const [patron, setPatron] = React.useState<PatronData | null>(null);
   const [book, setBook] = React.useState<BookData | null>(null);
-  const [dueDays, setDueDays] = React.useState<number>(2);
+  const [dueDays, setDueDays] = React.useState<number>(5);
   const [eventTitle, setEventTitle] = React.useState<string>('');
+
+  const [returnModalOpen, setReturnModalOpen] = React.useState(false);
+  const [renewModalOpen, setRenewModalOpen] = React.useState(false);
 
   const [feedback, setFeedback] = React.useState<{
     type: 'success' | 'error' | 'info';
@@ -242,17 +247,19 @@ export function ScannerTerminal({ onTransactionComplete }: ScannerTerminalProps)
       setPatron(null);
       setBook(null);
       setEventTitle('');
+      setReturnModalOpen(false);
       if (onTransactionComplete) onTransactionComplete();
     } catch (err) {
       console.error('Check-in error:', err);
       setFeedback({ type: 'error', message: 'Network error during check-in.' });
     } finally {
       setSubmitting(false);
+      setReturnModalOpen(false);
       inputRef.current?.focus();
     }
   };
 
-  const handleRenew = async () => {
+  const handleRenew = async (extendDays: number = 5) => {
     if (!book) return;
 
     setSubmitting(true);
@@ -262,7 +269,7 @@ export function ScannerTerminal({ onTransactionComplete }: ScannerTerminalProps)
       const res = await fetch('/api/circulations/renew', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookBarcode: book.barcode, extendDays: 2 }),
+        body: JSON.stringify({ bookBarcode: book.barcode, extendDays }),
       });
 
       const data = await res.json();
@@ -282,12 +289,14 @@ export function ScannerTerminal({ onTransactionComplete }: ScannerTerminalProps)
 
       setPatron(null);
       setBook(null);
+      setRenewModalOpen(false);
       if (onTransactionComplete) onTransactionComplete();
     } catch (err) {
       console.error('Renewal error:', err);
       setFeedback({ type: 'error', message: 'Network error during renewal.' });
     } finally {
       setSubmitting(false);
+      setRenewModalOpen(false);
       inputRef.current?.focus();
     }
   };
@@ -296,7 +305,7 @@ export function ScannerTerminal({ onTransactionComplete }: ScannerTerminalProps)
     setPatron(null);
     setBook(null);
     setEventTitle('');
-    setDueDays(2);
+    setDueDays(5);
     setFeedback(null);
     setScanInput('');
     inputRef.current?.focus();
@@ -598,7 +607,7 @@ export function ScannerTerminal({ onTransactionComplete }: ScannerTerminalProps)
                           variant="primary"
                           size="small"
                           loading={submitting}
-                          onClick={() => handleCheckIn(book.barcode)}
+                          onClick={() => setReturnModalOpen(true)}
                           startIcon={<CheckCircleIcon size={16} />}
                         >
                           Check In / Return
@@ -607,10 +616,10 @@ export function ScannerTerminal({ onTransactionComplete }: ScannerTerminalProps)
                           variant="soft"
                           size="small"
                           loading={submitting}
-                          onClick={handleRenew}
+                          onClick={() => setRenewModalOpen(true)}
                           startIcon={<RefreshIcon size={16} />}
                         >
-                          Renew (+2 Days)
+                          Renew Loan
                         </DZFButton>
                       </Box>
                     </Box>
@@ -654,8 +663,8 @@ export function ScannerTerminal({ onTransactionComplete }: ScannerTerminalProps)
               onChange={(e) => setDueDays(Number(e.target.value))}
               sx={{ width: 140 }}
             >
-              <MenuItem value={2}>2 Days (Default)</MenuItem>
-              <MenuItem value={5}>5 Days</MenuItem>
+              <MenuItem value={5}>5 Days (Default)</MenuItem>
+              <MenuItem value={3}>3 Days</MenuItem>
               <MenuItem value={7}>7 Days (1 Wk)</MenuItem>
               <MenuItem value={14}>14 Days (2 Wks)</MenuItem>
               <MenuItem value={21}>21 Days (3 Wks)</MenuItem>
@@ -687,6 +696,51 @@ export function ScannerTerminal({ onTransactionComplete }: ScannerTerminalProps)
           </DZFButton>
         </Box>
       </Box>
+
+      {/* Confirmation Modals */}
+      <ReturnConfirmModal
+        open={returnModalOpen}
+        onClose={() => setReturnModalOpen(false)}
+        onConfirm={() => {
+          if (book) handleCheckIn(book.barcode);
+        }}
+        loading={submitting}
+        loan={
+          book
+            ? {
+                bookTitle: book.title,
+                bookBarcode: book.barcode,
+                shelfLocation: book.shelfLocation,
+                bookCover: book.coverUrl,
+                author: book.author,
+                patronName: book.lastBorrowedBy?.patronName || patron?.name || 'Patron Borrower',
+                patronBarcode: book.lastBorrowedBy?.patronBarcode || patron?.barcode || 'N/A',
+                patronClass: patron?.classGrade || 'N/A',
+                patronPhoto: patron?.photoUrl,
+                dueDate: book.lastBorrowedBy?.dueDate,
+              }
+            : null
+        }
+      />
+
+      <RenewalModal
+        open={renewModalOpen}
+        onClose={() => setRenewModalOpen(false)}
+        onConfirm={(days) => handleRenew(days)}
+        loading={submitting}
+        loan={
+          book
+            ? {
+                bookTitle: book.title,
+                bookBarcode: book.barcode,
+                patronName: book.lastBorrowedBy?.patronName || patron?.name || 'Patron Borrower',
+                patronBarcode: book.lastBorrowedBy?.patronBarcode || patron?.barcode || 'N/A',
+                dueDate: book.lastBorrowedBy?.dueDate,
+                renewalsCount: 0,
+              }
+            : null
+        }
+      />
     </Card>
   );
 }

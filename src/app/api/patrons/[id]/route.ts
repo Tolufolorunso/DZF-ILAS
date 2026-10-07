@@ -92,8 +92,55 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       body.dateOfBirth = new Date(body.dateOfBirth);
     }
 
-    const updatedPatron = await Patron.findOneAndUpdate(
-      { ...query, isDeleted: { $ne: true } },
+    const existing = await Patron.findOne({ ...query, isDeleted: { $ne: true } });
+    if (!existing) {
+      return NextResponse.json(
+        { success: false, error: 'Patron not found.' },
+        { status: 404 }
+      );
+    }
+
+    const effectivePatronType = body.patronType || existing.patronType;
+    if (effectivePatronType === 'student') {
+      const parentPhone =
+        body.parentInfo?.parentPhoneNumber !== undefined
+          ? String(body.parentInfo.parentPhoneNumber || '').trim()
+          : String(existing.parentInfo?.parentPhoneNumber || '').trim();
+
+      if (!parentPhone) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Parent or guardian phone number is required for student profiles.',
+          },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (body.phoneNumber !== undefined) {
+      const trimmedPhone = String(body.phoneNumber || '').trim();
+      body.phoneNumber = trimmedPhone || undefined;
+      if (trimmedPhone && trimmedPhone !== existing.phoneNumber) {
+        const dup = await Patron.findOne({
+          _id: { $ne: existing._id },
+          phoneNumber: trimmedPhone,
+          isDeleted: { $ne: true },
+        });
+        if (dup) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `A patron with phone number "${trimmedPhone}" already exists (${dup.firstname} ${dup.surname}, Barcode: ${dup.barcode}).`,
+            },
+            { status: 409 }
+          );
+        }
+      }
+    }
+
+    const updatedPatron = await Patron.findByIdAndUpdate(
+      existing._id,
       { $set: body },
       { new: true, runValidators: true }
     );
