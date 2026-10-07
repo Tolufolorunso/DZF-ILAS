@@ -67,7 +67,7 @@ export default function DashboardError({
             fontFamily: 'var(--font-outfit), sans-serif',
           }}
         >
-          Workspace Error
+          Workspace Error!
         </Typography>
 
         <Typography
