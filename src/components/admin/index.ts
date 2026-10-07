@@ -5,5 +5,8 @@ export { default as TaskFormDialog } from './TaskFormDialog';
 export { default as TaskKanbanBoard } from './TaskKanbanBoard';
 export { default as TaskEditDialog } from './TaskEditDialog';
 export { default as EventFormDialog } from './EventFormDialog';
+export { default as EventEditDialog } from './EventEditDialog';
+export { default as CalendarPdfUploadDialog } from './CalendarPdfUploadDialog';
+export { default as OperationalCalendar } from './OperationalCalendar';
 export { default as AuditLogViewer } from './AuditLogViewer';
 

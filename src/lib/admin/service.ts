@@ -666,11 +666,19 @@ export async function updateTaskDetails(params: {
 /**
  * Foundation Events management.
  */
-export async function listEvents(options: { limit?: number }): Promise<IEventItemDTO[]> {
+export async function listEvents(options: {
+  academicYear?: number;
+  limit?: number;
+}): Promise<IEventItemDTO[]> {
   await connectDB();
-  const events = await Event.find()
+  const query: Record<string, unknown> = {};
+  if (options.academicYear) {
+    query.academicYear = options.academicYear;
+  }
+
+  const events = await Event.find(query)
     .sort({ eventDate: 1 })
-    .limit(options.limit || 50)
+    .limit(options.limit || 100)
     .lean();
 
   return events.map((e) => ({
@@ -679,12 +687,16 @@ export async function listEvents(options: { limit?: number }): Promise<IEventIte
     title: e.title || e.eventName,
     attendee: e.attendee,
     eventDate: e.eventDate ? new Date(e.eventDate).toISOString() : new Date().toISOString(),
+    academicYear: e.academicYear || (e.eventDate ? new Date(e.eventDate).getFullYear() : undefined),
+    category: (e.category as IEventItemDTO['category']) || 'general',
     eventDetail: e.eventDetail,
     description: e.description,
-    location: e.location,
-    targetAudience: e.targetAudience,
-    arrivalTime: e.arrivalTime,
+    location: e.location || 'DZF Learning Center',
+    targetAudience: e.targetAudience || 'All Patrons',
+    arrivalTime: e.arrivalTime || '09:00 AM',
+    alertsSent: e.alertsSent || { oneMonth: false, twoWeeks: false, oneWeek: false },
     createdAt: e.createdAt ? new Date(e.createdAt).toISOString() : new Date().toISOString(),
+    updatedAt: e.updatedAt ? new Date(e.updatedAt).toISOString() : undefined,
   }));
 }
 
@@ -692,6 +704,8 @@ export async function createEvent(params: {
   eventName: string;
   title?: string;
   eventDate: Date;
+  academicYear?: number;
+  category?: 'assembly' | 'workshop' | 'competition' | 'holiday' | 'meeting' | 'general';
   location?: string;
   targetAudience?: string;
   arrivalTime?: string;
@@ -700,10 +714,13 @@ export async function createEvent(params: {
   staffRole: string;
 }): Promise<IEventItemDTO> {
   await connectDB();
+  const academicYear = params.academicYear || new Date(params.eventDate).getFullYear();
   const event = await Event.create({
     eventName: params.eventName.trim(),
     title: params.title?.trim() || params.eventName.trim(),
     eventDate: params.eventDate,
+    academicYear,
+    category: params.category || 'general',
     location: params.location?.trim() || 'DZF Learning Center',
     targetAudience: params.targetAudience?.trim() || 'All Patrons',
     arrivalTime: params.arrivalTime?.trim() || '09:00 AM',
@@ -719,6 +736,7 @@ export async function createEvent(params: {
     details: {
       eventName: event.eventName,
       eventDate: event.eventDate,
+      academicYear,
     },
   });
 
@@ -727,12 +745,144 @@ export async function createEvent(params: {
     eventName: event.eventName,
     title: event.title,
     eventDate: event.eventDate.toISOString(),
+    academicYear: event.academicYear,
+    category: event.category,
     location: event.location,
     targetAudience: event.targetAudience,
     arrivalTime: event.arrivalTime,
     description: event.description,
+    alertsSent: event.alertsSent,
     createdAt: event.createdAt.toISOString(),
   };
+}
+
+export async function updateEventDetails(params: {
+  id: string;
+  eventName?: string;
+  title?: string;
+  eventDate?: Date;
+  academicYear?: number;
+  category?: 'assembly' | 'workshop' | 'competition' | 'holiday' | 'meeting' | 'general';
+  location?: string;
+  targetAudience?: string;
+  arrivalTime?: string;
+  description?: string;
+  staffUsername: string;
+  staffRole: string;
+}): Promise<IEventItemDTO> {
+  await connectDB();
+  const event = await Event.findById(params.id);
+  if (!event) {
+    throw new Error('Event not found');
+  }
+
+  if (params.eventName !== undefined) event.eventName = params.eventName.trim();
+  if (params.title !== undefined) event.title = params.title.trim();
+  if (params.eventDate !== undefined) {
+    event.eventDate = params.eventDate;
+    event.academicYear = params.academicYear || new Date(params.eventDate).getFullYear();
+  } else if (params.academicYear !== undefined) {
+    event.academicYear = params.academicYear;
+  }
+  if (params.category !== undefined) event.category = params.category;
+  if (params.location !== undefined) event.location = params.location.trim();
+  if (params.targetAudience !== undefined) event.targetAudience = params.targetAudience.trim();
+  if (params.arrivalTime !== undefined) event.arrivalTime = params.arrivalTime.trim();
+  if (params.description !== undefined) event.description = params.description.trim();
+
+  await event.save();
+
+  await logAuditEvent({
+    action: 'EVENT_UPDATED',
+    performedBy: params.staffUsername,
+    performedByRole: params.staffRole,
+    targetEntity: 'Event',
+    targetId: params.id,
+    details: {
+      eventName: event.eventName,
+      eventDate: event.eventDate,
+    },
+  });
+
+  return {
+    id: String(event._id),
+    eventName: event.eventName,
+    title: event.title,
+    eventDate: event.eventDate.toISOString(),
+    academicYear: event.academicYear,
+    category: event.category,
+    location: event.location,
+    targetAudience: event.targetAudience,
+    arrivalTime: event.arrivalTime,
+    description: event.description,
+    alertsSent: event.alertsSent,
+    createdAt: event.createdAt.toISOString(),
+    updatedAt: event.updatedAt.toISOString(),
+  };
+}
+
+export async function createEventsBatch(params: {
+  events: Array<{
+    eventName: string;
+    title?: string;
+    eventDate: Date;
+    academicYear?: number;
+    category?: 'assembly' | 'workshop' | 'competition' | 'holiday' | 'meeting' | 'general';
+    location?: string;
+    targetAudience?: string;
+    arrivalTime?: string;
+    description?: string;
+  }>;
+  staffUsername: string;
+  staffRole: string;
+}): Promise<{ count: number; events: IEventItemDTO[] }> {
+  await connectDB();
+  if (!params.events || params.events.length === 0) {
+    return { count: 0, events: [] };
+  }
+
+  const docsToInsert = params.events.map((e) => ({
+    eventName: e.eventName.trim(),
+    title: e.title?.trim() || e.eventName.trim(),
+    eventDate: e.eventDate,
+    academicYear: e.academicYear || new Date(e.eventDate).getFullYear(),
+    category: e.category || 'general',
+    location: e.location?.trim() || 'DZF Learning Center',
+    targetAudience: e.targetAudience?.trim() || 'All Patrons',
+    arrivalTime: e.arrivalTime?.trim() || '09:00 AM',
+    description: e.description?.trim(),
+    alertsSent: { oneMonth: false, twoWeeks: false, oneWeek: false },
+  }));
+
+  const inserted = await Event.insertMany(docsToInsert);
+
+  await logAuditEvent({
+    action: 'EVENTS_BATCH_IMPORTED',
+    performedBy: params.staffUsername,
+    performedByRole: params.staffRole,
+    targetEntity: 'Event',
+    details: {
+      count: inserted.length,
+      sampleTitles: inserted.slice(0, 3).map((doc) => doc.title),
+    },
+  });
+
+  const resultDTOs = inserted.map((doc) => ({
+    id: String(doc._id),
+    eventName: doc.eventName,
+    title: doc.title,
+    eventDate: doc.eventDate.toISOString(),
+    academicYear: doc.academicYear,
+    category: doc.category as IEventItemDTO['category'],
+    location: doc.location,
+    targetAudience: doc.targetAudience,
+    arrivalTime: doc.arrivalTime,
+    description: doc.description,
+    alertsSent: doc.alertsSent,
+    createdAt: doc.createdAt.toISOString(),
+  }));
+
+  return { count: resultDTOs.length, events: resultDTOs };
 }
 
 /**

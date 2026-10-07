@@ -45,6 +45,7 @@ import {
   TaskEditDialog,
   EventFormDialog,
   AuditLogViewer,
+  OperationalCalendar,
 } from '@/components/admin';
 import type { KanbanStatus } from '@/components/admin/TaskKanbanBoard';
 import type { TaskUpdatePayload } from '@/components/admin/TaskEditDialog';
@@ -734,77 +735,14 @@ export default function AdminControlCenterClient({
         {/* TAB 4: Foundation Calendar Events */}
         {tabIndex === 4 && (
           <Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
-              <Box>
-                <Typography variant="h6" sx={{ fontWeight: 800, color: dzfColors.navy[900] }}>
-                  Foundation Operational Calendar
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                  Institutional assemblies, workshops, and competition schedules
-                </Typography>
-              </Box>
-              <DZFButton variant="primary" size="small" onClick={() => setEventDialogOpen(true)}>
-                + Schedule Event
-              </DZFButton>
-            </Box>
-
-            {events.length === 0 ? (
-              <Card sx={{ p: 4, textAlign: 'center', borderRadius: '16px', bgcolor: '#f8fafc' }}>
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  No foundation events currently scheduled.
-                </Typography>
-              </Card>
-            ) : (
-              <Grid container spacing={2}>
-                {events.map((ev) => (
-                  <Grid size={{ xs: 12, sm: 6, md: 4 }} key={ev.id}>
-                    <Card
-                      sx={{
-                        p: 2.5,
-                        borderRadius: '16px',
-                        border: '1px solid #e2e8f0',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'space-between',
-                        height: '100%',
-                      }}
-                    >
-                      <Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 800, color: dzfColors.navy[900] }}>
-                            {ev.eventName}
-                          </Typography>
-                          <IconButton size="small" onClick={() => handleDeleteEvent(ev.id)} title="Remove Event">
-                            <TrashIcon size={16} color="#dc2626" />
-                          </IconButton>
-                        </Box>
-
-                        <Box sx={{ p: 1, mb: 1.5, bgcolor: '#f0f6fa', borderRadius: '8px' }}>
-                          <Typography variant="caption" sx={{ fontWeight: 700, color: dzfColors.navy[900], display: 'block' }}>
-                            📅 {new Date(ev.eventDate).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                            ⏰ {ev.arrivalTime || '09:00 AM'} • 📍 {ev.location || 'DZF Learning Center'}
-                          </Typography>
-                        </Box>
-
-                        {ev.targetAudience && (
-                          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
-                            <strong>Audience:</strong> {ev.targetAudience}
-                          </Typography>
-                        )}
-
-                        {ev.description && (
-                          <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                            {ev.description}
-                          </Typography>
-                        )}
-                      </Box>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            )}
+            <OperationalCalendar
+              initialEvents={events}
+              onRefreshParent={async () => {
+                const res = await fetch('/api/admin/events?limit=200');
+                const data = await res.json();
+                if (data.success) setEvents(data.events || []);
+              }}
+            />
           </Box>
         )}
 

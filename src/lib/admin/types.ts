@@ -83,12 +83,20 @@ export interface IEventItemDTO {
   title?: string;
   attendee?: string;
   eventDate: string;
+  academicYear?: number;
+  category?: 'assembly' | 'workshop' | 'competition' | 'holiday' | 'meeting' | 'general';
   eventDetail?: string;
   description?: string;
   location?: string;
   targetAudience?: string;
   arrivalTime?: string;
+  alertsSent?: {
+    oneMonth?: boolean;
+    twoWeeks?: boolean;
+    oneWeek?: boolean;
+  };
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface IAuditLogItemDTO {
