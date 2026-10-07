@@ -135,6 +135,14 @@ export function ChevronRightIcon({ size = 18, color = 'currentColor', ...props }
   );
 }
 
+export function ChevronLeftIcon({ size = 18, color = 'currentColor', ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  );
+}
+
 export function MenuIcon({ size = 20, color = 'currentColor', ...props }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>

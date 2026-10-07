@@ -103,21 +103,36 @@ export default function PatronDetailModal({
             mb: 3,
           }}
         >
-          <Avatar
-            src={photoUrl || undefined}
-            sx={{
-              width: 90,
-              height: 90,
-              border: `3px solid ${dzfColors.gold[400]}`,
-              backgroundColor: dzfColors.maroon[900],
-              color: '#ffffff',
-              fontSize: '2rem',
-              fontWeight: 800,
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-            }}
-          >
-            {patron.firstname?.charAt(0)}
-          </Avatar>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.75 }}>
+            <Avatar
+              src={photoUrl || undefined}
+              sx={{
+                width: 90,
+                height: 90,
+                border: `3px solid ${dzfColors.gold[400]}`,
+                backgroundColor: dzfColors.maroon[900],
+                color: '#ffffff',
+                fontSize: '2rem',
+                fontWeight: 800,
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+              }}
+            >
+              {patron.firstname?.charAt(0)}
+            </Avatar>
+            {onEdit && (
+              <DZFButton
+                size="small"
+                variant="soft"
+                onClick={() => {
+                  onClose();
+                  onEdit(patron);
+                }}
+                sx={{ fontSize: '0.75rem', py: 0.25, px: 1, minHeight: 'unset', color: dzfColors.navy[700] }}
+              >
+                Change Photo
+              </DZFButton>
+            )}
+          </Box>
 
           <Box sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', mb: 0.5, justifyContent: { xs: 'center', sm: 'flex-start' } }}>

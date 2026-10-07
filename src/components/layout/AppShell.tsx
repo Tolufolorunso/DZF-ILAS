@@ -240,38 +240,56 @@ export function AppShell({
 
   const userRole = user?.role || (staffRole ? staffRole.toLowerCase().replace(' ', '_') : 'librarian');
   const isSuperOrAdmin = isAdmin(userRole);
+  const isLeadershipScoped = userRole === 'ima' || userRole === 'country_manager';
 
-  const workspaceItems: NavItem[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: <LayersIcon size={20} /> },
-    { id: 'tasks', label: 'Task Board', icon: <CheckCircleIcon size={20} /> },
-    { id: 'catalog', label: 'Library Catalog', icon: <BookIcon size={20} />, badge: '1.3k' },
-    { id: 'patrons', label: 'Patron Directory', icon: <UsersIcon size={20} />, badge: '583' },
-    { id: 'attendance', label: 'Attendant', icon: <BarcodeIcon size={20} /> },
-    { id: 'analytics', label: 'Leaderboard & Stats', icon: <TrophyIcon size={20} /> },
-    { id: 'calendar', label: 'Operational Calendar', icon: <CalendarIcon size={20} /> },
-    { id: 'inventory', label: 'Asset Inventory', icon: <LayersIcon size={20} /> },
-  ];
+  const workspaceItems: NavItem[] = isLeadershipScoped
+    ? [
+        { id: 'dashboard', label: 'Dashboard', icon: <LayersIcon size={20} /> },
+        { id: 'tasks', label: 'Tasks Board', icon: <CheckCircleIcon size={20} /> },
+        { id: 'analytics', label: 'Monthly Activity Leaderboard', icon: <TrophyIcon size={20} /> },
+        { id: 'calendar', label: 'Operational Calendar', icon: <CalendarIcon size={20} /> },
+      ]
+    : [
+        { id: 'dashboard', label: 'Dashboard', icon: <LayersIcon size={20} /> },
+        { id: 'tasks', label: 'Task Board', icon: <CheckCircleIcon size={20} /> },
+        { id: 'catalog', label: 'Library Catalog', icon: <BookIcon size={20} />, badge: '1.3k' },
+        { id: 'patrons', label: 'Patron Directory', icon: <UsersIcon size={20} />, badge: '583' },
+        { id: 'attendance', label: 'Attendant', icon: <BarcodeIcon size={20} /> },
+        { id: 'analytics', label: 'Leaderboard & Stats', icon: <TrophyIcon size={20} /> },
+        { id: 'calendar', label: 'Operational Calendar', icon: <CalendarIcon size={20} /> },
+        { id: 'inventory', label: 'Asset Inventory', icon: <LayersIcon size={20} /> },
+      ];
 
   const managementItems: NavItem[] = [];
-  if (isSuperOrAdmin || canManageCirculation(userRole)) {
-    managementItems.push({ id: 'circulations', label: 'Loans & Returns', icon: <ClockIcon size={20} />, badge: 'Loans', badgeVariant: 'warning' });
-    managementItems.push({ id: 'summaries', label: 'Book Summaries', icon: <ActivityIcon size={20} />, badge: 'Reviews', badgeVariant: 'primary' });
-  }
-  if (isSuperOrAdmin || canManageCohorts(userRole)) {
-    managementItems.push({ id: 'cohorts', label: 'Cohort Academy', icon: <UsersIcon size={20} />, badge: 'Academy' });
-  }
-  if (isSuperOrAdmin || canManageCompetitions(userRole)) {
-    managementItems.push({ id: 'competitions', label: 'Reading Competition', icon: <TrophyIcon size={20} />, badge: 'Contest', badgeVariant: 'warning' });
-  }
-  if (isSuperOrAdmin || canManageCertificates(userRole)) {
-    managementItems.push({ id: 'certificates', label: 'Certificate Studio', icon: <AwardIcon size={20} />, badge: 'Studio', badgeVariant: 'primary' });
-  }
-  if (isSuperOrAdmin || canPublishArticles(userRole)) {
-    managementItems.push({ id: 'transcomm', label: 'Transcomm Hub', icon: <BookIcon size={20} />, badge: 'Values', badgeVariant: 'primary' });
+  if (isLeadershipScoped) {
+    managementItems.push({
+      id: 'transcomm',
+      label: 'Knowledge Hub Management Studio',
+      icon: <BookIcon size={20} />,
+      badge: 'Articles',
+      badgeVariant: 'primary',
+    });
+  } else {
+    if (isSuperOrAdmin || canManageCirculation(userRole)) {
+      managementItems.push({ id: 'circulations', label: 'Loans & Returns', icon: <ClockIcon size={20} />, badge: 'Loans', badgeVariant: 'warning' });
+      managementItems.push({ id: 'summaries', label: 'Book Summaries', icon: <ActivityIcon size={20} />, badge: 'Reviews', badgeVariant: 'primary' });
+    }
+    if (isSuperOrAdmin || canManageCohorts(userRole)) {
+      managementItems.push({ id: 'cohorts', label: 'Cohort Academy', icon: <UsersIcon size={20} />, badge: 'Academy' });
+    }
+    if (isSuperOrAdmin || canManageCompetitions(userRole)) {
+      managementItems.push({ id: 'competitions', label: 'Reading Competition', icon: <TrophyIcon size={20} />, badge: 'Contest', badgeVariant: 'warning' });
+    }
+    if (isSuperOrAdmin || canManageCertificates(userRole)) {
+      managementItems.push({ id: 'certificates', label: 'Certificate Studio', icon: <AwardIcon size={20} />, badge: 'Studio', badgeVariant: 'primary' });
+    }
+    if (isSuperOrAdmin || canPublishArticles(userRole)) {
+      managementItems.push({ id: 'transcomm', label: 'Transcomm Hub', icon: <BookIcon size={20} />, badge: 'Values', badgeVariant: 'primary' });
+    }
   }
 
   const systemItems: NavItem[] = [];
-  if (isSuperOrAdmin) {
+  if (isSuperOrAdmin && !isLeadershipScoped) {
     systemItems.push({ id: 'admin', label: 'Staff Admin & Security', icon: <SettingsIcon size={20} /> });
     systemItems.push({ id: 'daily-actions', label: 'Daily Actions Audit', icon: <ActivityIcon size={20} />, badge: 'Live', badgeVariant: 'warning' });
   }

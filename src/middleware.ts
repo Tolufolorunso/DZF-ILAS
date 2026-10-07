@@ -78,11 +78,12 @@ export async function middleware(request: NextRequest) {
 
   // 6. Role-based route guard for Administrative endpoints and pages
   const isSuperOrAdmin = ['ima', 'country_manager', 'admin', 'asst_admin'].includes(user.role);
+  const isTaskEndpoint = pathname.startsWith('/api/admin/tasks');
   if (pathname.startsWith('/dashboard/admin') && !isSuperOrAdmin) {
     const dashboardUrl = new URL('/dashboard', request.url);
     return NextResponse.redirect(dashboardUrl);
   }
-  if (pathname.startsWith('/api/admin') && !isSuperOrAdmin) {
+  if (pathname.startsWith('/api/admin') && !isTaskEndpoint && !isSuperOrAdmin) {
     return NextResponse.json(
       { success: false, error: 'Unauthorized. Administrator privileges required.' },
       { status: 403 }

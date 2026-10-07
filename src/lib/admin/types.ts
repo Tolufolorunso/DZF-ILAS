@@ -31,12 +31,34 @@ export interface ISystemSettingsDTO {
 export type PatronOverrideAction =
   | 'clear_borrow_lock'
   | 'waive_overdues'
-  | 'grant_loan_override';
+  | 'grant_loan_override'
+  | 'force_return'
+  | 'force_checkout'
+  | 'toggle_active_status'
+  | 'update_profile'
+  | 'adjust_points'
+  | 'delete_loan'
+  | 'edit_loan'
+  | 'add_attendance'
+  | 'delete_attendance'
+  | 'edit_competition'
+  | 'delete_competition'
+  | 'edit_summary'
+  | 'delete_summary'
+  | 'delete_patron';
 
 export interface IPatronOverrideRequest {
   patronBarcode: string;
   action: PatronOverrideAction;
   reason: string;
+  loanId?: string;
+  monographBarcode?: string;
+  attendanceId?: string;
+  competitionId?: string;
+  summaryId?: string;
+  updates?: Record<string, unknown>;
+  newEntry?: Record<string, unknown>;
+  pointsDelta?: number;
 }
 
 export interface IRequisitionReviewRequest {

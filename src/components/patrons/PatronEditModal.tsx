@@ -25,6 +25,7 @@ import {
 } from '@/components';
 import { IPatron, PatronType, Gender } from '@/models/Patron';
 import { IJERO_SCHOOL_OPTIONS, getSchoolAddress, isPredefinedSchool } from '@/lib/patron/schools';
+import PatronPhotoCapture, { PhotoCaptureResult } from './PatronPhotoCapture';
 
 interface PatronEditModalProps {
   open: boolean;
@@ -59,6 +60,7 @@ function PatronEditForm({
   );
   const [patronType, setPatronType] = React.useState<PatronType>(patron.patronType || 'student');
   const [active, setActive] = React.useState(patron.active !== false);
+  const [photoData, setPhotoData] = React.useState<PhotoCaptureResult | null>(null);
 
   // Student details
   const initialSchool = patron.studentSchoolInfo?.schoolName || '';
@@ -113,6 +115,10 @@ function PatronEditForm({
         patronType,
         active,
       };
+
+      if (photoData) {
+        payload.image_url = photoData;
+      }
 
       if (patronType === 'student') {
         payload.studentSchoolInfo = {
@@ -180,7 +186,7 @@ function PatronEditForm({
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Avatar
-              src={patron.image_url?.secure_url}
+              src={photoData?.secure_url || patron.image_url?.secure_url}
               sx={{
                 width: 44,
                 height: 44,
@@ -233,6 +239,18 @@ function PatronEditForm({
               {error}
             </Alert>
           )}
+
+          {/* Section 0: Patron Identity Photograph */}
+          <Box sx={{ mb: 3, p: 2.5, backgroundColor: '#ffffff', borderRadius: 2.5, border: `1px solid ${dzfColors.surfaces.border}` }}>
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: dzfColors.navy[900], mb: 1.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Patron Identity Photograph
+            </Typography>
+            <PatronPhotoCapture
+              currentPhotoUrl={photoData?.secure_url || patron.image_url?.secure_url}
+              barcode={patron.barcode}
+              onPhotoUploaded={(res) => setPhotoData(res)}
+            />
+          </Box>
 
           {/* Section 1: Demographics */}
           <Box sx={{ mb: 3 }}>

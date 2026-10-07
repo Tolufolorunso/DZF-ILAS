@@ -22,6 +22,7 @@ import {
   ClockIcon,
   UsersIcon,
   ChevronRightIcon,
+  ChevronLeftIcon,
 } from '@/components';
 import type { ITaskItemDTO } from '@/lib/admin/types';
 
@@ -405,6 +406,55 @@ export default function TaskKanbanBoard({
                             </Box>
 
                             <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                              {/* Bidirectional lane transition actions */}
+                              {col.id === 'todo' && (
+                                <Tooltip title="Start Task (Move to In Progress)">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => onUpdateStatus(t.id, 'inProgress')}
+                                    sx={{
+                                      color: '#0284c7',
+                                      p: 0.5,
+                                      '&:hover': { backgroundColor: 'rgba(2, 132, 199, 0.08)' },
+                                    }}
+                                  >
+                                    <ChevronRightIcon size={16} />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+
+                              {col.id === 'inProgress' && (
+                                <Tooltip title="Move back to To Do">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => onUpdateStatus(t.id, 'todo')}
+                                    sx={{
+                                      color: '#64748b',
+                                      p: 0.5,
+                                      '&:hover': { backgroundColor: 'rgba(100, 116, 139, 0.08)' },
+                                    }}
+                                  >
+                                    <ChevronLeftIcon size={16} />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+
+                              {col.id === 'completed' && (
+                                <Tooltip title="Reopen (Move back to In Progress)">
+                                  <IconButton
+                                    size="small"
+                                    onClick={() => onUpdateStatus(t.id, 'inProgress')}
+                                    sx={{
+                                      color: '#0284c7',
+                                      p: 0.5,
+                                      '&:hover': { backgroundColor: 'rgba(2, 132, 199, 0.08)' },
+                                    }}
+                                  >
+                                    <ChevronLeftIcon size={16} />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+
                               {col.id !== 'completed' && (
                                 <Tooltip title="Mark as Completed">
                                   <IconButton

@@ -1,4 +1,6 @@
+import mongoose from 'mongoose';
 import { connectDB } from '@/lib/db';
+import { recordDailyAction } from '@/lib/audit/dailyActionService';
 import {
   SystemSetting,
   AuditLog,
@@ -13,7 +15,12 @@ import {
   Task,
   Event,
   Notification,
+  Competition,
+  BookSummary,
 } from '@/models';
+import type { Gender, PatronType } from '@/models/Patron';
+import type { LoanStatus } from '@/models/Library';
+import type { ClassType } from '@/models/Attendance';
 import type {
   ISystemStats,
   ISystemSettingsDTO,
@@ -190,27 +197,138 @@ export async function getSystemStats(): Promise<ISystemStats> {
 }
 
 /**
- * Executes an administrative override on a patron's circulation record.
+ * Retrieves the 360-degree complete historical dataset for a patron across all foundation collections:
+ * Patron profile, all circulation loans (active, overdue, returned), attendance history, competition entries,
+ * book summaries/reviews, cohort memberships, and aggregated statistical telemetry.
+ */
+export async function getPatron360Data(queryInput: string): Promise<{
+  patron: Record<string, unknown>;
+  loans: Record<string, unknown>[];
+  attendance: Record<string, unknown>[];
+  competitions: Record<string, unknown>[];
+  summaries: Record<string, unknown>[];
+  cohorts: Record<string, unknown>[];
+  stats: {
+    totalLoansCount: number;
+    activeLoansCount: number;
+    overdueLoansCount: number;
+    returnedLoansCount: number;
+    attendanceCount: number;
+    competitionsCount: number;
+    summariesCount: number;
+    points: number;
+  };
+}> {
+  await connectDB();
+  const clean = queryInput.trim();
+  const isObjectId = mongoose.Types.ObjectId.isValid(clean);
+
+  let patronDoc = await Patron.findOne({
+    $or: [
+      { barcode: clean },
+      { barcode: new RegExp(`^${clean}$`, 'i') },
+      ...(isObjectId ? [{ _id: clean }] : []),
+    ],
+  }).lean();
+
+  if (!patronDoc) {
+    patronDoc = await Patron.findOne({
+      $or: [
+        { firstname: new RegExp(`^${clean}$`, 'i') },
+        { surname: new RegExp(`^${clean}$`, 'i') },
+        { phoneNumber: clean },
+      ],
+    }).lean();
+  }
+
+  if (!patronDoc) {
+    throw new Error(`Patron with identifier "${clean}" was not found.`);
+  }
+
+  const barcode = patronDoc.barcode;
+
+  const [loans, attendance, competitions, summaries, cohorts] = await Promise.all([
+    Library.find({ patronBarcode: barcode }).sort({ checkoutDate: -1, createdAt: -1 }).lean(),
+    Attendance.find({ patronBarcode: barcode }).sort({ classDate: -1, createdAt: -1 }).lean(),
+    Competition.find({ patronBarcode: barcode }).sort({ createdAt: -1 }).lean(),
+    BookSummary.find({ patronBarcode: barcode }).sort({ submissionDate: -1, createdAt: -1 }).lean(),
+    Cohort.find({ barcode }).lean(),
+  ]);
+
+  const activeLoansCount = loans.filter((l) => l.status === 'borrowed').length;
+  const overdueLoansCount = loans.filter((l) => l.status === 'overdue').length;
+  const returnedLoansCount = loans.filter((l) => l.status === 'returned').length;
+
+  return {
+    patron: patronDoc as unknown as Record<string, unknown>,
+    loans: loans as unknown as Record<string, unknown>[],
+    attendance: attendance as unknown as Record<string, unknown>[],
+    competitions: competitions as unknown as Record<string, unknown>[],
+    summaries: summaries as unknown as Record<string, unknown>[],
+    cohorts: cohorts as unknown as Record<string, unknown>[],
+    stats: {
+      totalLoansCount: loans.length,
+      activeLoansCount,
+      overdueLoansCount,
+      returnedLoansCount,
+      attendanceCount: attendance.length,
+      competitionsCount: competitions.length,
+      summariesCount: summaries.length,
+      points: patronDoc.points || 0,
+    },
+  };
+}
+
+/**
+ * Executes an administrative override on a patron's complete circulation, attendance, competition, or profile record.
  */
 export async function executePatronOverride(params: {
   override: IPatronOverrideRequest;
   staffUsername: string;
   staffRole: string;
-}): Promise<{ success: boolean; message: string; patronBarcode: string }> {
+}): Promise<{
+  success: boolean;
+  message: string;
+  patronBarcode: string;
+  patron?: Record<string, unknown>;
+  activeLoans?: Record<string, unknown>[];
+  patron360?: Record<string, unknown>;
+}> {
   await connectDB();
-  const cleanBarcode = params.override.patronBarcode.trim();
+  const cleanInput = params.override.patronBarcode.trim();
+  const isObjectId = mongoose.Types.ObjectId.isValid(cleanInput);
 
-  const patron = await Patron.findOne({ barcode: cleanBarcode, isDeleted: { $ne: true } });
+  let patron = await Patron.findOne({
+    $or: [
+      { barcode: cleanInput },
+      { barcode: new RegExp(`^${cleanInput}$`, 'i') },
+      ...(isObjectId ? [{ _id: cleanInput }] : []),
+    ],
+  });
+
   if (!patron) {
-    throw new Error(`Patron with barcode "${cleanBarcode}" was not found.`);
+    patron = await Patron.findOne({
+      $or: [
+        { firstname: new RegExp(`^${cleanInput}$`, 'i') },
+        { surname: new RegExp(`^${cleanInput}$`, 'i') },
+        { phoneNumber: cleanInput },
+      ],
+    });
   }
+
+  if (!patron) {
+    throw new Error(`Patron with identifier "${cleanInput}" was not found.`);
+  }
+
+  const cleanBarcode = patron.barcode;
+  let actionMessage = '';
 
   if (params.override.action === 'clear_borrow_lock') {
     patron.hasBorrowedBook = false;
     patron.lastBorrowedItem = undefined;
     await patron.save();
+    actionMessage = `Active borrow lock cleared for patron ${patron.firstname} ${patron.surname}.`;
   } else if (params.override.action === 'waive_overdues') {
-    // Waive open overdue status on existing loans
     await Library.updateMany(
       { patronBarcode: cleanBarcode, status: 'overdue' },
       { status: 'returned', returnDate: new Date() }
@@ -218,6 +336,241 @@ export async function executePatronOverride(params: {
     patron.hasBorrowedBook = false;
     patron.lastBorrowedItem = undefined;
     await patron.save();
+    actionMessage = `All overdues waived and closed for patron ${patron.firstname} ${patron.surname}.`;
+  } else if (params.override.action === 'force_return') {
+    const loanQuery: Record<string, unknown> = { patronBarcode: cleanBarcode, status: { $in: ['borrowed', 'overdue'] } };
+    if (params.override.loanId && mongoose.Types.ObjectId.isValid(params.override.loanId)) {
+      loanQuery._id = params.override.loanId;
+    } else if (params.override.monographBarcode) {
+      loanQuery.bookBarcode = params.override.monographBarcode.trim();
+    }
+
+    const targetLoan = await Library.findOne(loanQuery);
+    if (targetLoan) {
+      targetLoan.status = 'returned';
+      targetLoan.returnDate = new Date();
+      await targetLoan.save();
+
+      if (targetLoan.bookBarcode) {
+        const book = await Cataloging.findOne({ barcode: targetLoan.bookBarcode });
+        if (book) {
+          book.copiesAvailable = Math.min(book.copiesTotal || 1, (book.copiesAvailable || 0) + 1);
+          if (book.copiesAvailable > 0) {
+            book.isCheckedOut = false;
+          }
+          await book.save();
+        }
+      }
+      actionMessage = `Loan for "${targetLoan.bookTitle || targetLoan.bookBarcode}" successfully force checked-in / returned.`;
+    } else {
+      actionMessage = `No active loan matched for force return. Resetting patron borrow status.`;
+    }
+
+    const remainingActive = await Library.countDocuments({
+      patronBarcode: cleanBarcode,
+      status: { $in: ['borrowed', 'overdue'] },
+    });
+    if (remainingActive === 0) {
+      patron.hasBorrowedBook = false;
+      patron.lastBorrowedItem = undefined;
+      await patron.save();
+    }
+  } else if (params.override.action === 'force_checkout' || params.override.action === 'grant_loan_override') {
+    if (!params.override.monographBarcode) {
+      patron.hasBorrowedBook = false;
+      await patron.save();
+      actionMessage = `Executive loan override granted for patron ${patron.firstname} ${patron.surname}.`;
+    } else {
+      const monoBarcode = params.override.monographBarcode.trim();
+      const book = await Cataloging.findOne({ barcode: monoBarcode });
+      if (!book) {
+        throw new Error(`Monograph with barcode "${monoBarcode}" not found.`);
+      }
+
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 5);
+
+      await Library.create({
+        patronId: patron._id,
+        patronBarcode: patron.barcode,
+        bookId: book._id,
+        bookBarcode: book.barcode,
+        bookTitle: book.title?.mainTitle || 'Unknown Monograph',
+        issueDate: new Date(),
+        dueDate,
+        status: 'borrowed',
+        renewalsCount: 0,
+      });
+
+      book.copiesAvailable = Math.max(0, (book.copiesAvailable || 1) - 1);
+      if (book.copiesAvailable === 0) {
+        book.isCheckedOut = true;
+      }
+      book.lastBorrowedBy = {
+        patronId: patron._id,
+        patronBarcode: patron.barcode,
+        patronName: `${patron.firstname} ${patron.surname}`,
+        checkedOutAt: new Date(),
+        dueDate,
+      };
+      await book.save();
+
+      patron.hasBorrowedBook = true;
+      patron.lastBorrowedItem = {
+        itemId: book._id,
+        itemBarcode: book.barcode,
+        itemTitle: book.title?.mainTitle,
+        checkoutDate: new Date(),
+        dueDate,
+      };
+      await patron.save();
+
+      actionMessage = `Monograph "${book.title?.mainTitle || book.barcode}" force checked out to ${patron.firstname} ${patron.surname}.`;
+    }
+  } else if (params.override.action === 'toggle_active_status') {
+    patron.active = !patron.active;
+    await patron.save();
+    actionMessage = `Patron status updated to ${patron.active ? 'ACTIVE' : 'INACTIVE'} for ${patron.firstname} ${patron.surname}.`;
+  } else if (params.override.action === 'adjust_points') {
+    const delta = Number(params.override.pointsDelta || 0);
+    patron.points = Math.max(0, (patron.points || 0) + delta);
+    await patron.save();
+    actionMessage = `Adjusted points for ${patron.firstname} ${patron.surname} by ${delta > 0 ? '+' : ''}${delta}. New total: ${patron.points} points.`;
+  } else if (params.override.action === 'update_profile') {
+    const updates = params.override.updates || {};
+    if (updates.firstname) patron.firstname = String(updates.firstname).trim();
+    if (updates.surname) patron.surname = String(updates.surname).trim();
+    if (updates.middlename !== undefined) patron.middlename = String(updates.middlename || '').trim() || undefined;
+    if (updates.phoneNumber !== undefined) patron.phoneNumber = String(updates.phoneNumber || '').trim() || undefined;
+    if (updates.email !== undefined) patron.email = String(updates.email || '').trim() || undefined;
+    if (updates.gender) patron.gender = updates.gender as Gender;
+    if (updates.patronType) patron.patronType = updates.patronType as PatronType;
+    if (updates.points !== undefined) patron.points = Math.max(0, Number(updates.points));
+
+    if (updates.studentSchoolInfo && typeof updates.studentSchoolInfo === 'object') {
+      patron.studentSchoolInfo = {
+        ...patron.studentSchoolInfo,
+        ...(updates.studentSchoolInfo as Record<string, unknown>),
+      };
+    }
+    if (updates.parentInfo && typeof updates.parentInfo === 'object') {
+      patron.parentInfo = {
+        ...patron.parentInfo,
+        ...(updates.parentInfo as Record<string, unknown>),
+      };
+    }
+
+    await patron.save();
+    actionMessage = `Patron profile details successfully updated for ${patron.firstname} ${patron.surname}.`;
+  } else if (params.override.action === 'delete_loan') {
+    if (!params.override.loanId) {
+      throw new Error('Loan ID is required to delete a circulation record.');
+    }
+    const deletedLoan = await Library.findByIdAndDelete(params.override.loanId);
+    if (deletedLoan && deletedLoan.status !== 'returned' && deletedLoan.bookBarcode) {
+      const book = await Cataloging.findOne({ barcode: deletedLoan.bookBarcode });
+      if (book) {
+        book.copiesAvailable = Math.min(book.copiesTotal || 1, (book.copiesAvailable || 0) + 1);
+        if (book.copiesAvailable > 0) book.isCheckedOut = false;
+        await book.save();
+      }
+    }
+    const remainingActive = await Library.countDocuments({
+      patronBarcode: cleanBarcode,
+      status: { $in: ['borrowed', 'overdue'] },
+    });
+    if (remainingActive === 0) {
+      patron.hasBorrowedBook = false;
+      patron.lastBorrowedItem = undefined;
+      await patron.save();
+    }
+    actionMessage = `Circulation loan record deleted permanently.`;
+  } else if (params.override.action === 'edit_loan') {
+    if (!params.override.loanId) {
+      throw new Error('Loan ID is required to edit a circulation record.');
+    }
+    const updates = params.override.updates || {};
+    const loanDoc = await Library.findById(params.override.loanId);
+    if (!loanDoc) throw new Error('Loan record not found.');
+
+    if (updates.dueDate) loanDoc.dueDate = new Date(updates.dueDate as string);
+    if (updates.status) {
+      loanDoc.status = updates.status as LoanStatus;
+      if (updates.status === 'returned') {
+        loanDoc.returnDate = new Date();
+      }
+    }
+    await loanDoc.save();
+
+    const remainingActive = await Library.countDocuments({
+      patronBarcode: cleanBarcode,
+      status: { $in: ['borrowed', 'overdue'] },
+    });
+    if (remainingActive === 0) {
+      patron.hasBorrowedBook = false;
+      patron.lastBorrowedItem = undefined;
+      await patron.save();
+    }
+    actionMessage = `Circulation loan record updated successfully.`;
+  } else if (params.override.action === 'add_attendance') {
+    const entry = params.override.newEntry || {};
+    const pointsAwarded = Number(entry.points || 1);
+    await Attendance.create({
+      patronId: patron._id,
+      patronBarcode: cleanBarcode,
+      patronName: `${patron.firstname} ${patron.surname}`,
+      classType: (entry.classType as ClassType) || 'library',
+      className: String(entry.className || 'General Library Attendance'),
+      classDate: entry.classDate ? new Date(entry.classDate as string) : new Date(),
+      attendanceTime: new Date(),
+      markedBy: params.staffUsername,
+      points: pointsAwarded,
+      notes: (entry.notes as string) || 'Executive manual attendance entry',
+      library: patron.library || 'Main Library',
+    });
+    patron.points = (patron.points || 0) + pointsAwarded;
+    await patron.save();
+    actionMessage = `Manual attendance entry created (+${pointsAwarded} points credited to patron).`;
+  } else if (params.override.action === 'delete_attendance') {
+    if (!params.override.attendanceId) {
+      throw new Error('Attendance ID is required to delete an attendance entry.');
+    }
+    const att = await Attendance.findByIdAndDelete(params.override.attendanceId);
+    if (att?.points) {
+      patron.points = Math.max(0, (patron.points || 0) - att.points);
+      await patron.save();
+    }
+    actionMessage = `Attendance record deleted permanently (points adjusted).`;
+  } else if (params.override.action === 'edit_competition') {
+    if (!params.override.competitionId) {
+      throw new Error('Competition ID is required.');
+    }
+    const compUpdates = params.override.updates || {};
+    await Competition.findByIdAndUpdate(params.override.competitionId, { $set: compUpdates });
+    actionMessage = `Reading competition record updated successfully.`;
+  } else if (params.override.action === 'delete_competition') {
+    if (!params.override.competitionId) {
+      throw new Error('Competition ID is required to delete a competition entry.');
+    }
+    await Competition.findByIdAndDelete(params.override.competitionId);
+    actionMessage = `Reading competition record deleted permanently.`;
+  } else if (params.override.action === 'edit_summary') {
+    if (!params.override.summaryId) {
+      throw new Error('Book summary ID is required.');
+    }
+    const sumUpdates = params.override.updates || {};
+    await BookSummary.findByIdAndUpdate(params.override.summaryId, { $set: sumUpdates });
+    actionMessage = `Book summary record updated successfully.`;
+  } else if (params.override.action === 'delete_summary') {
+    if (!params.override.summaryId) {
+      throw new Error('Summary ID is required to delete a summary record.');
+    }
+    await BookSummary.findByIdAndDelete(params.override.summaryId);
+    actionMessage = `Book summary record deleted permanently.`;
+  } else if (params.override.action === 'delete_patron') {
+    patron.isDeleted = !patron.isDeleted;
+    await patron.save();
+    actionMessage = `Patron record ${patron.isDeleted ? 'marked as DELETED' : 'RESTORED'}.`;
   }
 
   await logAuditEvent({
@@ -231,13 +584,33 @@ export async function executePatronOverride(params: {
       patronName: `${patron.firstname} ${patron.surname}`,
       action: params.override.action,
       reason: params.override.reason,
+      loanId: params.override.loanId,
+      monographBarcode: params.override.monographBarcode,
+      attendanceId: params.override.attendanceId,
+      competitionId: params.override.competitionId,
+      summaryId: params.override.summaryId,
     },
   });
 
+  await recordDailyAction({
+    actionType: 'patron_update',
+    actionTitle: `Administrative patron executive action (${params.override.action}) for ${patron.firstname} ${patron.surname} (${cleanBarcode})`,
+    performedBy: params.staffUsername,
+    performedByName: params.staffUsername,
+    performedByRole: params.staffRole,
+    targetEntity: 'Patron',
+    targetId: String(patron._id),
+  });
+
+  const fullData = await getPatron360Data(cleanBarcode);
+
   return {
     success: true,
-    message: `Administrative override (${params.override.action}) successfully applied for patron ${patron.firstname} ${patron.surname}.`,
+    message: actionMessage || `Administrative action successfully executed for ${patron.firstname} ${patron.surname}.`,
     patronBarcode: cleanBarcode,
+    patron: fullData.patron,
+    activeLoans: fullData.loans.filter((l) => l.status === 'borrowed' || l.status === 'overdue'),
+    patron360: fullData as unknown as Record<string, unknown>,
   };
 }
 
@@ -684,19 +1057,41 @@ export async function updateTaskStatus(params: {
   task.status = params.status;
   await task.save();
 
-  // If completed, notify the assigner if someone else completed it
+  // Notify the assigner whenever the task status is changed by someone else (e.g. assignee)
   if (
-    params.status === 'completed' &&
-    oldStatus !== 'completed' &&
+    params.status !== oldStatus &&
     task.assignedBy?.username &&
     task.assignedBy.username.toLowerCase() !== params.staffUsername.toLowerCase()
   ) {
+    const statusLabels: Record<string, string> = {
+      todo: 'To Do',
+      inProgress: 'In Progress',
+      completed: 'Completed',
+      archived: 'Archived',
+    };
+    const targetLabel = statusLabels[params.status] || params.status;
+    const oldLabel = statusLabels[oldStatus] || oldStatus;
+
+    let notifTitle = `Task Moved to ${targetLabel}`;
+    let notifMessage = `@${params.staffUsername} moved task "${task.title}" to ${targetLabel}.`;
+
+    if (params.status === 'completed') {
+      notifTitle = 'Task Completed';
+      notifMessage = `@${params.staffUsername} marked task "${task.title}" as Completed.`;
+    } else if (params.status === 'todo') {
+      notifTitle = 'Task Moved Back to To Do';
+      notifMessage = `@${params.staffUsername} moved task "${task.title}" back from ${oldLabel} to To Do.`;
+    } else if (params.status === 'inProgress') {
+      notifTitle = 'Task In Progress';
+      notifMessage = `@${params.staffUsername} moved task "${task.title}" from ${oldLabel} to In Progress.`;
+    }
+
     await Notification.create({
       recipientUsername: task.assignedBy.username.toLowerCase(),
       senderUsername: params.staffUsername.toLowerCase(),
       type: 'task_updated',
-      title: 'Task Completed',
-      message: `@${params.staffUsername} completed task "${task.title}".`,
+      title: notifTitle,
+      message: notifMessage,
       link: '/dashboard/tasks',
       read: false,
     });
@@ -736,6 +1131,7 @@ export async function updateTaskDetails(params: {
     throw new Error('Task not found');
   }
 
+  const oldStatus = task.status;
   if (params.title !== undefined) task.title = params.title.trim();
   if (params.description !== undefined) task.description = params.description.trim();
   if (params.priority !== undefined) task.priority = params.priority;
@@ -759,6 +1155,47 @@ export async function updateTaskDetails(params: {
         read: false,
       });
     }
+  }
+
+  // Notify the assigner if status was changed during details edit
+  if (
+    params.status !== undefined &&
+    params.status !== oldStatus &&
+    task.assignedBy?.username &&
+    task.assignedBy.username.toLowerCase() !== params.staffUsername.toLowerCase()
+  ) {
+    const statusLabels: Record<string, string> = {
+      todo: 'To Do',
+      inProgress: 'In Progress',
+      completed: 'Completed',
+      archived: 'Archived',
+    };
+    const targetLabel = statusLabels[params.status] || params.status;
+    const oldLabel = statusLabels[oldStatus] || oldStatus;
+
+    let notifTitle = `Task Moved to ${targetLabel}`;
+    let notifMessage = `@${params.staffUsername} moved task "${task.title}" to ${targetLabel}.`;
+
+    if (params.status === 'completed') {
+      notifTitle = 'Task Completed';
+      notifMessage = `@${params.staffUsername} marked task "${task.title}" as Completed.`;
+    } else if (params.status === 'todo') {
+      notifTitle = 'Task Moved Back to To Do';
+      notifMessage = `@${params.staffUsername} moved task "${task.title}" back from ${oldLabel} to To Do.`;
+    } else if (params.status === 'inProgress') {
+      notifTitle = 'Task In Progress';
+      notifMessage = `@${params.staffUsername} moved task "${task.title}" from ${oldLabel} to In Progress.`;
+    }
+
+    await Notification.create({
+      recipientUsername: task.assignedBy.username.toLowerCase(),
+      senderUsername: params.staffUsername.toLowerCase(),
+      type: 'task_updated',
+      title: notifTitle,
+      message: notifMessage,
+      link: '/dashboard/tasks',
+      read: false,
+    });
   }
 
   await task.save();
