@@ -15,7 +15,7 @@ Build the centralized Cohort Academy management platform (`/cohorts`) and compan
 
 ## Design Reference
 
-Follows Section 2.8 and Section 5 of [SYSTEM_AUDIT_AND_REBUILD_SPECIFICATION.md](file:///c:/Users/oreofe/Desktop/dzuels/DZF-ILLS/SYSTEM_AUDIT_AND_REBUILD_SPECIFICATION.md):
+Follows Section 2.8 and Section 5 of [SYSTEM_AUDIT_AND_REBUILD_SPECIFICATION.md](file:///c:/Users/oreofe/Desktop/dzuels/DZF-ILAS/SYSTEM_AUDIT_AND_REBUILD_SPECIFICATION.md):
 - **Page Canvas Atmosphere**: Warm academic aura radial gold `rgba(214, 167, 43, 0.16)` on `rgba(252, 248, 236, 0.95)` to `rgba(245, 247, 250, 0.98)`.
 - **Kicker Accent**: Deep Gold / Bronze (`#8b5e0b`) overline text.
 - **Headings & Main Titles**: Deep Scholastic Navy (`#17324d`).

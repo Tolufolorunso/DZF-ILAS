@@ -1,6 +1,6 @@
-# DZF-ILLS — UI/UX Design Direction
+# DZF-ILAS — UI/UX Design Direction
 
-Build DZF-ILLS (Dzuels Integrated Library & Learning System) as a modern internal staff web application.
+Build DZF-ILAS (Dzuels Integrated Library & Administrative System) as a modern internal staff web application.
 
 The application is for Dzuels staff, so the priority is not visual effects. The priority is **clarity, speed, usability, consistency and a premium professional feel**.
 
@@ -41,7 +41,7 @@ Use:
 * @mui/material
 * @mui/material-nextjs
 
-Use MUI as the UI foundation, but create a custom DZF-ILLS design system on top of MUI.
+Use MUI as the UI foundation, but create a custom DZF-ILAS design system on top of MUI.
 
 Do not rely on the default MUI visual appearance.
 
@@ -375,7 +375,7 @@ Example:
 
 "Your library is empty"
 
-"Add your first book or learning resource to start building the DZF-ILLS library."
+"Add your first book or learning resource to start building the DZF-ILAS library."
 
 [Add Resource]
 

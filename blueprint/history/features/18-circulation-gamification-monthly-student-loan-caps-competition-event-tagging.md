@@ -7,7 +7,7 @@
 
 ## Goal
 
-Enhance the DZF-ILLS circulation engine and staff dashboard with competition event tagging and configurable loan durations during checkout, enforce a strict monthly quota of 4 borrowed books for student patrons, award gamified activity points on check-in based on timely return (+3 on/before due date, +1 within 2 days late, 0 points after), introduce a dedicated Holds reservation queue, enhance overdues tracking and renewal controls, and remove the duplicate AppShell wrapper from the circulations workspace.
+Enhance the DZF-ILAS circulation engine and staff dashboard with competition event tagging and configurable loan durations during checkout, enforce a strict monthly quota of 4 borrowed books for student patrons, award gamified activity points on check-in based on timely return (+3 on/before due date, +1 within 2 days late, 0 points after), introduce a dedicated Holds reservation queue, enhance overdues tracking and renewal controls, and remove the duplicate AppShell wrapper from the circulations workspace.
 
 ## In scope
 

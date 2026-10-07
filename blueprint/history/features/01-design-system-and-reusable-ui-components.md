@@ -7,7 +7,7 @@
 
 ## Goal
 
-Establish the centralized Material UI design system (`src/theme/`) and foundational reusable UI components for DZF-ILLS, matching the modern Academic SaaS / Digital Workspace design specification with exact DZF brand tokens (Maroon, Scholastic Navy, Academic Gold). Provide the application layout shell and an interactive component workbench on `src/app/page.tsx` validating all components, variants, responsive breakpoints, and interaction states.
+Establish the centralized Material UI design system (`src/theme/`) and foundational reusable UI components for DZF-ILAS, matching the modern Academic SaaS / Digital Workspace design specification with exact DZF brand tokens (Maroon, Scholastic Navy, Academic Gold). Provide the application layout shell and an interactive component workbench on `src/app/page.tsx` validating all components, variants, responsive breakpoints, and interaction states.
 
 ## Design reference
 

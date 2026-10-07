@@ -10,7 +10,7 @@ Dzuels Educational Foundation manages dual institutional operations in Nigeria:
 
 The legacy application suffered from fragmented auth patterns, unindexed database collections, state desynchronization during circulation, and edge runtime failures. 
 
-DZF-ILLS is a ground-up rewrite delivering:
+DZF-ILAS is a ground-up rewrite delivering:
 - A calm, robust, high-performance web workspace for staff.
 - A standardized, secure REST API designed for dual consumption by the web app and the upcoming Android mobile app.
 - A refined, user-friendly operational workflow for Phase 5 with modern skeleton screen loading, public leadership knowledge sharing, strict RBAC, and gamified circulation incentives.
@@ -174,7 +174,7 @@ DZF-ILLS is a ground-up rewrite delivering:
   - **Staff Operational Calendar Workspace Route (`/dashboard/calendar`):** New dedicated page positioned directly under Leaderboard in the AppShell navigation. Displays the 12-month calendar matrix and agenda stream in read-only mode for all staff roles (setup/upload tools remain exclusively in `/dashboard/admin`).
 
 - **DZF-ILAS Platform Rebranding, SEO Privacy Rules, Staff Birthdays & Data Cleanup:**
-  - **Platform Rebranding:** Update branding across the application from ILLS to **DZF-ILAS** (*Dzuels Integrated Library & Administrative System*) in UI headers, footers, page titles, login screens, and metadata.
+  - **Platform Rebranding:** Update branding across the application to **DZF-ILAS** (*Dzuels Integrated Library & Administrative System*) in UI headers, footers, page titles, login screens, and metadata.
   - **Strict SEO & Search Indexing:** Configure `src/app/robots.ts` and metadata tags ensuring only `/transcomm` and `/transcomm/*` are indexable by search engines (`index, follow`). All other internal and administrative routes (`/`, `/dashboard/*`, `/auth/*`, `/api/*`) are strictly `noindex, nofollow`.
   - **Staff Birthdays:** Add `birthMonth` (1–12) and `birthDay` (1–31) dropdowns (month & day only, no birth year required) to the staff registration form (`/auth/register`), User schema, and Admin staff directory.
   - **Purge Hardcoded Data:** Remove static/mock fallback calendar fixtures, ensuring all views query live MongoDB collections with clean empty states.

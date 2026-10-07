@@ -7,7 +7,7 @@
 
 ## Goal
 
-Implement complete staff authentication and session management for DZF-ILLS. Support dual-mode authentication (HTTP-only cookies for Next.js web application and Bearer token headers for the Android mobile application). Provide secure password hashing, JWT token issuance, role-based access control (RBAC), authentication Route Handlers (`/api/auth/login`, `/api/auth/logout`, `/api/auth/me`), route protection middleware, and a DZF-branded staff login interface with session persistence.
+Implement complete staff authentication and session management for DZF-ILAS. Support dual-mode authentication (HTTP-only cookies for Next.js web application and Bearer token headers for the Android mobile application). Provide secure password hashing, JWT token issuance, role-based access control (RBAC), authentication Route Handlers (`/api/auth/login`, `/api/auth/logout`, `/api/auth/me`), route protection middleware, and a DZF-branded staff login interface with session persistence.
 
 ## Design reference
 

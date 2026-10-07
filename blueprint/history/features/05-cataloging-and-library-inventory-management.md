@@ -7,7 +7,7 @@
 **Status:** verified
 
 ## Goal
-Build the library book catalog, acquisition wizard, Dewey Decimal classification system, accession control numbering, shelf location mapping, copy barcode labeling, 60mm × 40mm thermal book label studio, and companion mobile lookup REST endpoints for DZF-ILLS.
+Build the library book catalog, acquisition wizard, Dewey Decimal classification system, accession control numbering, shelf location mapping, copy barcode labeling, 60mm × 40mm thermal book label studio, and companion mobile lookup REST endpoints for DZF-ILAS.
 
 ## In scope
 - **Data Model & Cataloging Rules:**

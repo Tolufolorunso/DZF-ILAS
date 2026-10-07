@@ -11,8 +11,8 @@ Rebrand the entire platform to **DZF-ILAS** (*Dzuels Integrated Library & Admini
 
 ## In scope
 
-1. **Global Platform Rebranding (ILLS -> DZF-ILAS)**:
-   - System Name: Update from *Dzuels Integrated Library & Learning System* (DZF-ILLS) to **Dzuels Integrated Library & Administrative System** (**DZF-ILAS**).
+1. **Global Platform Rebranding (to DZF-ILAS)**:
+   - System Name: Set to **Dzuels Integrated Library & Administrative System** (**DZF-ILAS**).
    - Global UI & Shell:
      - `src/components/layout/AppShell.tsx`: Update sidebar brand heading to `DZF-ILAS`, subtitle to `Library & Administration`, and aria-labels.
      - `src/components/transcomm/TranscommPublicHeader.tsx`: Update brand title to `DZF-ILAS`.
@@ -105,7 +105,7 @@ Rebrand the entire platform to **DZF-ILAS** (*Dzuels Integrated Library & Admini
   - *Done when:* `node ./node_modules/typescript/bin/tsc --noEmit` passes and `DashboardClient.tsx` displays live database metrics with clean empty states.
 
 - [x] Step 4: **Global Platform Rebranding to DZF-ILAS**
-  - Replace all occurrences of `DZF-ILLS` with `DZF-ILAS` across UI headers, footers, page titles, navigation, and badges.
+  - Replace all occurrences of legacy naming with `DZF-ILAS` across UI headers, footers, page titles, navigation, and badges.
   - Replace `Dzuels Integrated Library & Learning System` with `Dzuels Integrated Library & Administrative System`.
   - Replace `Integrated Library & Learning System` with `Integrated Library & Administrative System`.
   - Update thermal book label header to `ILAS`.
@@ -170,7 +170,7 @@ Rebrand the entire platform to **DZF-ILAS** (*Dzuels Integrated Library & Admini
   - Verify `User` registration with `birthMonth` and `birthDay` saves and returns data via `GET /api/admin/users`.
   - Verify `/api/public/stats` returns live numbers and `DashboardClient` renders real counts.
   - Verify `/api/admin/events?academicYear=2027` filters by academic year.
-  - Verify no lingering `ILLS` references remain in active UI components.
+  - Verify no lingering legacy references remain in active UI components.
 
 ## Notes for the AI
 

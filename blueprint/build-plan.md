@@ -1,6 +1,6 @@
 # Build Plan
 
-List of planned features for the DZF-ILLS clean rebuild, ordered by architectural dependency and vertical delivery. Every operational feature delivers both the web interface and the REST API endpoints required for the upcoming Android application.
+List of planned features for the DZF-ILAS clean rebuild, ordered by architectural dependency and vertical delivery. Every operational feature delivers both the web interface and the REST API endpoints required for the upcoming Android application.
 
 ## Phase 1: Core Foundation & Shared Design System
 
@@ -51,4 +51,4 @@ List of planned features for the DZF-ILLS clean rebuild, ordered by architectura
 ## Phase 8: Calendar CSV Engine, Workspace Route, Platform Rebranding & System Hardening
 
 - [x] 26. **Operational Calendar CSV Ingestion & Staff Workspace Route** - Upload and extract foundation calendar milestones from CSV files (supporting Date, Event, Participants, Focal Person, Remarks, and multi-date activity stages), interactive review table before saving, Event schema enrichment, and dedicated read-only operational calendar workspace route (`/dashboard/calendar`) positioned under Leaderboard in the AppShell navigation.
-- [x] 27. **DZF-ILAS Platform Rebranding, SEO Privacy Rules, Staff Birthdays & Data Cleanup** - Rebrand entire platform from ILLS to DZF-ILAS (Dzuels Integrated Library & Administrative System) across UI, metadata, and configuration; enforce strict SEO robots rules ensuring only `/transcomm` is indexed by search engines while all internal routes are noindex; add birthdate (month and day only) to staff registration and directory; and purge all hardcoded mock/fallback calendar data across views.
+- [x] 27. **DZF-ILAS Platform Rebranding, SEO Privacy Rules, Staff Birthdays & Data Cleanup** - Rebrand entire platform to DZF-ILAS (Dzuels Integrated Library & Administrative System) across UI, metadata, and configuration; enforce strict SEO robots rules ensuring only `/transcomm` is indexed by search engines while all internal routes are noindex; add birthdate (month and day only) to staff registration and directory; and purge all hardcoded mock/fallback calendar data across views.

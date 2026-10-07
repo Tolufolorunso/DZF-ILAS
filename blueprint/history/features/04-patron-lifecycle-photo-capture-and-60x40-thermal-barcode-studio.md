@@ -5,7 +5,7 @@
 **Branch:** feature/patron-lifecycle-photo-capture-and-60x40-thermal-barcode-studio
 
 ## Goal
-Build the complete patron registration, lifecycle management, live camera photo capture, 60mm × 40mm thermal barcode print studio, and companion mobile REST search endpoints for DZF-ILLS.
+Build the complete patron registration, lifecycle management, live camera photo capture, 60mm × 40mm thermal barcode print studio, and companion mobile REST search endpoints for DZF-ILAS.
 
 ## In scope
 - **Data Model & Barcode Rules:**
@@ -29,7 +29,7 @@ Build the complete patron registration, lifecycle management, live camera photo 
 - **60mm × 40mm Thermal Barcode Label Print Studio:**
   - Layout formatted for 60mm width × 40mm height thermal adhesive label paper rolls.
   - Physical visual hierarchy:
-    1. **Top:** Organisation Name (`Dzuels Educational Foundation` / `DZF-ILLS Station AAoJ`).
+    1. **Top:** Organisation Name (`Dzuels Educational Foundation` / `DZF-ILAS Station AAoJ`).
     2. **Center:** High-density Code128 / SVG barcode graphic with human-readable patron barcode (`20260584`) with uniform vertical spacing.
     3. **Bottom:** Patron Full Name in bold legible scholastic typography.
   - Browser `@page { size: 60mm 40mm; margin: 0; }` thermal print CSS.

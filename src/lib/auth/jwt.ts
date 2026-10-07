@@ -10,7 +10,7 @@ export interface ITokenPayload {
 }
 
 const JWT_SECRET_STRING =
-  process.env.JWT_SECRET || 'dzf_ills_academic_jwt_secret_key_change_in_production_2026';
+  process.env.JWT_SECRET || 'dzf_ilas_academic_jwt_secret_key_change_in_production_2026';
 
 const JWT_KEY = new TextEncoder().encode(JWT_SECRET_STRING);
 const DEFAULT_EXPIRATION = process.env.JWT_EXPIRES_IN || '2d';

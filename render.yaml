@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: dzf-ills
+    name: dzf-ilas
     runtime: node
     plan: starter
     region: oregon
