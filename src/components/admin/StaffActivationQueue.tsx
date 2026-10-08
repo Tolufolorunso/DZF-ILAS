@@ -76,9 +76,63 @@ export default function StaffActivationQueue({ currentUsername, canManage }: Sta
 
   // Dialog state for Role Modification / Activation
   const [roleDialogOpen, setRoleDialogOpen] = React.useState(false);
+  const [confirmRoleDialogOpen, setConfirmRoleDialogOpen] = React.useState(false);
   const [targetUser, setTargetUser] = React.useState<IStaffUser | null>(null);
   const [selectedRole, setSelectedRole] = React.useState<string>('librarian');
   const [processingId, setProcessingId] = React.useState<string | null>(null);
+
+  const handleRoleChangeSubmit = () => {
+    if (!targetUser) return;
+
+    if (!targetUser.active) {
+      handleActivate(targetUser, selectedRole);
+      return;
+    }
+
+    if (selectedRole === targetUser.role) {
+      setRoleDialogOpen(false);
+      setTargetUser(null);
+      return;
+    }
+
+    setConfirmRoleDialogOpen(true);
+  };
+
+  const handleConfirmRoleChange = async () => {
+    if (!targetUser) return;
+
+    try {
+      setProcessingId(targetUser.id);
+      setNotification(null);
+
+      const res = await fetch(`/api/admin/users/${targetUser.id}/role`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: selectedRole }),
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setNotification({
+          type: 'success',
+          text: `Role for @${targetUser.username} updated to ${selectedRole.toUpperCase()}.`,
+        });
+        fetchUsers();
+      } else {
+        throw new Error(data.error || 'Failed to update role');
+      }
+    } catch (err) {
+      setNotification({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Failed to update role',
+      });
+    } finally {
+      setProcessingId(null);
+      setConfirmRoleDialogOpen(false);
+      setRoleDialogOpen(false);
+      setTargetUser(null);
+    }
+  };
 
   const fetchUsers = React.useCallback(async () => {
     try {
@@ -806,42 +860,135 @@ export default function StaffActivationQueue({ currentUsername, canManage }: Sta
           </DZFButton>
           <DZFButton
             variant="primary"
-            onClick={() => {
-              if (targetUser) {
-                if (!targetUser.active) {
-                  handleActivate(targetUser, selectedRole);
-                } else {
-                  // Direct role update
-                  fetch(`/api/admin/users/${targetUser.id}/role`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ role: selectedRole }),
-                  })
-                    .then((res) => res.json())
-                    .then((data) => {
-                      if (data.success) {
-                        setNotification({ type: 'success', text: `Role updated to ${selectedRole.toUpperCase()}.` });
-                        fetchUsers();
-                      } else {
-                        throw new Error(data.error);
-                      }
-                    })
-                    .catch((err) => {
-                      setNotification({ type: 'error', text: err.message || 'Failed to update role' });
-                    })
-                    .finally(() => {
-                      setRoleDialogOpen(false);
-                      setTargetUser(null);
-                    });
-                }
-              }
-            }}
+            onClick={handleRoleChangeSubmit}
             disabled={Boolean(processingId)}
             sx={{
               background: `linear-gradient(135deg, ${dzfColors.navy[900]}, ${dzfColors.maroon[800]})`,
             }}
           >
             {targetUser?.active ? 'Save Role Changes' : 'Confirm & Activate Account'}
+          </DZFButton>
+        </DialogActions>
+      </Dialog>
+
+      {/* Role Change Confirmation Dialog */}
+      <Dialog
+        open={confirmRoleDialogOpen}
+        onClose={() => !processingId && setConfirmRoleDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        slotProps={{ paper: { sx: { borderRadius: '16px', p: 1 } } }}
+      >
+        <DialogTitle sx={{ pb: 1, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box
+            sx={{
+              width: 40,
+              height: 40,
+              borderRadius: '10px',
+              bgcolor: '#FEF3C7',
+              color: '#D97706',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '1.25rem',
+            }}
+          >
+            ⚠️
+          </Box>
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 800, color: dzfColors.navy[900], lineHeight: 1.2 }}>
+              Confirm Role Reassignment
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              Action requires administrative verification
+            </Typography>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent dividers sx={{ py: 2.5, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {targetUser && (
+            <>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                You are about to modify the system operational role for{' '}
+                <Box component="span" sx={{ fontWeight: 700, color: dzfColors.navy[900] }}>
+                  {targetUser.name}
+                </Box>{' '}
+                (<code>@{targetUser.username}</code>).
+              </Typography>
+
+              <Card
+                sx={{
+                  p: 2,
+                  bgcolor: '#F8FAFC',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 1.5,
+                }}
+              >
+                <Box sx={{ textAlign: 'center', flex: 1 }}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block' }}>
+                    Current Role
+                  </Typography>
+                  <Chip
+                    size="small"
+                    label={ROLE_LABELS[targetUser.role]?.label || targetUser.role}
+                    sx={{
+                      bgcolor: ROLE_LABELS[targetUser.role]?.bg || '#F1F5F9',
+                      color: ROLE_LABELS[targetUser.role]?.text || '#475569',
+                      fontWeight: 700,
+                      mt: 0.5,
+                    }}
+                  />
+                </Box>
+
+                <Typography sx={{ color: '#94A3B8', fontWeight: 900, fontSize: '1.2rem' }}>&rarr;</Typography>
+
+                <Box sx={{ textAlign: 'center', flex: 1 }}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block' }}>
+                    New Role
+                  </Typography>
+                  <Chip
+                    size="small"
+                    label={ROLE_LABELS[selectedRole]?.label || selectedRole}
+                    sx={{
+                      bgcolor: ROLE_LABELS[selectedRole]?.bg || '#F1F5F9',
+                      color: ROLE_LABELS[selectedRole]?.text || '#475569',
+                      fontWeight: 800,
+                      mt: 0.5,
+                      border: '1px solid #F59E0B',
+                    }}
+                  />
+                </Box>
+              </Card>
+
+              <Alert severity="warning" sx={{ borderRadius: '10px', fontSize: '0.8rem' }}>
+                Changing this role will immediately grant the staff member all permissions associated with{' '}
+                <strong>{ROLE_LABELS[selectedRole]?.label || selectedRole.toUpperCase()}</strong>, including workspace navigation and administrative controls.
+              </Alert>
+            </>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ px: 2.5, py: 2 }}>
+          <DZFButton
+            variant="secondary"
+            onClick={() => setConfirmRoleDialogOpen(false)}
+            disabled={Boolean(processingId)}
+          >
+            Cancel
+          </DZFButton>
+          <DZFButton
+            variant="primary"
+            onClick={handleConfirmRoleChange}
+            disabled={Boolean(processingId)}
+            sx={{
+              background: `linear-gradient(135deg, ${dzfColors.navy[900]}, ${dzfColors.maroon[800]})`,
+            }}
+          >
+            {processingId ? 'Updating Role...' : 'Confirm Role Change'}
           </DZFButton>
         </DialogActions>
       </Dialog>

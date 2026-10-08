@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth/session';
-import { canActivateStaff, ALL_ROLES, ROLE_HIERARCHY_RANK } from '@/lib/auth/rbac';
+import { canActivateStaff, ALL_ROLES } from '@/lib/auth/rbac';
 import connectDB from '@/lib/db';
 import { User, UserRole } from '@/models/User';
 import { logAuditEvent } from '@/lib/admin/service';
@@ -51,34 +51,6 @@ export async function PATCH(
         { success: false, error: 'Self-role modification is forbidden.' },
         { status: 403 }
       );
-    }
-
-    const actorRank = ROLE_HIERARCHY_RANK[sessionUser.role as UserRole] || 0;
-    const targetCurrentRank = ROLE_HIERARCHY_RANK[user.role as UserRole] || 0;
-    const targetNewRank = ROLE_HIERARCHY_RANK[body.role as UserRole] || 0;
-
-    // IMA has top rank and can modify any staff member.
-    // Non-IMA leadership cannot modify peers or superiors.
-    if (sessionUser.role !== 'ima') {
-      if (targetCurrentRank >= actorRank) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Unauthorized. You cannot modify the role of a staff member with equal or higher rank (${user.role.toUpperCase()}).`,
-          },
-          { status: 403 }
-        );
-      }
-
-      if (targetNewRank > actorRank) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Unauthorized. You cannot assign a role with higher rank than your own (${String(body.role).toUpperCase()}).`,
-          },
-          { status: 403 }
-        );
-      }
     }
 
     const previousRole = user.role;
