@@ -85,14 +85,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const isObjectId = mongoose.Types.ObjectId.isValid(id);
     const query = isObjectId ? { _id: id } : { barcode: id };
 
-    // Prevent mutating barcode or _id directly
-    delete body.barcode;
-    delete body._id;
-
-    if (body.dateOfBirth) {
-      body.dateOfBirth = new Date(body.dateOfBirth);
-    }
-
     const existing = await Patron.findOne({ ...query, isDeleted: { $ne: true } });
     if (!existing) {
       return NextResponse.json(
@@ -119,9 +111,10 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    let effectivePhone: string | undefined = undefined;
     if (body.phoneNumber !== undefined) {
       const trimmedPhone = String(body.phoneNumber || '').trim();
-      body.phoneNumber = trimmedPhone || undefined;
+      effectivePhone = trimmedPhone || undefined;
       if (trimmedPhone && trimmedPhone !== existing.phoneNumber) {
         const dup = await Patron.findOne({
           _id: { $ne: existing._id },
@@ -140,9 +133,30 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    // Allowed mutable profile fields - prevent mass-assignment of protected system fields (points, isDeleted, registeredBy, etc.)
+    const updateData: Record<string, unknown> = {};
+
+    if (body.firstname !== undefined) updateData.firstname = String(body.firstname).trim();
+    if (body.surname !== undefined) updateData.surname = String(body.surname).trim();
+    if (body.middlename !== undefined) updateData.middlename = String(body.middlename || '').trim();
+    if (body.email !== undefined) updateData.email = body.email ? String(body.email).trim().toLowerCase() : undefined;
+    if (body.phoneNumber !== undefined) updateData.phoneNumber = effectivePhone;
+    if (body.gender !== undefined) updateData.gender = body.gender;
+    if (body.address !== undefined) updateData.address = body.address;
+    if (body.dateOfBirth !== undefined) {
+      updateData.dateOfBirth = body.dateOfBirth ? new Date(body.dateOfBirth) : undefined;
+    }
+    if (body.patronType !== undefined) updateData.patronType = body.patronType;
+    if (body.studentSchoolInfo !== undefined) updateData.studentSchoolInfo = body.studentSchoolInfo;
+    if (body.employerInfo !== undefined) updateData.employerInfo = body.employerInfo;
+    if (body.parentInfo !== undefined) updateData.parentInfo = body.parentInfo;
+    if (body.image_url !== undefined) updateData.image_url = body.image_url;
+    if (Array.isArray(body.messagePreferences)) updateData.messagePreferences = body.messagePreferences;
+    if (typeof body.active === 'boolean') updateData.active = body.active;
+
     const updatedPatron = await Patron.findByIdAndUpdate(
       existing._id,
-      { $set: body },
+      { $set: updateData },
       { new: true, runValidators: true }
     );
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth/session';
+import { canManageCirculation } from '@/lib/auth/rbac';
 import { executeCheckout } from '@/lib/circulation/loan';
 
 /**
@@ -16,8 +17,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const allowedRoles = ['admin', 'librarian', 'ict'];
-    if (!allowedRoles.includes(auth.role)) {
+    if (!canManageCirculation(auth.role)) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized. Staff privileges required for book checkouts.' },
         { status: 403 }

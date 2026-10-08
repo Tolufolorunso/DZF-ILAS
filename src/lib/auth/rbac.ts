@@ -100,7 +100,14 @@ export function canCreateTask(role: UserRole | string): boolean {
 }
 
 export const ADMIN_ROLES: UserRole[] = ['ima', 'country_manager', 'admin', 'asst_admin'];
-export const CIRCULATION_ROLES: UserRole[] = ['admin', 'asst_admin', 'librarian'];
+export const CIRCULATION_ROLES: UserRole[] = [
+  'ima',
+  'country_manager',
+  'admin',
+  'asst_admin',
+  'librarian',
+  'ict',
+];
 export const COHORT_ROLES: UserRole[] = ['admin', 'asst_admin', 'cohort_lead', 'ict'];
 export const EDITORIAL_ROLES: UserRole[] = ['ima', 'country_manager', 'admin', 'asst_admin', 'transcomm_author'];
 export const COMPETITION_ROLES: UserRole[] = ['admin', 'asst_admin', 'librarian'];

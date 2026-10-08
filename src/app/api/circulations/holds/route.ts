@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import connectDB from '@/lib/db';
 import { getSessionUser } from '@/lib/auth/session';
+import { canManageCirculation } from '@/lib/auth/rbac';
 import { Hold } from '@/models/Hold';
 import { Patron } from '@/models/Patron';
 import { Cataloging } from '@/models/Cataloging';
@@ -97,8 +98,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const allowedRoles = ['admin', 'asst_admin', 'librarian', 'ict'];
-    if (!allowedRoles.includes(auth.role)) {
+    if (!canManageCirculation(auth.role)) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized. Staff privileges required for hold management.' },
         { status: 403 }
