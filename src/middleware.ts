@@ -9,7 +9,6 @@ const PUBLIC_PATHS = [
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/logout',
-  '/api/auth/seed',
   '/api/health',
   '/competitions/reading/result',
   '/api/competitions/results',

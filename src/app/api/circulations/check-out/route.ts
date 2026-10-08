@@ -55,6 +55,8 @@ export async function POST(req: NextRequest) {
       const patronDisplay = result.patron
         ? `${result.patron.firstname} ${result.patron.surname}`
         : String(body.patronBarcode);
+      const loanObj = result.loan as unknown as { id?: unknown; _id?: unknown };
+      const targetLoanId = String(loanObj.id || loanObj._id || '');
       await recordDailyAction({
         actionType: 'book_checkout',
         actionTitle: `Checked out "${result.loan.bookTitle || body.bookBarcode}" to ${patronDisplay}`,
@@ -62,9 +64,9 @@ export async function POST(req: NextRequest) {
         performedByName: auth.name || auth.username,
         performedByRole: auth.role,
         targetEntity: 'Library',
-        targetId: (result.loan as any).id || String((result.loan as any)._id || ''),
+        targetId: targetLoanId,
         reversiblePayload: {
-          loanId: (result.loan as any).id || (result.loan as any)._id,
+          loanId: targetLoanId,
           bookBarcode: String(body.bookBarcode),
           patronBarcode: String(body.patronBarcode),
         },

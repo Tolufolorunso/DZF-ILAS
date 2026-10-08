@@ -15,7 +15,6 @@ import TextField from '@mui/material/TextField';
 import { dzfColors } from '@/theme/colors';
 import DZFInput from '@/components/ui/DZFInput';
 import DZFButton from '@/components/ui/DZFButton';
-import DZFBadge from '@/components/ui/DZFBadge';
 import { BookIcon } from '@/components/ui/DZFIcons';
 
 const AVAILABLE_ROLES = [

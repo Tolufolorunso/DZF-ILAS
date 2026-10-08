@@ -17,7 +17,6 @@ import {
   DZFButton,
   DZFBadge,
   Mono,
-  BookIcon,
   RefreshIcon,
   ClockIcon,
 } from '@/components';

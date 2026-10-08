@@ -10,7 +10,6 @@ import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Chip from '@mui/material/Chip';
 import Alert from '@mui/material/Alert';
-import IconButton from '@mui/material/IconButton';
 import { dzfColors } from '@/theme/colors';
 import { AppShell } from '@/components/layout/AppShell';
 import DZFButton from '@/components/ui/DZFButton';
@@ -19,13 +18,11 @@ import DZFStatCard from '@/components/ui/DZFStatCard';
 import {
   ShieldIcon,
   AlertTriangleIcon,
-  CheckIcon,
   UsersIcon,
   BookIcon,
   ClockIcon,
   BarcodeIcon,
   TrophyIcon,
-  TrashIcon,
 } from '@/components/ui/DZFIcons';
 import type { ITokenPayload } from '@/lib/auth/jwt';
 import type {
@@ -287,23 +284,7 @@ export default function AdminControlCenterClient({
     });
   };
 
-  // Event delete handler
-  const handleDeleteEvent = async (id: string) => {
-    if (!confirm('Are you sure you want to remove this event?')) return;
-    try {
-      const res = await fetch(`/api/admin/events/${id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to delete event');
-      }
-      setEvents((prev) => prev.filter((e) => e.id !== id));
-    } catch (err) {
-      setNotification({
-        type: 'error',
-        message: err instanceof Error ? err.message : 'Event deletion failed',
-      });
-    }
-  };
+
 
   const filteredRequisitions = requisitions.filter((r) =>
     reqStatusFilter === 'all' ? true : r.status === reqStatusFilter

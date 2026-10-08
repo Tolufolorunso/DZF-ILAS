@@ -25,9 +25,7 @@ function LoginForm() {
   const [password, setPassword] = React.useState('');
   const [showPassword, setShowPassword] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
-  const [seeding, setSeeding] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [seedNotice, setSeedNotice] = React.useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,28 +64,6 @@ function LoginForm() {
     }
   };
 
-  const handleSeedDefaults = async () => {
-    setSeeding(true);
-    setSeedNotice(null);
-    setError(null);
-
-    try {
-      const res = await fetch('/api/auth/seed', { method: 'POST' });
-      const data = await res.json();
-
-      if (data.success) {
-        setSeedNotice('Default accounts seeded! Use admin / Admin@12345 or librarian / Librarian@12345');
-        setUsername('admin');
-        setPassword('Admin@12345');
-      } else {
-        setError(data.error || 'Failed to seed default accounts.');
-      }
-    } catch {
-      setError('Error communicating with seed endpoint.');
-    } finally {
-      setSeeding(false);
-    }
-  };
 
   return (
     <Card
@@ -173,18 +149,6 @@ function LoginForm() {
         </Alert>
       )}
 
-      {seedNotice && (
-        <Alert
-          severity="success"
-          sx={{
-            mb: 2.5,
-            borderRadius: '8px',
-            fontSize: '0.8125rem',
-          }}
-        >
-          {seedNotice}
-        </Alert>
-      )}
 
       {/* Login Form */}
       <Box component="form" onSubmit={handleSubmit} noValidate>
@@ -260,30 +224,6 @@ function LoginForm() {
         </Box>
       </Box>
 
-      {/* Development Seed Helper */}
-      {/* <Box
-        sx={{
-          mt: 3.5,
-          pt: 2.5,
-          borderTop: `1px dashed ${dzfColors.surfaces.border}`,
-          textAlign: 'center',
-        }}
-      >
-        <Typography variant="caption" sx={{ color: dzfColors.surfaces.textMuted, display: 'block', mb: 1 }}>
-          Need standard testing credentials?
-        </Typography>
-
-        <DZFButton
-          variant="soft"
-          size="small"
-          onClick={handleSeedDefaults}
-          loading={seeding}
-          disabled={loading}
-          id="seed-credentials-button"
-        >
-          {seeding ? 'Seeding Default Accounts...' : 'Seed Default Accounts (admin / librarian)'}
-        </DZFButton>
-      </Box> */}
     </Card>
   );
 }

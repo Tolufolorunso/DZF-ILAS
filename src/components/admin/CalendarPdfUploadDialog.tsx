@@ -55,7 +55,6 @@ export default function CalendarPdfUploadDialog({
   const [successMsg, setSuccessMsg] = React.useState<string | null>(null);
 
   const [parsedEvents, setParsedEvents] = React.useState<IParsedCalendarEvent[]>([]);
-  const [totalPages, setTotalPages] = React.useState<number>(0);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // Sync initialYear when dialog opens
@@ -111,7 +110,6 @@ export default function CalendarPdfUploadDialog({
         setParsedEvents([]);
       } else {
         setParsedEvents(data.events);
-        setTotalPages(data.totalPages || 1);
         setSuccessMsg(
           `Extracted ${data.events.length} milestones across ${data.totalPages || 1} page(s). Please review and adjust below before importing.`
         );
@@ -124,7 +122,11 @@ export default function CalendarPdfUploadDialog({
     }
   };
 
-  const handleRowChange = (index: number, field: keyof IParsedCalendarEvent, value: any) => {
+  const handleRowChange = <K extends keyof IParsedCalendarEvent>(
+    index: number,
+    field: K,
+    value: IParsedCalendarEvent[K]
+  ) => {
     setParsedEvents((prev) => {
       const copy = [...prev];
       copy[index] = { ...copy[index], [field]: value };
@@ -137,7 +139,6 @@ export default function CalendarPdfUploadDialog({
   };
 
   const handleAddRow = () => {
-    const todayIso = new Date().toISOString().split('T')[0];
     const newEvent: IParsedCalendarEvent = {
       id: `manual-${Date.now()}`,
       eventName: 'New Calendar Milestone',
@@ -420,7 +421,7 @@ export default function CalendarPdfUploadDialog({
                           select
                           size="small"
                           value={event.category || 'general'}
-                          onChange={(e) => handleRowChange(idx, 'category', e.target.value)}
+                          onChange={(e) => handleRowChange(idx, 'category', e.target.value as IParsedCalendarEvent['category'])}
                           fullWidth
                           sx={{ '& .MuiSelect-select': { py: 0.8, fontSize: '0.85rem' } }}
                         >

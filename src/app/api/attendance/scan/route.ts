@@ -59,6 +59,14 @@ export async function POST(req: NextRequest) {
     }
 
     if (result.success) {
+      const attendanceObj = result.attendance as unknown as { _id?: unknown; id?: unknown; points?: unknown } | undefined;
+      const patronObj = result.patron as unknown as { _id?: unknown; id?: unknown } | undefined;
+      const targetAttendanceId = String(attendanceObj?._id || attendanceObj?.id || '');
+      const targetPatronId = String(patronObj?._id || patronObj?.id || '');
+      const awardedPoints = typeof attendanceObj?.points === 'number'
+        ? attendanceObj.points
+        : (typeof body.points === 'number' ? body.points : 2);
+
       const { recordDailyAction } = await import('@/lib/audit/dailyActionService');
       await recordDailyAction({
         actionType: 'attendance_scan',
@@ -67,11 +75,11 @@ export async function POST(req: NextRequest) {
         performedByName: auth.name || auth.username,
         performedByRole: auth.role,
         targetEntity: 'Attendance',
-        targetId: String((result.attendance as any)?._id || (result.attendance as any)?.id || ''),
+        targetId: targetAttendanceId,
         reversiblePayload: {
-          attendanceId: String((result.attendance as any)?._id || (result.attendance as any)?.id || ''),
-          patronId: String((result.patron as any)?._id || (result.patron as any)?.id || ''),
-          pointsAwarded: (result.attendance as any)?.points || (typeof body.points === 'number' ? body.points : 2),
+          attendanceId: targetAttendanceId,
+          patronId: targetPatronId,
+          pointsAwarded: awardedPoints,
         },
         isReversible: true,
       });

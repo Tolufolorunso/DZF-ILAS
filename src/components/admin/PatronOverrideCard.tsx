@@ -35,10 +35,7 @@ import {
   BarcodeIcon,
   ShieldIcon,
   CheckIcon,
-  AlertTriangleIcon,
-  AlertCircleIcon,
   BookIcon,
-  UsersIcon,
   CalendarIcon,
   TrophyIcon,
   AwardIcon,
@@ -46,7 +43,6 @@ import {
   TrashIcon,
   PlusIcon,
   RefreshIcon,
-  InfoIcon,
 } from '@/components/ui/DZFIcons';
 import type { PatronOverrideAction } from '@/lib/admin/types';
 
@@ -1894,9 +1890,10 @@ export default function PatronOverrideCard() {
             variant="danger"
             disabled={actionLoading}
             onClick={async () => {
-              const opts: Record<string, unknown> = {};
-              opts[deleteConfirmModal.targetIdKey] = deleteConfirmModal.targetId;
-              await handleExecuteOverride(deleteConfirmModal.action, opts as any);
+              const opts = {
+                [deleteConfirmModal.targetIdKey]: deleteConfirmModal.targetId,
+              } as Parameters<typeof handleExecuteOverride>[1];
+              await handleExecuteOverride(deleteConfirmModal.action, opts);
               setDeleteConfirmModal({ ...deleteConfirmModal, open: false });
             }}
           >

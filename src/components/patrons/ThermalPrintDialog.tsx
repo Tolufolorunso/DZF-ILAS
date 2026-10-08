@@ -59,8 +59,8 @@ export default function ThermalPrintDialog({
       } else {
         setPrintError('Print engine did not complete. Please check browser printer permissions.');
       }
-    } catch (err: any) {
-      setPrintError(err?.message || 'Failed to trigger isolated print job.');
+    } catch (err: unknown) {
+      setPrintError(err instanceof Error ? err.message : 'Failed to trigger isolated print job.');
     } finally {
       setPrinting(false);
     }
@@ -80,8 +80,8 @@ export default function ThermalPrintDialog({
       } else {
         setPrintError('Test print failed to launch.');
       }
-    } catch (err: any) {
-      setPrintError(err?.message || 'Failed to trigger test label print.');
+    } catch (err: unknown) {
+      setPrintError(err instanceof Error ? err.message : 'Failed to trigger test label print.');
     } finally {
       setPrinting(false);
     }

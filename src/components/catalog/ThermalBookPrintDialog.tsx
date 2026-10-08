@@ -56,8 +56,8 @@ export default function ThermalBookPrintDialog({
       } else {
         setPrintError('Print engine did not complete. Please check browser printer permissions.');
       }
-    } catch (err: any) {
-      setPrintError(err?.message || 'Failed to trigger isolated book label print.');
+    } catch (err: unknown) {
+      setPrintError(err instanceof Error ? err.message : 'Failed to trigger isolated book label print.');
     } finally {
       setPrinting(false);
     }
@@ -76,8 +76,8 @@ export default function ThermalBookPrintDialog({
       } else {
         setPrintError('Test print failed to launch.');
       }
-    } catch (err: any) {
-      setPrintError(err?.message || 'Failed to trigger test label print.');
+    } catch (err: unknown) {
+      setPrintError(err instanceof Error ? err.message : 'Failed to trigger test label print.');
     } finally {
       setPrinting(false);
     }

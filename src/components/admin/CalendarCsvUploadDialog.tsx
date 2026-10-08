@@ -139,7 +139,11 @@ April 14th,Digital Literacy Masterclass,Staff & Students,Coordinator Mark,Intera
     }
   };
 
-  const handleFieldChange = (index: number, field: keyof IParsedCsvEvent, value: any) => {
+  const handleFieldChange = <K extends keyof IParsedCsvEvent>(
+    index: number,
+    field: K,
+    value: IParsedCsvEvent[K]
+  ) => {
     setParsedEvents((prev) => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
@@ -462,7 +466,7 @@ April 14th,Digital Literacy Masterclass,Staff & Students,Coordinator Mark,Intera
                           size="small"
                           fullWidth
                           value={evt.category}
-                          onChange={(e) => handleFieldChange(idx, 'category', e.target.value)}
+                          onChange={(e) => handleFieldChange(idx, 'category', e.target.value as IParsedCsvEvent['category'])}
                           slotProps={{ htmlInput: { style: { fontSize: '0.85rem', padding: '4px 8px' } } }}
                         >
                           {CATEGORIES.map((c) => (

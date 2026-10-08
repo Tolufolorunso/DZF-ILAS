@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth/session';
-import { isAdmin } from '@/lib/auth/rbac';
-import { updateTaskStatus } from '@/lib/admin/service';
 import { Task } from '@/models/Task';
 import { connectDB } from '@/lib/db';
 import { logAuditEvent } from '@/lib/admin/service';

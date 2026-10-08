@@ -8,7 +8,7 @@ import type { ITaskItemDTO } from '@/lib/admin/types';
 import { AppShell } from '@/components/layout/AppShell';
 import TaskKanbanBoard, { KanbanStatus } from '@/components/admin/TaskKanbanBoard';
 import TaskFormDialog from '@/components/admin/TaskFormDialog';
-import TaskEditDialog from '@/components/admin/TaskEditDialog';
+import TaskEditDialog, { TaskUpdatePayload } from '@/components/admin/TaskEditDialog';
 import { DZFButton } from '@/components';
 import { dzfColors } from '@/theme/colors';
 import Chip from '@mui/material/Chip';
@@ -62,7 +62,7 @@ export default function TasksWorkspaceClient({
       const data = await res.json();
       if (data.success) {
         setTasks((prev) =>
-          prev.map((t) => (t.id === id ? { ...t, status: newStatus as any } : t))
+          prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
         );
       }
     } catch (err) {
@@ -105,7 +105,7 @@ export default function TasksWorkspaceClient({
     setIsCreateOpen(false);
   };
 
-  const handleSaveEditedTask = async (taskId: string, payload: any) => {
+  const handleSaveEditedTask = async (taskId: string, payload: TaskUpdatePayload) => {
     const res = await fetch(`/api/admin/tasks/${taskId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },

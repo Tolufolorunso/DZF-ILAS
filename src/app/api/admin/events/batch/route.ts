@@ -27,23 +27,49 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const parsedEvents = body.events.map((e: any) => ({
-      eventName: String(e.eventName || e.title || 'Untitled Event').trim(),
-      title: e.title ? String(e.title).trim() : String(e.eventName || 'Untitled Event').trim(),
-      eventDate: new Date(e.eventDate),
-      academicYear: e.academicYear ? Number(e.academicYear) : new Date(e.eventDate).getFullYear(),
-      category: e.category,
-      location: e.location ? String(e.location).trim() : undefined,
-      targetAudience: e.targetAudience ? String(e.targetAudience).trim() : undefined,
-      arrivalTime: e.arrivalTime ? String(e.arrivalTime).trim() : undefined,
-      description: e.description ? String(e.description).trim() : undefined,
-      participants: e.participants ? String(e.participants).trim() : undefined,
-      focalPerson: e.focalPerson ? String(e.focalPerson).trim() : undefined,
-      remarks: e.remarks ? String(e.remarks).trim() : undefined,
-    }));
+    type EventCategory = 'assembly' | 'workshop' | 'competition' | 'holiday' | 'meeting' | 'general';
+    const VALID_CATEGORIES: EventCategory[] = ['assembly', 'workshop', 'competition', 'holiday', 'meeting', 'general'];
+
+    interface RawBatchEvent {
+      eventName?: string;
+      title?: string;
+      eventDate?: string;
+      academicYear?: number;
+      category?: string;
+      location?: string;
+      targetAudience?: string;
+      arrivalTime?: string;
+      description?: string;
+      participants?: string;
+      focalPerson?: string;
+      remarks?: string;
+    }
+
+    const rawEvents = body.events as RawBatchEvent[];
+    const parsedEvents = rawEvents.map((e) => {
+      const category: EventCategory | undefined =
+        typeof e.category === 'string' && VALID_CATEGORIES.includes(e.category as EventCategory)
+          ? (e.category as EventCategory)
+          : undefined;
+
+      return {
+        eventName: String(e.eventName || e.title || 'Untitled Event').trim(),
+        title: e.title ? String(e.title).trim() : String(e.eventName || 'Untitled Event').trim(),
+        eventDate: new Date(String(e.eventDate || '')),
+        academicYear: e.academicYear ? Number(e.academicYear) : new Date(String(e.eventDate || '')).getFullYear(),
+        category,
+        location: e.location ? String(e.location).trim() : undefined,
+        targetAudience: e.targetAudience ? String(e.targetAudience).trim() : undefined,
+        arrivalTime: e.arrivalTime ? String(e.arrivalTime).trim() : undefined,
+        description: e.description ? String(e.description).trim() : undefined,
+        participants: e.participants ? String(e.participants).trim() : undefined,
+        focalPerson: e.focalPerson ? String(e.focalPerson).trim() : undefined,
+        remarks: e.remarks ? String(e.remarks).trim() : undefined,
+      };
+    });
 
     // Filter out invalid dates
-    const validEvents = parsedEvents.filter((e: any) => !isNaN(e.eventDate.getTime()));
+    const validEvents = parsedEvents.filter((e) => !isNaN(e.eventDate.getTime()));
     if (validEvents.length === 0) {
       return NextResponse.json(
         { success: false, error: 'None of the provided events contained valid event dates.' },

@@ -1,11 +1,45 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import { User } from '@/models/User';
 import { hashPassword } from '@/lib/auth/password';
+import { getSessionUser } from '@/lib/auth/session';
 
-export async function POST() {
+export const dynamic = 'force-dynamic';
+
+export async function POST(request: NextRequest) {
   try {
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json(
+        { success: false, error: 'Database seeding endpoint is disabled in production environments.' },
+        { status: 403 }
+      );
+    }
+
     await connectDB();
+
+    const sessionUser = await getSessionUser(request);
+    const isSuperOrAdmin = sessionUser && ['ima', 'country_manager', 'admin'].includes(sessionUser.role);
+
+    const seedSecret = process.env.SEED_SECRET;
+    const providedSecret = request.headers.get('x-seed-secret');
+    const hasValidSecret = Boolean(seedSecret && providedSecret && seedSecret === providedSecret);
+
+    // Check if an active administrator account already exists
+    const existingAdmin = await User.findOne({
+      role: { $in: ['admin', 'country_manager', 'ima'] },
+      active: true,
+    });
+
+    // If an administrator already exists, only an authenticated administrator or matching seed secret may trigger seeding
+    if (existingAdmin && !isSuperOrAdmin && !hasValidSecret) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Active administrator account already exists. Re-seeding requires administrator authorization or a valid secret key.',
+        },
+        { status: 403 }
+      );
+    }
 
     const adminPasswordHash = await hashPassword('Admin@12345');
     const librarianPasswordHash = await hashPassword('Librarian@12345');

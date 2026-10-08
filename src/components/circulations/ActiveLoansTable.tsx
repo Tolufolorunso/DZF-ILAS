@@ -38,7 +38,6 @@ export function ActiveLoansTable({ onDataChanged }: ActiveLoansTableProps) {
   const [overdueOnly, setOverdueOnly] = React.useState(false);
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(10);
-  const [actionId, setActionId] = React.useState<string | null>(null);
   const [reloadKey, setReloadKey] = React.useState(0);
 
   // Modal dialog states
@@ -297,10 +296,8 @@ export function ActiveLoansTable({ onDataChanged }: ActiveLoansTableProps) {
       label: 'Actions',
       minWidth: 200,
       align: 'right',
-      render: (row) => {
-        const isBusy = actionId === row.id;
-        return (
-          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+      render: (row) => (
+        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
             <DZFButton
               variant="primary"
               size="small"
@@ -320,8 +317,7 @@ export function ActiveLoansTable({ onDataChanged }: ActiveLoansTableProps) {
               Renew
             </DZFButton>
           </Box>
-        );
-      },
+        ),
     },
   ];
 

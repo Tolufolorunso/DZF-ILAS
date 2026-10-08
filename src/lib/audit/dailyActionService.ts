@@ -1,7 +1,7 @@
 import { connectDB } from '@/lib/db';
 import { DailyAction } from '@/models/DailyAction';
 import { Attendance } from '@/models/Attendance';
-import { Library } from '@/models/Library';
+import { Library, LoanStatus } from '@/models/Library';
 import { Cataloging } from '@/models/Cataloging';
 import { Patron } from '@/models/Patron';
 import { Task } from '@/models/Task';
@@ -165,7 +165,27 @@ export async function undoDailyAction(
     throw new Error('Undo window closed at 12:00 AM midnight for this action. Historical actions cannot be reversed.');
   }
 
-  const payload = (action.reversiblePayload || {}) as Record<string, any>;
+interface ReversibleActionPayload {
+  attendanceId?: string;
+  pointsAwarded?: number;
+  patronId?: string;
+  loanId?: string;
+  bookBarcode?: string;
+  previousStatus?: string;
+  patronBarcode?: string;
+  patronName?: string;
+  dueDate?: string | Date;
+  bookId?: string;
+  previousState?: Record<string, unknown>;
+  deletedBook?: Record<string, unknown>;
+  deletedPatron?: Record<string, unknown>;
+  eventId?: string;
+  taskId?: string;
+  entryId?: string;
+  [key: string]: unknown;
+}
+
+  const payload = (action.reversiblePayload || {}) as ReversibleActionPayload;
 
   // Execute entity-specific reversal
   switch (action.actionType) {
@@ -205,7 +225,7 @@ export async function undoDailyAction(
       }
 
       if (loanDoc) {
-        loanDoc.status = payload.previousStatus || 'issued';
+        loanDoc.status = (payload.previousStatus as LoanStatus) || 'borrowed';
         loanDoc.returnDate = undefined;
         await loanDoc.save();
       }
@@ -251,7 +271,8 @@ export async function undoDailyAction(
     case 'book_delete': {
       if (payload.deletedBook) {
         // Re-create the deleted book document
-        const { _id, ...bookData } = payload.deletedBook;
+        const bookData = { ...payload.deletedBook };
+        delete (bookData as { _id?: unknown })._id;
         await Cataloging.create(bookData);
       }
       break;
@@ -274,7 +295,8 @@ export async function undoDailyAction(
     case 'patron_delete': {
       if (payload.deletedPatron) {
         // Re-create the deleted patron document
-        const { _id, ...patronData } = payload.deletedPatron;
+        const patronData = { ...payload.deletedPatron };
+        delete (patronData as { _id?: unknown })._id;
         await Patron.create(patronData);
       }
       break;

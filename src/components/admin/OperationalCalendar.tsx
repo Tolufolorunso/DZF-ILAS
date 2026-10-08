@@ -136,7 +136,18 @@ export default function OperationalCalendar({
     }
   };
 
-  const handleCreateSubmit = async (payload: any) => {
+  const handleCreateSubmit = async (payload: {
+    eventName: string;
+    title?: string;
+    eventDate: string;
+    location?: string;
+    targetAudience?: string;
+    arrivalTime?: string;
+    description?: string;
+    participants?: string;
+    focalPerson?: string;
+    remarks?: string;
+  }) => {
     const res = await fetch('/api/admin/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

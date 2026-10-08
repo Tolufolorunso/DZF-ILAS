@@ -19,7 +19,6 @@ import {
   BookIcon,
   CheckIcon,
   AlertTriangleIcon,
-  ClockIcon,
 } from '@/components';
 
 export interface ReturnLoanDetails {

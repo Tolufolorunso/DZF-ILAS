@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 
     await connectDB();
 
-    const query: Record<string, any> = {};
+    const query: Record<string, unknown> = {};
 
     if (status === 'pending') {
       query.active = false;
@@ -61,14 +61,13 @@ export async function GET(request: NextRequest) {
       User.countDocuments({ active: true }),
     ]);
 
-    const formattedUsers = users.map((u: any) => ({
-      id: u._id.toString(),
+    const formattedUsers = users.map((u) => ({
+      id: String(u._id),
       name: u.name,
       username: u.username,
       phone: u.phone,
       role: u.role,
       active: u.active,
-      userImg: u.userImg,
       createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
       updatedAt: u.updatedAt ? new Date(u.updatedAt).toISOString() : new Date().toISOString(),
     }));
