@@ -267,6 +267,21 @@ DZF-ILAS is a ground-up rewrite delivering:
   - **Assigner Live Progress Visibility:**
     - Staff who assign a task (and leadership delegators) see real-time status progression, current column position, and update timestamps across the board.
 
+### Phase 12: Task Lifecycle Archiving, Privacy Scoping & In-App Escalation Reminders (New)
+- **Task Archiving Lifecycle & 30-Day Auto-Purge:**
+  - Status progression: `To Do` $\rightarrow$ `In Progress` $\rightarrow$ `Completed` $\rightarrow$ `Archived`.
+  - Completed cards feature an "Archive Task" action button and quick-action menu item.
+  - Dedicated "Archived Tasks" toggle/modal allows viewing and restoring archived tasks before expiration.
+  - Automated 30-day deletion: `archivedAt: Date` timestamp with MongoDB TTL index (`expireAfterSeconds: 2592000`) and server-side fallback query purge, permanently removing tasks 30 days after archiving with zero manual maintenance.
+- **Task Privacy & Role Scoping (`isPrivate`):**
+  - Form field toggle during task creation and editing allowing staff to designate a task as `private` or `public`.
+  - Strict confidentiality: Tasks marked private are completely concealed from other staff members, visible strictly to the assigned staff member (`assignedTo`) and the assigner (`assignedBy`). Public tasks follow standard role-scoped visibility.
+- **In-App Smart Polling Notification Reminders:**
+  - Server-side reminder evaluator invoked during in-app notification bell polling (`/api/admin/notifications`) and task workspace visits (`/dashboard/tasks`).
+  - **Hourly Unstarted Alert:** Sends an in-app system notification every 1 hour to the assignee for tasks that remain in `To Do`.
+  - **48-Hour In-Progress Stalled Alert:** Sends an in-app system notification to the assignee if a task remains in `In Progress` for more than 2 days (48 hours) without completion.
+  - Tracking timestamps on `Task`: `inProgressAt`, `lastTodoRemindedAt`, `lastInProgressRemindedAt`.
+
 ## 4. Data - What are we storing?
 
 All 15 core production entities plus Phase 5 model extensions:
@@ -282,7 +297,7 @@ All 15 core production entities plus Phase 5 model extensions:
 10. `MonthlyActivity` (PatronId, monthYear, summaryPoints, attendancePoints, competitionPoints, circulationPoints, totalScore, rank)
 11. `TranscommArticle` (Title, slug, content, excerpt, author, DRNICER value category, publishedAt)
 12. `Requisition` (Staff resource requests, department, estimatedCost, approvalStatus)
-13. `Task` (Staff operational tasks, priority, dueDate, assignee, status)
+13. `Task` (Staff operational tasks: priority, dueDate, assignedBy, assignedTo, targetGroup, status: `todo` | `inProgress` | `completed` | `archived`, isPrivate: boolean, archivedAt?: Date, inProgressAt?: Date, lastTodoRemindedAt?: Date, lastInProgressRemindedAt?: Date, comments, likes)
 14. `Event` (Calendar events, library workshops, target audience)
 15. `SystemSetting` & `AuditLog` (Singleton governance settings & tamper-evident audit ledger)
 

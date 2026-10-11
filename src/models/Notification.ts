@@ -3,6 +3,7 @@ import mongoose, { Document, Model, Schema } from 'mongoose';
 export type NotificationType =
   | 'task_assigned'
   | 'task_updated'
+  | 'task_reminder'
   | 'calendar_milestone'
   | 'account_pending'
   | 'system';
@@ -39,7 +40,7 @@ const NotificationSchema = new Schema<INotificationDocument>(
     },
     type: {
       type: String,
-      enum: ['task_assigned', 'task_updated', 'calendar_milestone', 'account_pending', 'system'],
+      enum: ['task_assigned', 'task_updated', 'task_reminder', 'calendar_milestone', 'account_pending', 'system'],
       default: 'system',
       index: true,
     },

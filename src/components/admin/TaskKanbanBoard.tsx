@@ -23,10 +23,11 @@ import {
   UsersIcon,
   ChevronRightIcon,
   ChevronLeftIcon,
+  ArchiveIcon,
 } from '@/components';
 import type { ITaskItemDTO } from '@/lib/admin/types';
 
-export type KanbanStatus = 'todo' | 'inProgress' | 'completed';
+export type KanbanStatus = 'todo' | 'inProgress' | 'completed' | 'archived';
 
 interface TaskKanbanBoardProps {
   tasks: ITaskItemDTO[];
@@ -208,7 +209,8 @@ export default function TaskKanbanBoard({
                       const isBroadcast =
                         t.targetGroup === 'all' || t.assignedTo?.username === 'group:all';
                       const isPrivate = Boolean(
-                        t.isSelfAssigned ||
+                        t.isPrivate ||
+                          t.isSelfAssigned ||
                           (t.assignedTo?.username &&
                             t.assignedBy?.username &&
                             t.assignedTo.username.toLowerCase() === t.assignedBy.username.toLowerCase())
@@ -440,19 +442,34 @@ export default function TaskKanbanBoard({
                               )}
 
                               {col.id === 'completed' && (
-                                <Tooltip title="Reopen (Move back to In Progress)">
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => onUpdateStatus(t.id, 'inProgress')}
-                                    sx={{
-                                      color: '#0284c7',
-                                      p: 0.5,
-                                      '&:hover': { backgroundColor: 'rgba(2, 132, 199, 0.08)' },
-                                    }}
-                                  >
-                                    <ChevronLeftIcon size={16} />
-                                  </IconButton>
-                                </Tooltip>
+                                <>
+                                  <Tooltip title="Reopen (Move back to In Progress)">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => onUpdateStatus(t.id, 'inProgress')}
+                                      sx={{
+                                        color: '#0284c7',
+                                        p: 0.5,
+                                        '&:hover': { backgroundColor: 'rgba(2, 132, 199, 0.08)' },
+                                      }}
+                                    >
+                                      <ChevronLeftIcon size={16} />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Archive Task (30-day retention auto-purge)">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => onUpdateStatus(t.id, 'archived')}
+                                      sx={{
+                                        color: '#b45309',
+                                        p: 0.5,
+                                        '&:hover': { backgroundColor: 'rgba(180, 83, 9, 0.08)' },
+                                      }}
+                                    >
+                                      <ArchiveIcon size={16} />
+                                    </IconButton>
+                                  </Tooltip>
+                                </>
                               )}
 
                               {col.id !== 'completed' && (
@@ -540,6 +557,16 @@ export default function TaskKanbanBoard({
             <ListItemText primary={c.title} />
           </MenuItem>
         ))}
+        <MenuItem
+          onClick={() => handleMoveViaMenu('archived')}
+          disabled={menuTargetTask?.status === 'archived'}
+          sx={{ fontSize: '0.8125rem', color: '#b45309' }}
+        >
+          <ListItemIcon sx={{ minWidth: 24, color: '#b45309' }}>
+            <ArchiveIcon size={16} />
+          </ListItemIcon>
+          <ListItemText primary="Archive Task (30 Days)" />
+        </MenuItem>
       </Menu>
     </Box>
   );

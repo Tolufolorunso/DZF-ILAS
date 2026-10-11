@@ -734,6 +734,8 @@ export async function listTasks(options: {
   const query: Record<string, unknown> = {};
   if (options.status && options.status !== 'all') {
     query.status = options.status;
+  } else if (!options.status) {
+    query.status = { $ne: 'archived' };
   }
 
   const rawTasks = await Task.find(query)
@@ -763,6 +765,11 @@ export async function listTasks(options: {
 
     const isAssignee = assignedToUsername === currentUsername;
     const isAssigner = assignedByUsername === currentUsername;
+
+    // 0. Explicit private task
+    if (t.isPrivate === true) {
+      return isAssignee || isAssigner;
+    }
 
     // 1. Broadcast / All Team Members task
     if (t.targetGroup === 'all' || assignedToUsername === 'group:all') {
@@ -844,8 +851,10 @@ function mapTaskToDTO(
       name: t.assignedTo?.name || 'Staff',
       username: t.assignedTo?.username || 'staff',
     },
-    targetGroup: t.targetGroup || (assignedToUsername.startsWith('group:') ? assignedToUsername.replace('group:', '') : undefined),
     isSelfAssigned: Boolean(isSelfAssigned),
+    isPrivate: Boolean(t.isPrivate),
+    archivedAt: t.archivedAt ? new Date(t.archivedAt).toISOString() : null,
+    inProgressAt: t.inProgressAt ? new Date(t.inProgressAt).toISOString() : null,
     status: (t.status as 'todo' | 'inProgress' | 'completed' | 'archived') || 'todo',
     priority: (t.priority as 'low' | 'medium' | 'high') || 'medium',
     createdAt: t.createdAt ? new Date(t.createdAt).toISOString() : new Date().toISOString(),
@@ -858,6 +867,7 @@ export async function createTask(params: {
   description?: string;
   dueDate?: Date;
   priority: 'low' | 'medium' | 'high';
+  isPrivate?: boolean;
   assignedToUsername: string;
   assignedToName: string;
   staffUsername: string;
@@ -878,6 +888,7 @@ export async function createTask(params: {
       assignedByRole: params.staffRole,
       assignedToRole: 'all',
       isSelfAssigned: false,
+      isPrivate: Boolean(params.isPrivate),
       assignedBy: {
         name: params.staffName,
         username: params.staffUsername,
@@ -937,6 +948,7 @@ export async function createTask(params: {
       assignedByRole: params.staffRole,
       assignedToRole: targetRole,
       isSelfAssigned: false,
+      isPrivate: Boolean(params.isPrivate),
       assignedBy: {
         name: params.staffName,
         username: params.staffUsername,
@@ -999,6 +1011,7 @@ export async function createTask(params: {
     assignedByRole: params.staffRole,
     assignedToRole: targetUserRole,
     isSelfAssigned: isSelf,
+    isPrivate: Boolean(params.isPrivate),
     assignedBy: {
       name: params.staffName,
       username: params.staffUsername,
@@ -1055,6 +1068,13 @@ export async function updateTaskStatus(params: {
 
   const oldStatus = task.status;
   task.status = params.status;
+  if (params.status === 'inProgress' && !task.inProgressAt) {
+    task.inProgressAt = new Date();
+  } else if (params.status === 'archived') {
+    task.archivedAt = new Date();
+  } else {
+    task.archivedAt = undefined;
+  }
   await task.save();
 
   // Notify the assigner whenever the task status is changed by someone else (e.g. assignee)
@@ -1119,6 +1139,7 @@ export async function updateTaskDetails(params: {
   description?: string;
   priority?: 'low' | 'medium' | 'high';
   status?: 'todo' | 'inProgress' | 'completed' | 'archived';
+  isPrivate?: boolean;
   dueDate?: Date | null;
   assignedToUsername?: string;
   assignedToName?: string;
@@ -1135,7 +1156,17 @@ export async function updateTaskDetails(params: {
   if (params.title !== undefined) task.title = params.title.trim();
   if (params.description !== undefined) task.description = params.description.trim();
   if (params.priority !== undefined) task.priority = params.priority;
-  if (params.status !== undefined) task.status = params.status;
+  if (params.isPrivate !== undefined) task.isPrivate = params.isPrivate;
+  if (params.status !== undefined) {
+    task.status = params.status;
+    if (params.status === 'inProgress' && !task.inProgressAt) {
+      task.inProgressAt = new Date();
+    } else if (params.status === 'archived') {
+      task.archivedAt = new Date();
+    } else {
+      task.archivedAt = undefined;
+    }
+  }
   if (params.dueDate !== undefined) task.dueDate = params.dueDate || undefined;
   if (params.assignedToUsername && params.assignedToName) {
     const oldAssignee = task.assignedTo.username;
@@ -1513,3 +1544,108 @@ export async function queryAuditLogs(options: {
     totalPages: Math.ceil(total / limit) || 1,
   };
 }
+
+/**
+ * Smart in-app task reminder evaluator & 30-day archive purge routine.
+ * Dispatches hourly notifications for unstarted 'todo' tasks and 48-hour alerts for stalled 'inProgress' tasks.
+ */
+export async function evaluateTaskRemindersAndCleanup(): Promise<{
+  todoRemindersCount: number;
+  inProgressRemindersCount: number;
+  purgedCount: number;
+}> {
+  try {
+    await connectDB();
+    let todoRemindersCount = 0;
+    let inProgressRemindersCount = 0;
+
+    const now = Date.now();
+    const ONE_HOUR = 60 * 60 * 1000;
+    const FORTY_EIGHT_HOURS = 48 * 60 * 60 * 1000;
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+
+    // 1. Hourly reminders for unstarted 'todo' tasks
+    const todoTasks = await Task.find({
+      status: 'todo',
+      'assignedTo.username': { $exists: true, $ne: 'group:all' },
+    });
+
+    for (const t of todoTasks) {
+      const refTime = t.lastTodoRemindedAt
+        ? new Date(t.lastTodoRemindedAt).getTime()
+        : new Date(t.createdAt).getTime();
+
+      if (now - refTime >= ONE_HOUR) {
+        const recipient = (t.assignedTo?.username || '').toLowerCase();
+        if (recipient && !recipient.startsWith('group:')) {
+          await Notification.create({
+            recipientUsername: recipient,
+            senderUsername: 'system',
+            type: 'task_reminder',
+            title: 'Task Reminder: Not Started',
+            message: `You have a pending task: "${t.title}" in To Do that has not been started yet.`,
+            link: '/dashboard/tasks',
+            read: false,
+          });
+          t.lastTodoRemindedAt = new Date();
+          await t.save();
+          todoRemindersCount++;
+        }
+      }
+    }
+
+    // 2. 48-Hour reminder for stalled 'inProgress' tasks
+    const inProgressTasks = await Task.find({
+      status: 'inProgress',
+      'assignedTo.username': { $exists: true, $ne: 'group:all' },
+    });
+
+    for (const t of inProgressTasks) {
+      const startedTime = t.inProgressAt
+        ? new Date(t.inProgressAt).getTime()
+        : new Date(t.updatedAt).getTime();
+
+      if (now - startedTime >= FORTY_EIGHT_HOURS) {
+        const lastAlert = t.lastInProgressRemindedAt
+          ? new Date(t.lastInProgressRemindedAt).getTime()
+          : 0;
+        // Remind at most once every 24 hours while still stalled
+        if (now - lastAlert >= TWENTY_FOUR_HOURS) {
+          const recipient = (t.assignedTo?.username || '').toLowerCase();
+          if (recipient && !recipient.startsWith('group:')) {
+            await Notification.create({
+              recipientUsername: recipient,
+              senderUsername: 'system',
+              type: 'task_reminder',
+              title: 'Task Alert: Still In Progress',
+              message: `Task "${t.title}" has been In Progress for over 2 days. Please complete or update its status.`,
+              link: '/dashboard/tasks',
+              read: false,
+            });
+            t.lastInProgressRemindedAt = new Date();
+            await t.save();
+            inProgressRemindersCount++;
+          }
+        }
+      }
+    }
+
+    // 3. Fallback query purge: delete archived tasks older than 30 days
+    const purgeCutoff = new Date(now - THIRTY_DAYS);
+    const purgeResult = await Task.deleteMany({
+      status: 'archived',
+      archivedAt: { $lt: purgeCutoff },
+    });
+
+    return {
+      todoRemindersCount,
+      inProgressRemindersCount,
+      purgedCount: purgeResult.deletedCount || 0,
+    };
+  } catch (err) {
+    console.error('[TASK_REMINDERS_AND_CLEANUP_ERROR]', err);
+    return { todoRemindersCount: 0, inProgressRemindersCount: 0, purgedCount: 0 };
+  }
+}
+

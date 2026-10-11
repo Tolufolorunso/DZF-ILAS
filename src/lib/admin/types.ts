@@ -97,6 +97,9 @@ export interface ITaskItemDTO {
   assignedTo: { name: string; username: string };
   targetGroup?: string;
   isSelfAssigned?: boolean;
+  isPrivate?: boolean;
+  archivedAt?: string | null;
+  inProgressAt?: string | null;
   status: 'todo' | 'inProgress' | 'completed' | 'archived';
   priority: 'low' | 'medium' | 'high';
   createdAt: string;

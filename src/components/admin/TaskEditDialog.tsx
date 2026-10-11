@@ -12,6 +12,8 @@ import MenuItem from '@mui/material/MenuItem';
 import Alert from '@mui/material/Alert';
 import CircularProgress from '@mui/material/CircularProgress';
 import ListSubheader from '@mui/material/ListSubheader';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Switch from '@mui/material/Switch';
 
 import { dzfColors } from '@/theme/colors';
 import DZFButton from '@/components/ui/DZFButton';
@@ -30,6 +32,7 @@ export interface TaskUpdatePayload {
   description?: string;
   priority?: 'low' | 'medium' | 'high';
   status?: 'todo' | 'inProgress' | 'completed' | 'archived';
+  isPrivate?: boolean;
   dueDate?: string | null;
   assignedToUsername?: string;
   assignedToName?: string;
@@ -58,7 +61,8 @@ export default function TaskEditDialog({
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [priority, setPriority] = React.useState<'low' | 'medium' | 'high'>('medium');
-  const [status, setStatus] = React.useState<'todo' | 'inProgress' | 'completed'>('todo');
+  const [status, setStatus] = React.useState<'todo' | 'inProgress' | 'completed' | 'archived'>('todo');
+  const [isPrivate, setIsPrivate] = React.useState(false);
   const [dueDate, setDueDate] = React.useState('');
   const [selectedAssignee, setSelectedAssignee] = React.useState<string>('');
   const [assignees, setAssignees] = React.useState<AssigneeOption[]>([]);
@@ -73,7 +77,8 @@ export default function TaskEditDialog({
       setTitle(task.title || '');
       setDescription(task.description || '');
       setPriority(task.priority || 'medium');
-      setStatus((task.status as 'todo' | 'inProgress' | 'completed') || 'todo');
+      setStatus((task.status as 'todo' | 'inProgress' | 'completed' | 'archived') || 'todo');
+      setIsPrivate(Boolean(task.isPrivate));
       setDueDate(
         task.dueDate
           ? new Date(task.dueDate).toISOString().split('T')[0]
@@ -129,6 +134,7 @@ export default function TaskEditDialog({
         description: description.trim() || undefined,
         priority,
         status,
+        isPrivate,
         dueDate: dueDate ? dueDate : null,
         assignedToUsername: selectedAssignee || undefined,
         assignedToName: assignedName || undefined,
@@ -229,14 +235,48 @@ export default function TaskEditDialog({
               select
               size="small"
               value={status}
-              onChange={(e) => setStatus(e.target.value as 'todo' | 'inProgress' | 'completed')}
+              onChange={(e) => setStatus(e.target.value as 'todo' | 'inProgress' | 'completed' | 'archived')}
               sx={{ flex: 1 }}
               disabled={loading}
             >
               <MenuItem value="todo">To Do</MenuItem>
               <MenuItem value="inProgress">In Progress</MenuItem>
               <MenuItem value="completed">Completed</MenuItem>
+              <MenuItem value="archived">Archived</MenuItem>
             </TextField>
+          </Box>
+
+          <Box
+            sx={{
+              p: 1.5,
+              borderRadius: 2,
+              bgcolor: isPrivate ? 'rgba(234, 179, 8, 0.08)' : 'rgba(100, 116, 139, 0.04)',
+              border: `1px solid ${isPrivate ? 'rgba(234, 179, 8, 0.35)' : 'rgba(100, 116, 139, 0.15)'}`,
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={isPrivate}
+                  onChange={(e) => setIsPrivate(e.target.checked)}
+                  color="warning"
+                  disabled={loading}
+                />
+              }
+              label={
+                <Box>
+                  <Typography variant="body2" sx={{ fontWeight: 700, color: dzfColors.navy[900] }}>
+                    {isPrivate ? '🔒 Private Task (Confidential)' : '👥 Public Task (Visible to Department)'}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
+                    {isPrivate
+                      ? 'Private tasks are visible strictly to the assigned staff member and creator.'
+                      : 'Public tasks are visible across operational staff and leadership.'}
+                  </Typography>
+                </Box>
+              }
+            />
           </Box>
 
           <TextField

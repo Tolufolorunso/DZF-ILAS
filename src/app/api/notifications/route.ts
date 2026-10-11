@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth/session';
 import { connectDB } from '@/lib/db';
 import { Notification } from '@/models/Notification';
+import { evaluateTaskRemindersAndCleanup } from '@/lib/admin/service';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,11 @@ export async function GET(req: NextRequest) {
 
     await connectDB();
     const username = user.username.toLowerCase();
+
+    // In-app smart polling: evaluate due task reminders and 30-day archive purges
+    await evaluateTaskRemindersAndCleanup().catch((err) => {
+      console.warn('[NOTIFICATIONS_REMINDER_EVALUATION_WARN]', err);
+    });
 
     const [notifications, unreadCount] = await Promise.all([
       Notification.find({ recipientUsername: username })

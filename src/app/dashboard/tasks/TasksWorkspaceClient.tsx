@@ -9,7 +9,8 @@ import { AppShell } from '@/components/layout/AppShell';
 import TaskKanbanBoard, { KanbanStatus } from '@/components/admin/TaskKanbanBoard';
 import TaskFormDialog from '@/components/admin/TaskFormDialog';
 import TaskEditDialog, { TaskUpdatePayload } from '@/components/admin/TaskEditDialog';
-import { DZFButton } from '@/components';
+import ArchivedTasksModal from '@/components/admin/ArchivedTasksModal';
+import { DZFButton, ArchiveIcon } from '@/components';
 import { dzfColors } from '@/theme/colors';
 import Chip from '@mui/material/Chip';
 
@@ -23,13 +24,38 @@ export default function TasksWorkspaceClient({
   initialTasks,
 }: TasksWorkspaceClientProps) {
   const [tasks, setTasks] = React.useState<ITaskItemDTO[]>(initialTasks);
+  const [archivedTasks, setArchivedTasks] = React.useState<ITaskItemDTO[]>([]);
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
+  const [isArchiveOpen, setIsArchiveOpen] = React.useState(false);
+  const [loadingArchived, setLoadingArchived] = React.useState(false);
   const [selectedEditTask, setSelectedEditTask] = React.useState<ITaskItemDTO | null>(null);
 
-  // Real-time synchronization for task progression
+  // Fetch archived tasks
+  const fetchArchivedTasks = React.useCallback(async () => {
+    try {
+      setLoadingArchived(true);
+      const res = await fetch('/api/admin/tasks?status=archived&limit=100');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.tasks)) {
+          setArchivedTasks(data.tasks);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load archived tasks:', err);
+    } finally {
+      setLoadingArchived(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchArchivedTasks();
+  }, [fetchArchivedTasks]);
+
+  // Real-time synchronization for active operational tasks
   const fetchRemoteTasks = React.useCallback(async () => {
     if (typeof document !== 'undefined' && document.hidden) return;
-    if (selectedEditTask || isCreateOpen) return;
+    if (selectedEditTask || isCreateOpen || isArchiveOpen) return;
 
     try {
       const res = await fetch('/api/admin/tasks?limit=100');
@@ -45,7 +71,7 @@ export default function TasksWorkspaceClient({
     } catch (err) {
       console.warn('Real-time task sync warning:', err);
     }
-  }, [selectedEditTask, isCreateOpen]);
+  }, [selectedEditTask, isCreateOpen, isArchiveOpen]);
 
   React.useEffect(() => {
     const timer = setInterval(fetchRemoteTasks, 8000);
@@ -61,12 +87,34 @@ export default function TasksWorkspaceClient({
       });
       const data = await res.json();
       if (data.success) {
-        setTasks((prev) =>
-          prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
-        );
+        if (newStatus === 'archived') {
+          // Remove from active lanes and refresh archive retention list
+          setTasks((prev) => prev.filter((t) => t.id !== id));
+          fetchArchivedTasks();
+        } else {
+          setTasks((prev) =>
+            prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
+          );
+        }
       }
     } catch (err) {
       console.error('Failed to update task status:', err);
+    }
+  };
+
+  const handleRestoreArchivedTask = async (id: string) => {
+    const res = await fetch(`/api/admin/tasks/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'completed' }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Failed to restore task');
+    }
+    if (data.task) {
+      setTasks((prev) => [data.task, ...prev.filter((t) => t.id !== id)]);
+      setArchivedTasks((prev) => prev.filter((t) => t.id !== id));
     }
   };
 
@@ -74,11 +122,14 @@ export default function TasksWorkspaceClient({
     try {
       const res = await fetch(`/api/admin/tasks/${id}`, { method: 'DELETE' });
       const data = await res.json();
-      if (data.success) {
-        setTasks((prev) => prev.filter((t) => t.id !== id));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to delete task');
       }
+      setTasks((prev) => prev.filter((t) => t.id !== id));
+      setArchivedTasks((prev) => prev.filter((t) => t.id !== id));
     } catch (err) {
       console.error('Failed to delete task:', err);
+      throw err;
     }
   };
 
@@ -86,6 +137,7 @@ export default function TasksWorkspaceClient({
     title: string;
     description?: string;
     priority: 'low' | 'medium' | 'high';
+    isPrivate?: boolean;
     dueDate?: string;
     assignedToUsername: string;
     assignedToName: string;
@@ -116,7 +168,12 @@ export default function TasksWorkspaceClient({
       throw new Error(data.error || 'Failed to update task');
     }
     if (data.task) {
-      setTasks((prev) => prev.map((t) => (t.id === taskId ? data.task : t)));
+      if (data.task.status === 'archived') {
+        setTasks((prev) => prev.filter((t) => t.id !== taskId));
+        fetchArchivedTasks();
+      } else {
+        setTasks((prev) => prev.map((t) => (t.id === taskId ? data.task : t)));
+      }
     }
     setSelectedEditTask(null);
   };
@@ -151,7 +208,7 @@ export default function TasksWorkspaceClient({
             </Typography>
           </Box>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
             <Chip
               size="small"
               icon={
@@ -175,6 +232,19 @@ export default function TasksWorkspaceClient({
                 border: '1px solid #bbf7d0',
               }}
             />
+
+            <DZFButton
+              variant="secondary"
+              onClick={() => {
+                setIsArchiveOpen(true);
+                fetchArchivedTasks();
+              }}
+              startIcon={<ArchiveIcon size={16} />}
+              sx={{ fontWeight: 700 }}
+            >
+              Archived Tasks {archivedTasks.length > 0 ? `(${archivedTasks.length})` : ''}
+            </DZFButton>
+
             <DZFButton
               variant="primary"
               onClick={() => setIsCreateOpen(true)}
@@ -211,7 +281,20 @@ export default function TasksWorkspaceClient({
           onSubmit={handleSaveEditedTask}
           currentUser={user}
         />
+
+        {/* Archived Tasks Drawer / Modal */}
+        <ArchivedTasksModal
+          open={isArchiveOpen}
+          onClose={() => setIsArchiveOpen(false)}
+          tasks={archivedTasks}
+          loading={loadingArchived}
+          onRestoreTask={handleRestoreArchivedTask}
+          onDeleteTask={handleDeleteTask}
+          currentUsername={user.username}
+          canManage={canManage}
+        />
       </Box>
     </AppShell>
   );
 }
+

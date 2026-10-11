@@ -44,17 +44,18 @@ export async function PATCH(
     const isAuthor = assignedBy === currentUsername;
     const isAssignee = assignedTo === currentUsername;
     const isSelfTask = existingTask.isSelfAssigned || (assignedBy && assignedTo && assignedBy === assignedTo);
+    const isConfidential = existingTask.isPrivate || isSelfTask;
 
-    // Private self-assigned tasks can only be updated by the owner
-    if (isSelfTask && !isAuthor && !isAssignee) {
+    // Private / confidential tasks can only be updated by the owner or author (or leadership)
+    if (isConfidential && !isAuthor && !isAssignee && !isLeadership) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized. This is a private self-assigned task.' },
+        { success: false, error: 'Unauthorized. This is a private confidential task.' },
         { status: 403 }
       );
     }
 
     let updated;
-    if (body.title !== undefined || body.description !== undefined || body.priority !== undefined || body.assignedToUsername !== undefined) {
+    if (body.title !== undefined || body.description !== undefined || body.priority !== undefined || body.isPrivate !== undefined || body.assignedToUsername !== undefined) {
       // Full details update requires being author or leadership
       if (!isLeadership && !isAuthor) {
         return NextResponse.json(
@@ -68,6 +69,7 @@ export async function PATCH(
         title: body.title,
         description: body.description,
         priority: body.priority,
+        isPrivate: body.isPrivate !== undefined ? Boolean(body.isPrivate) : undefined,
         dueDate: body.dueDate ? new Date(body.dueDate) : body.dueDate === null ? null : undefined,
         status: body.status,
         assignedToUsername: body.assignedToUsername,

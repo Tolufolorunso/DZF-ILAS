@@ -30,6 +30,11 @@ export interface ITask {
   assignedByRole?: string;
   assignedToRole?: string;
   isSelfAssigned?: boolean;
+  isPrivate?: boolean;
+  archivedAt?: Date;
+  inProgressAt?: Date;
+  lastTodoRemindedAt?: Date;
+  lastInProgressRemindedAt?: Date;
   status: TaskStatus;
   priority: TaskPriority;
   comments: ITaskComment[];
@@ -132,6 +137,24 @@ const TaskSchema = new Schema<ITaskDocument>(
       default: false,
       index: true,
     },
+    isPrivate: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    archivedAt: {
+      type: Date,
+      index: true,
+    },
+    inProgressAt: {
+      type: Date,
+    },
+    lastTodoRemindedAt: {
+      type: Date,
+    },
+    lastInProgressRemindedAt: {
+      type: Date,
+    },
     status: {
       type: String,
       enum: ['todo', 'inProgress', 'completed', 'archived'],
@@ -165,6 +188,11 @@ TaskSchema.index({ targetGroup: 1, status: 1 });
 TaskSchema.index({ isSelfAssigned: 1, 'assignedTo.username': 1 });
 TaskSchema.index({ status: 1, priority: 1 });
 TaskSchema.index({ dueDate: 1, status: 1 });
+// Auto-expire archived tasks after 30 days (2,592,000 seconds)
+TaskSchema.index(
+  { archivedAt: 1 },
+  { expireAfterSeconds: 30 * 24 * 60 * 60, partialFilterExpression: { archivedAt: { $exists: true, $ne: null } } }
+);
 
 export const Task: Model<ITaskDocument> =
   mongoose.models.Task || mongoose.model<ITaskDocument>('Task', TaskSchema);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth/session';
-import { listTasks, createTask } from '@/lib/admin/service';
+import { listTasks, createTask, evaluateTaskRemindersAndCleanup } from '@/lib/admin/service';
 import { recordDailyAction } from '@/lib/audit/dailyActionService';
 
 export const dynamic = 'force-dynamic';
@@ -19,6 +19,11 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status') || undefined;
     const limit = parseInt(searchParams.get('limit') || '50', 10);
+
+    // Run reminder evaluation & purge on task workspace list fetch
+    await evaluateTaskRemindersAndCleanup().catch((err) => {
+      console.warn('[TASKS_REMINDER_EVALUATION_WARN]', err);
+    });
 
     const tasks = await listTasks({
       status,
@@ -108,12 +113,14 @@ export async function POST(req: NextRequest) {
 
     const priority = body.priority === 'high' || body.priority === 'low' ? body.priority : 'medium';
     const dueDate = body.dueDate ? new Date(body.dueDate) : undefined;
+    const isPrivate = body.isPrivate === true;
 
     const task = await createTask({
       title: String(body.title).trim(),
       description: body.description ? String(body.description).trim() : undefined,
       dueDate,
       priority,
+      isPrivate,
       assignedToUsername: targetUsername,
       assignedToName: body.assignedToName ? String(body.assignedToName).trim() : targetUsername,
       staffUsername: user.username,
