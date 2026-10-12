@@ -11,8 +11,10 @@ import MenuItem from '@mui/material/MenuItem';
 import Avatar from '@mui/material/Avatar';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
+import Chip from '@mui/material/Chip';
 
 import { dzfColors } from '@/theme/colors';
+import { ANNUAL_FOUNDATION_EVENTS } from '@/lib/constants/foundationEvents';
 import {
   DZFButton,
   DZFBadge,
@@ -672,14 +674,41 @@ export function ScannerTerminal({ onTransactionComplete }: ScannerTerminalProps)
             </TextField>
           </Box>
 
-          <TextField
-            size="small"
-            placeholder="Optional Event / Competition Tag (e.g. Reading Competition 2026)"
-            value={eventTitle}
-            onChange={(e) => setEventTitle(e.target.value)}
-            disabled={!canCheckout || submitting}
-            sx={{ flex: 1, minWidth: { xs: '100%', sm: 260 } }}
-          />
+          <Box sx={{ flex: 1, minWidth: { xs: '100%', sm: 260 } }}>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="Optional Event / Competition Tag (e.g. Reading Competition 2026)"
+              value={eventTitle}
+              onChange={(e) => setEventTitle(e.target.value)}
+              disabled={!canCheckout || submitting}
+            />
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.6, mt: 0.75 }}>
+              <Typography sx={{ fontSize: '0.72rem', fontWeight: 600, color: 'text.secondary', mr: 0.5 }}>
+                Presets:
+              </Typography>
+              {ANNUAL_FOUNDATION_EVENTS.slice(0, 5).map((ev) => (
+                <Chip
+                  key={ev.slug}
+                  size="small"
+                  label={ev.name}
+                  onClick={() => setEventTitle(ev.name)}
+                  clickable
+                  sx={{
+                    fontSize: '0.7rem',
+                    height: 20,
+                    cursor: 'pointer',
+                    bgcolor: eventTitle === ev.name ? dzfColors.maroon[900] : '#f1f5f9',
+                    color: eventTitle === ev.name ? '#ffffff' : dzfColors.navy[900],
+                    fontWeight: eventTitle === ev.name ? 700 : 500,
+                    '&:hover': {
+                      bgcolor: eventTitle === ev.name ? dzfColors.maroon[950] : '#e2e8f0',
+                    },
+                  }}
+                />
+              ))}
+            </Box>
+          </Box>
         </Box>
 
         <Box sx={{ display: 'flex', gap: 1.5 }}>

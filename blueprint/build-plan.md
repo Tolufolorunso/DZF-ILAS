@@ -81,7 +81,7 @@ List of planned features for the DZF-ILAS clean rebuild, ordered by architectura
 
 ## Phase 15: Dynamic Shell Metrics, Literacy Class Fast-Track Attendance & Annual Foundation Event Presets
 
-- [ ] 36. **Dynamic Shell Metrics, Literacy Class Fast-Track Attendance & Annual Foundation Event Presets** - Bind AppShell sidebar badges to dynamic database statistics (replacing hardcoded `1.3k` and `583`); build dedicated 1-click Literacy Class quick-attendance mode on `/dashboard/attendance` with continuous barcode scanner autofocus and grade-band presets; and store the 12 recurring annual foundation events (World Education Day, Spelling Bees, World Reading Book Day, Tech Day, Literacy Day, etc.) as system presets available across Calendar, Competition, and Attendance workflows.
+- [x] 36. **Dynamic Shell Metrics, Literacy Class Fast-Track Attendance & Annual Foundation Event Presets** - Bind AppShell sidebar badges to dynamic database statistics (replacing hardcoded `1.3k` and `583`); build dedicated 1-click Literacy Class quick-attendance mode on `/dashboard/attendance` with continuous barcode scanner autofocus and grade-band presets; and store the 12 recurring annual foundation events (World Education Day, Spelling Bees, World Reading Book Day, Tech Day, Literacy Day, etc.) as system presets available across Calendar, Competition, and Attendance workflows.
 
 ## Phase 16: TransComm Editorial Studio Modernization & Rich Article Composer
 

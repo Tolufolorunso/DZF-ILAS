@@ -126,7 +126,7 @@ export default function AttendanceClient({
         {/* Header */}
         <PageHeader
           title="Barcode Attendance & Class Session Tracking"
-          subtitle="High-speed barcode scanner desk for daily physical library visitors and digital academy cohort sessions."
+          subtitle="High-speed barcode scanner desk for daily physical library visitors, digital academy cohort sessions, and 1-click literacy classes."
           kicker="STUDENT & PATRON ENGAGEMENT"
         />
 

@@ -9,8 +9,13 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import Alert from '@mui/material/Alert';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
 import { dzfColors } from '@/theme/colors';
 import DZFButton from '@/components/ui/DZFButton';
+import { ANNUAL_FOUNDATION_EVENTS } from '@/lib/constants/foundationEvents';
 
 interface EventFormDialogProps {
   open: boolean;
@@ -30,6 +35,7 @@ interface EventFormDialogProps {
 }
 
 export default function EventFormDialog({ open, onClose, onSubmit }: EventFormDialogProps) {
+  const [selectedPresetSlug, setSelectedPresetSlug] = React.useState('');
   const [eventName, setEventName] = React.useState('');
   const [eventDate, setEventDate] = React.useState('');
   const [location, setLocation] = React.useState('DZF Central Learning Center');
@@ -41,6 +47,20 @@ export default function EventFormDialog({ open, onClose, onSubmit }: EventFormDi
   const [remarks, setRemarks] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  const handleSelectPreset = (slug: string) => {
+    setSelectedPresetSlug(slug);
+    if (!slug) return;
+    const found = ANNUAL_FOUNDATION_EVENTS.find((ev) => ev.slug === slug);
+    if (found) {
+      setEventName(found.name);
+      setDescription(found.description);
+      setTargetAudience(found.targetAudience);
+      const year = new Date().getFullYear();
+      const monthPadded = String(found.month).padStart(2, '0');
+      setEventDate(`${year}-${monthPadded}-15`);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,6 +84,7 @@ export default function EventFormDialog({ open, onClose, onSubmit }: EventFormDi
         focalPerson: focalPerson.trim() || undefined,
         remarks: remarks.trim() || undefined,
       });
+      setSelectedPresetSlug('');
       setEventName('');
       setEventDate('');
       setDescription('');
@@ -102,6 +123,28 @@ export default function EventFormDialog({ open, onClose, onSubmit }: EventFormDi
               {error}
             </Alert>
           )}
+
+          {/* Foundation Event Preset Selector */}
+          <FormControl fullWidth size="small">
+            <InputLabel id="annual-preset-label">Annual Foundation Event Preset (Optional)</InputLabel>
+            <Select
+              labelId="annual-preset-label"
+              value={selectedPresetSlug}
+              label="Annual Foundation Event Preset (Optional)"
+              onChange={(e) => handleSelectPreset(e.target.value)}
+              sx={{ borderRadius: '8px' }}
+              disabled={loading}
+            >
+              <MenuItem value="">
+                <em>-- Custom Foundation Event (No Preset) --</em>
+              </MenuItem>
+              {ANNUAL_FOUNDATION_EVENTS.map((ev) => (
+                <MenuItem key={ev.slug} value={ev.slug}>
+                  {ev.name} ({ev.monthLabel})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
           <TextField
             label="Event Name / Title"

@@ -156,6 +156,15 @@ function dispatchDesktopNotification(title: string, body: string, link?: string)
   }
 }
 
+function formatNavCount(count?: number): string | undefined {
+  if (count === undefined || count === null) return undefined;
+  if (count >= 1000) {
+    const kVal = count / 1000;
+    return kVal % 1 === 0 ? `${kVal.toFixed(0)}k` : `${kVal.toFixed(1)}k`;
+  }
+  return String(count);
+}
+
 export function AppShell({
   children,
   activeNavId,
@@ -187,6 +196,7 @@ export function AppShell({
     link?: string;
   } | null>(null);
   const [desktopAlertsEnabled, setDesktopAlertsEnabled] = React.useState<boolean>(false);
+  const [navStats, setNavStats] = React.useState<{ books?: number; patrons?: number }>({});
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -332,6 +342,34 @@ export function AppShell({
     return () => clearInterval(timer);
   }, [fetchNotifications]);
 
+  const fetchNavStats = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/public/stats');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.stats) {
+          setNavStats({
+            books: typeof data.stats.books === 'number' ? data.stats.books : undefined,
+            patrons: typeof data.stats.patrons === 'number' ? data.stats.patrons : undefined,
+          });
+        }
+      }
+    } catch {
+      // non-blocking
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchNavStats();
+    const handleRealtime = () => {
+      fetchNavStats();
+    };
+    window.addEventListener('dzf:realtime', handleRealtime);
+    return () => {
+      window.removeEventListener('dzf:realtime', handleRealtime);
+    };
+  }, [fetchNavStats]);
+
   const handleOpenNotifications = (event: React.MouseEvent<HTMLElement>) => {
     setNotifAnchor(event.currentTarget);
     fetchNotifications();
@@ -453,8 +491,8 @@ export function AppShell({
     : [
         { id: 'dashboard', label: 'Dashboard', icon: <LayersIcon size={20} /> },
         { id: 'tasks', label: 'Task Board', icon: <CheckCircleIcon size={20} /> },
-        { id: 'catalog', label: 'Library Catalog', icon: <BookIcon size={20} />, badge: '1.3k' },
-        { id: 'patrons', label: 'Patron Directory', icon: <UsersIcon size={20} />, badge: '583' },
+        { id: 'catalog', label: 'Library Catalog', icon: <BookIcon size={20} />, badge: formatNavCount(navStats.books) },
+        { id: 'patrons', label: 'Patron Directory', icon: <UsersIcon size={20} />, badge: formatNavCount(navStats.patrons) },
         { id: 'attendance', label: 'Attendant', icon: <BarcodeIcon size={20} /> },
         { id: 'analytics', label: 'Leaderboard & Stats', icon: <TrophyIcon size={20} /> },
         { id: 'calendar', label: 'Operational Calendar', icon: <CalendarIcon size={20} /> },
