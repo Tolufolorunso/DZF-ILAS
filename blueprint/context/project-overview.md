@@ -1,12 +1,12 @@
 # DZF-ILAS - Project Overview
 
-<!-- blueprint:source-hash 42d5c4d13d700bc703c44f84ea3cbd4c8893af547a6e255c1174aef8dda9791a -->
+<!-- blueprint:source-hash 48448e12e8c9a9235c000e3740acf2072e71ef950f4fa8650ab80814921792e0 -->
 
 > Centralized internal staff workspace and REST API backend for the Dzuels Educational Foundation (DZF), managing academic library cataloging, patron identity, circulation, and academy engagement.
 
 ## Problem
 
-The Dzuels Educational Foundation operates an academic library and learning center in Nigeria, managing 2,300+ catalog items, 670+ patrons, active book circulation, student digital literacy cohorts, reading competitions, and values publication. DZF-ILAS (Dzuels Integrated Library & Administrative System) provides a clean, unified Next.js web application and REST API backend. Phases 1-10 delivered cataloging, patron barcode identity, circulation gamification, cohort Google Sheets synchronization, competition scoring, certificate studio, operational calendar ingestion, staff self-registration, a Kanban task workspace, circulation confirmation modals, 5-day loan defaults, student grade promotion, and daily live activity stream with same-day admin undo. Phase 11 delivered staff self-tasks, bidirectional kanban notifications, leadership navigation scoping, and omnipotent circulation/database overrides. Phase 12 introduces task lifecycle archiving with 30-day automated TTL purge, private/public task scoping, and in-app escalation reminders. Phase 13 introduces task messages/notes, chronological discussion streams, and real-time in-app conversation alerts. Phase 14 introduces real-time Server-Sent Events (SSE), instant discussion chat, toast alerts with audio chime, and HTML5 desktop web push notifications. Phase 15 provides dynamic database shell metrics, 1-click Literacy Class fast-track attendance scanning, and 12 annual foundation event presets. Phase 16 modernizes the TransComm editorial studio with rich toolbar formatting, smart list auto-continuation, and live preview. Phase 17 equips administrators with self-service preset governance, one-click JSON/CSV backups, marquee broadcast alerts, and data recalculation tools.
+The Dzuels Educational Foundation operates an academic library and learning center in Nigeria, managing 2,300+ catalog items, 670+ patrons, active book circulation, student digital literacy cohorts, reading competitions, and values publication. DZF-ILAS provides a unified Next.js web application and REST API backend. Phases 1–17 delivered cataloging, patron barcode identity, circulation gamification, Google Sheets sync, competition scoring, certificate studio, calendar ingestion, staff self-registration, Kanban workspace, circulation safety dialogs, 5-day loans, student promotion, daily audit stream with same-day undo, self-tasks, 30-day task archiving, SSE live streaming, Web Push, dynamic shell metrics, modernized TransComm editor, and admin governance center. Phase 18 hardens task creator governance (zero exceptions on archive/delete), restricts assignees strictly to active lane moves (`To Do`, `In Progress`, `Completed`), and prepares full Vercel serverless deployment readiness, database pooling resilience, and rock-solid production performance.
 
 ## Users & Role Hierarchy
 
@@ -27,6 +27,8 @@ Top-to-bottom institutional hierarchy:
 - **SEO & Search Indexing:** Strict privacy: only `/transcomm` and `/transcomm/*` are indexed (`index, follow`); all staff routes (`/dashboard/*`, `/auth/*`, `/api/*`, `/`) are `noindex, nofollow`.
 - **Dual-Mode API Interoperability:** Consumed concurrently by Next.js web frontend (`ils_token` cookie) and Android mobile app (`Authorization: Bearer <token>`).
 - **Hardware Integration:** Instant input for USB/Bluetooth barcode scanners; continuous 60mm × 40mm roll printing on Xprinter XP-365B thermal label printers via an isolated iframe print pipeline.
+- **Task Governance:** Task deletion and archiving are strictly restricted to the original creator (`assignedBy.username`) with zero exceptions. Assignees are scoped strictly to active lane moves. Tasks in the archive for 30 days are automatically purged via MongoDB TTL indexing.
+- **Vercel Serverless Hosting:** Built for Next.js App Router serverless execution on Vercel with global Edge routing, connection pooling guards, and resilient client error boundaries.
 
 ## Features
 
@@ -68,6 +70,8 @@ Top-to-bottom institutional hierarchy:
 36. **Dynamic Shell Metrics & Literacy Attendance** - Live database shell badges, 1-click fast-track Literacy Class attendance mode, and 12 annual foundation event presets.
 37. **TransComm Editorial Studio Modernization** - Enriched formatting toolbar (H1, P, Underline, Highlight), smart auto-continuing lists with Enter key, and split-pane live preview.
 38. **Admin Self-Service & Broadcast Center** - Foundation reference data/preset manager, one-click JSON/CSV data backup/export, system-wide broadcast alerts, and data recalculation toolkit.
+39. **Strict Task Creator Governance & Scoped Workflows** - Creator-only archive and delete enforcement with zero exceptions across UI and API, assignee restricted to active lane transitions, and 30-day automated TTL purge.
+40. **Vercel Production Deployment Readiness & Performance Hardening** - Vercel configuration (`vercel.json`), serverless database pooling safeguards, index coverage audit, clean build verification, and UI error boundary protection.
 
 ## Data model
 
@@ -200,7 +204,7 @@ Top-to-bottom institutional hierarchy:
 - **Next.js 16 (App Router):** Fast SSR, dynamic Route Handlers, and client React 19 components.
 - **TypeScript:** Strict type checking across domain models, props, and API request/response contracts.
 - **Material UI (`@mui/material`, `@mui/material-nextjs`):** Custom design system built on MUI primitives using Emotion engine.
-- **MongoDB & Mongoose:** Document database with cached singleton connection pool and compound indexes.
+- **MongoDB & Mongoose:** Document database with cached singleton connection pool, compound indexes, and 30-day TTL index on Task `archivedAt`.
 - **Cloudinary:** Cloud storage for patron webcam photos and book covers.
 - **Google Sheets API v4:** Service account integration for two-way cohort enrollment backups.
 - **JsBarcode:** SVG-based barcode rendering for cards and item spine tags.
@@ -224,7 +228,7 @@ Not applicable. DZF-ILAS is a 100% internal non-profit educational and library m
   - `/auth/login` - Staff credential sign-in
   - `/auth/register` - Staff self-registration with birth month/day and pending admin activation
   - `/dashboard` - Dynamic counters, circulation stats, gender ratios, upcoming milestones
-  - `/dashboard/tasks` - Dedicated staff task workspace with interactive 3-column Kanban board, live instant discussion chat, archive drawer, and privacy controls
+  - `/dashboard/tasks` - Dedicated staff task workspace with interactive 3-column Kanban board, live instant discussion chat, archive drawer, and creator-only archive/delete controls
   - `/dashboard/catalog` & `/dashboard/catalog/acquire` - Monograph inventory and acquisition studio
   - `/dashboard/patrons` & `/dashboard/patrons/register` - Patron directory, dynamic registration, Xprinter XP-365B bulk printing
   - `/dashboard/circulations` - Barcode loan transactions, checkout, return, holds, overdues, with return/renewal confirmation dialogs
@@ -241,7 +245,8 @@ Not applicable. DZF-ILAS is a 100% internal non-profit educational and library m
 
 ## Deployment
 
-- **Hosting Target:** Vercel (recommended) or Render (`render.yaml` Web Service) with zero cold-start DB pooling.
+- **Hosting Target:** Vercel (Next.js serverless execution with Edge routing).
+- **Configuration File:** `vercel.json` with security headers (`X-Content-Type-Options`, `Referrer-Policy`, `Strict-Transport-Security`, `X-Frame-Options`) and caching directives.
 - **Build Command:** `npm run build`
 - **Start Command:** `npm run start`
 - **Health Check Path:** `/api/health/db`

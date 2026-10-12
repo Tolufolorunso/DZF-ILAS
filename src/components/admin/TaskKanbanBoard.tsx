@@ -59,7 +59,6 @@ export default function TaskKanbanBoard({
   onEditTask,
   onDeleteTask,
   onOpenDiscussion,
-  canManage = true,
   currentUsername,
 }: TaskKanbanBoardProps) {
   const [draggedTaskId, setDraggedTaskId] = React.useState<string | null>(null);
@@ -229,8 +228,8 @@ export default function TaskKanbanBoard({
                           t.assignedBy?.username &&
                           t.assignedBy.username.toLowerCase() === currentUsername.toLowerCase()
                       );
-                      const canEdit = Boolean(onEditTask && (canManage || isAuthor));
-                      const canDelete = Boolean(onDeleteTask && (canManage || isAuthor));
+                      const canEdit = Boolean(onEditTask && isAuthor);
+                      const canDelete = Boolean(onDeleteTask && isAuthor);
                       const isDragging = draggedTaskId === t.id;
 
                       return (
@@ -512,19 +511,21 @@ export default function TaskKanbanBoard({
                                       <ChevronLeftIcon size={16} />
                                     </IconButton>
                                   </Tooltip>
-                                  <Tooltip title="Archive Task (30-day retention auto-purge)">
-                                    <IconButton
-                                      size="small"
-                                      onClick={() => onUpdateStatus(t.id, 'archived')}
-                                      sx={{
-                                        color: '#b45309',
-                                        p: 0.5,
-                                        '&:hover': { backgroundColor: 'rgba(180, 83, 9, 0.08)' },
-                                      }}
-                                    >
-                                      <ArchiveIcon size={16} />
-                                    </IconButton>
-                                  </Tooltip>
+                                  {isAuthor && (
+                                    <Tooltip title="Archive Task (30-day retention auto-purge)">
+                                      <IconButton
+                                        size="small"
+                                        onClick={() => onUpdateStatus(t.id, 'archived')}
+                                        sx={{
+                                          color: '#b45309',
+                                          p: 0.5,
+                                          '&:hover': { backgroundColor: 'rgba(180, 83, 9, 0.08)' },
+                                        }}
+                                      >
+                                        <ArchiveIcon size={16} />
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
                                 </>
                               )}
 
@@ -613,16 +614,20 @@ export default function TaskKanbanBoard({
             <ListItemText primary={c.title} />
           </MenuItem>
         ))}
-        <MenuItem
-          onClick={() => handleMoveViaMenu('archived')}
-          disabled={menuTargetTask?.status === 'archived'}
-          sx={{ fontSize: '0.8125rem', color: '#b45309' }}
-        >
-          <ListItemIcon sx={{ minWidth: 24, color: '#b45309' }}>
-            <ArchiveIcon size={16} />
-          </ListItemIcon>
-          <ListItemText primary="Archive Task (30 Days)" />
-        </MenuItem>
+        {menuTargetTask &&
+          currentUsername &&
+          menuTargetTask.assignedBy?.username?.toLowerCase() === currentUsername.toLowerCase() && (
+            <MenuItem
+              onClick={() => handleMoveViaMenu('archived')}
+              disabled={menuTargetTask?.status === 'archived'}
+              sx={{ fontSize: '0.8125rem', color: '#b45309' }}
+            >
+              <ListItemIcon sx={{ minWidth: 24, color: '#b45309' }}>
+                <ArchiveIcon size={16} />
+              </ListItemIcon>
+              <ListItemText primary="Archive Task (30 Days)" />
+            </MenuItem>
+          )}
       </Menu>
     </Box>
   );

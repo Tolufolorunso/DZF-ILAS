@@ -65,6 +65,28 @@ export async function PATCH(
         );
       }
 
+      // STRICT CREATOR-ONLY ARCHIVE GUARD (Zero Exceptions)
+      if (body.status === 'archived' && !isAuthor) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Unauthorized. Only the task creator (@${existingTask.assignedBy?.username || 'creator'}) can archive this task.`,
+          },
+          { status: 403 }
+        );
+      }
+
+      // STRICT CREATOR-ONLY RESTORE GUARD (Zero Exceptions)
+      if (existingTask.status === 'archived' && body.status && body.status !== 'archived' && !isAuthor) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Unauthorized. Only the task creator (@${existingTask.assignedBy?.username || 'creator'}) can restore this task from the archive.`,
+          },
+          { status: 403 }
+        );
+      }
+
       updated = await updateTaskDetails({
         id,
         title: body.title,
@@ -85,6 +107,37 @@ export async function PATCH(
         return NextResponse.json(
           { success: false, error: `Invalid task status. Valid: ${validStatuses.join(', ')}` },
           { status: 400 }
+        );
+      }
+
+      // STRICT CREATOR-ONLY ARCHIVE GUARD (Zero Exceptions)
+      if (body.status === 'archived' && !isAuthor) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Unauthorized. Only the task creator (@${existingTask.assignedBy?.username || 'creator'}) can archive this task.`,
+          },
+          { status: 403 }
+        );
+      }
+
+      // STRICT CREATOR-ONLY RESTORE GUARD (Zero Exceptions)
+      if (existingTask.status === 'archived' && body.status !== 'archived' && !isAuthor) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Unauthorized. Only the task creator (@${existingTask.assignedBy?.username || 'creator'}) can restore this task from the archive.`,
+          },
+          { status: 403 }
+        );
+      }
+
+      // Active operational lane move (todo, inProgress, completed)
+      // Permitted for assignee, author, or leadership
+      if (!isAuthor && !isAssignee && !isLeadership) {
+        return NextResponse.json(
+          { success: false, error: 'Unauthorized. You can only move tasks assigned to you or created by you.' },
+          { status: 403 }
         );
       }
 
@@ -130,7 +183,7 @@ export async function PATCH(
 
 /**
  * DELETE /api/admin/tasks/[id]
- * Removes an operational task. Allows authors to delete self-created tasks, or leadership for general management.
+ * Removes an operational task. Strictly restricted to task creators with zero exceptions.
  */
 export async function DELETE(
   req: NextRequest,
@@ -150,14 +203,15 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 });
     }
 
-    const { isLeadershipRole } = await import('@/lib/auth/rbac');
-    const isLeadership = isLeadershipRole(user.role);
     const isAuthor = task.assignedBy?.username?.toLowerCase() === user.username.toLowerCase();
 
-    // Staff can delete their own self-created tasks; leadership can delete any task
-    if (!isLeadership && !isAuthor) {
+    // STRICT CREATOR-ONLY DELETION GUARD (Zero Exceptions)
+    if (!isAuthor) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized. You can only delete tasks you created.' },
+        {
+          success: false,
+          error: `Unauthorized. Only the task creator (@${task.assignedBy?.username || 'creator'}) can delete this task.`,
+        },
         { status: 403 }
       );
     }

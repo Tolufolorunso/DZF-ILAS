@@ -58,6 +58,11 @@ export default function TaskEditDialog({
   currentUser,
 }: TaskEditDialogProps) {
   const isLeadership = currentUser ? isLeadershipRole(currentUser.role) : false;
+  const isAuthor = Boolean(
+    currentUser?.username &&
+      task?.assignedBy?.username &&
+      task.assignedBy.username.toLowerCase() === currentUser.username.toLowerCase()
+  );
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [priority, setPriority] = React.useState<'low' | 'medium' | 'high'>('medium');
@@ -242,7 +247,7 @@ export default function TaskEditDialog({
               <MenuItem value="todo">To Do</MenuItem>
               <MenuItem value="inProgress">In Progress</MenuItem>
               <MenuItem value="completed">Completed</MenuItem>
-              <MenuItem value="archived">Archived</MenuItem>
+              {isAuthor && <MenuItem value="archived">Archived</MenuItem>}
             </TextField>
           </Box>
 

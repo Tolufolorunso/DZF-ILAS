@@ -38,7 +38,6 @@ export default function ArchivedTasksModal({
   onRestoreTask,
   onDeleteTask,
   currentUsername,
-  canManage = true,
 }: ArchivedTasksModalProps) {
   const [actionLoadingId, setActionLoadingId] = React.useState<string | null>(null);
   const [taskToDelete, setTaskToDelete] = React.useState<ITaskItemDTO | null>(null);
@@ -214,7 +213,7 @@ export default function ArchivedTasksModal({
                     task.assignedBy?.username &&
                     task.assignedBy.username.toLowerCase() === currentUsername.toLowerCase()
                 );
-                const canDelete = Boolean(canManage || isAuthor);
+                const canDelete = Boolean(isAuthor);
                 const isProcessing = actionLoadingId === task.id;
 
                 return (
@@ -292,13 +291,19 @@ export default function ArchivedTasksModal({
 
                       {/* Action Buttons */}
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Tooltip title="Restore to Active Board (Completed lane)">
+                        <Tooltip
+                          title={
+                            isAuthor
+                              ? 'Restore to Active Board (Completed lane)'
+                              : `Only task creator (@${task.assignedBy?.username || 'creator'}) can restore this task`
+                          }
+                        >
                           <span>
                             <DZFButton
                               variant="secondary"
                               size="small"
                               onClick={() => handleRestore(task.id)}
-                              disabled={isProcessing}
+                              disabled={isProcessing || !isAuthor}
                               startIcon={<UndoIcon size={14} />}
                               sx={{ fontWeight: 700 }}
                             >

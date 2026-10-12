@@ -14,6 +14,8 @@ import TaskDiscussionDrawer from '@/components/admin/TaskDiscussionDrawer';
 import { DZFButton, ArchiveIcon } from '@/components';
 import { dzfColors } from '@/theme/colors';
 import Chip from '@mui/material/Chip';
+import Alert from '@mui/material/Alert';
+import Snackbar from '@mui/material/Snackbar';
 
 interface TasksWorkspaceClientProps {
   user: ITokenPayload;
@@ -31,6 +33,7 @@ export default function TasksWorkspaceClient({
   const [loadingArchived, setLoadingArchived] = React.useState(false);
   const [selectedEditTask, setSelectedEditTask] = React.useState<ITaskItemDTO | null>(null);
   const [selectedDiscussionTask, setSelectedDiscussionTask] = React.useState<ITaskItemDTO | null>(null);
+  const [errorAlert, setErrorAlert] = React.useState<string | null>(null);
 
   // Fetch archived tasks
   const fetchArchivedTasks = React.useCallback(async () => {
@@ -227,35 +230,45 @@ export default function TasksWorkspaceClient({
         body: JSON.stringify({ status: newStatus }),
       });
       const data = await res.json();
-      if (data.success) {
-        if (newStatus === 'archived') {
-          // Remove from active lanes and refresh archive retention list
-          setTasks((prev) => prev.filter((t) => t.id !== id));
-          fetchArchivedTasks();
-        } else {
-          setTasks((prev) =>
-            prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
-          );
-        }
+      if (!res.ok || !data.success) {
+        setErrorAlert(data.error || 'Failed to update task status');
+        return;
+      }
+      if (newStatus === 'archived') {
+        // Remove from active lanes and refresh archive retention list
+        setTasks((prev) => prev.filter((t) => t.id !== id));
+        fetchArchivedTasks();
+      } else {
+        setTasks((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
+        );
       }
     } catch (err) {
       console.error('Failed to update task status:', err);
+      setErrorAlert(err instanceof Error ? err.message : 'Network error updating task status');
     }
   };
 
   const handleRestoreArchivedTask = async (id: string) => {
-    const res = await fetch(`/api/admin/tasks/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'completed' }),
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || 'Failed to restore task');
-    }
-    if (data.task) {
-      setTasks((prev) => [data.task, ...prev.filter((t) => t.id !== id)]);
-      setArchivedTasks((prev) => prev.filter((t) => t.id !== id));
+    try {
+      const res = await fetch(`/api/admin/tasks/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'completed' }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        const msg = data.error || 'Failed to restore task';
+        setErrorAlert(msg);
+        throw new Error(msg);
+      }
+      if (data.task) {
+        setTasks((prev) => [data.task, ...prev.filter((t) => t.id !== id)]);
+        setArchivedTasks((prev) => prev.filter((t) => t.id !== id));
+      }
+    } catch (err) {
+      console.error('Failed to restore task:', err);
+      throw err;
     }
   };
 
@@ -264,7 +277,9 @@ export default function TasksWorkspaceClient({
       const res = await fetch(`/api/admin/tasks/${id}`, { method: 'DELETE' });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to delete task');
+        const msg = data.error || 'Failed to delete task';
+        setErrorAlert(msg);
+        throw new Error(msg);
       }
       setTasks((prev) => prev.filter((t) => t.id !== id));
       setArchivedTasks((prev) => prev.filter((t) => t.id !== id));
@@ -476,6 +491,23 @@ export default function TasksWorkspaceClient({
           onAddComment={handleAddComment}
           onDeleteComment={handleDeleteComment}
         />
+
+        {/* Action Error Notification */}
+        <Snackbar
+          open={Boolean(errorAlert)}
+          autoHideDuration={6000}
+          onClose={() => setErrorAlert(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert
+            onClose={() => setErrorAlert(null)}
+            severity="error"
+            variant="filled"
+            sx={{ width: '100%', borderRadius: 2, fontWeight: 700 }}
+          >
+            {errorAlert}
+          </Alert>
+        </Snackbar>
       </Box>
     </AppShell>
   );

@@ -341,6 +341,18 @@ DZF-ILAS is a ground-up rewrite delivering:
 - **Data Integrity & Recalculation Toolkit:**
   - Administrative tools to recalculate student leaderboard points, audit circulation locks, and clean orphaned test data.
 
+### Phase 18: Task Governance Hardening, Vercel Production Readiness & High-Stability Optimization (New)
+- **Strict Task Creator Governance & Scoped Assignee Workflows:**
+  - **Creator-Only Archive & Deletion (Zero Exceptions):** Only the specific staff member who created and assigned the task (`assignedBy.username`) can archive it or permanently delete it. Even Super Administrators cannot delete or archive tasks created by other staff members.
+  - **Assignee Scoped Transitions:** Assignees are strictly permitted to move tasks across active operational lanes: `To Do` ↔ `In Progress` ↔ `Completed`. Assignees cannot archive, restore, or delete tasks.
+  - **Full-Stack Enforcement:** The Kanban card controls, move menus, and edit dialog hide and disable archive and delete controls for non-creators. API endpoints (`PATCH /api/admin/tasks/[id]` and `DELETE /api/admin/tasks/[id]`) return `403 Forbidden` if a non-creator attempts to archive or delete.
+  - **Automated 30-Day Purge Lifecycle:** Tasks in the archive for 30 days are automatically and permanently purged from the system via the MongoDB TTL index on `archivedAt`.
+- **Vercel Production Deployment Readiness & System Resilience:**
+  - **Deployment Configuration (`vercel.json`):** Configure production HTTP security headers (`X-Content-Type-Options`, `Referrer-Policy`, `Strict-Transport-Security`, `X-Frame-Options`), asset caching directives, and serverless runtime parameters.
+  - **Database Connection Resilience:** Ensure the singleton Mongoose connection pool (`connectDB`) in serverless environments handles cold starts, reconnects, socket timeouts, and query limits without leaking connections on MongoDB Atlas.
+  - **Index Verification & Query Performance:** Audit and verify compound indexes across core collections (`Task`, `Patron`, `Cataloging`, `Library`, `Attendance`) and ensure high-frequency queries execute efficiently without database lag.
+  - **Build & Runtime Hardening:** Validate that `next build` passes cleanly with zero type errors, lint warnings, or hydration mismatches; introduce graceful client error boundary fallbacks across workspace modules to prevent blank-screen crashes in production.
+
 ## 4. Data - What are we storing?
 
 All 15 core production entities plus Phase 5 model extensions:
