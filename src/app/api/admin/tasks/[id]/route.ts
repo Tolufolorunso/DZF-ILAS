@@ -4,6 +4,7 @@ import { Task } from '@/models/Task';
 import { connectDB } from '@/lib/db';
 import { logAuditEvent } from '@/lib/admin/service';
 import { recordDailyAction } from '@/lib/audit/dailyActionService';
+import { realtimeEventBus } from '@/lib/realtime/eventBus';
 
 export const dynamic = 'force-dynamic';
 
@@ -162,6 +163,11 @@ export async function DELETE(
     }
 
     await Task.findByIdAndDelete(id);
+
+    realtimeEventBus.dispatch({
+      type: 'task:deleted',
+      payload: { taskId: id },
+    });
 
     if (!task) {
       return NextResponse.json({ success: false, error: 'Task not found' }, { status: 404 });

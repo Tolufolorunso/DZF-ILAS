@@ -282,7 +282,7 @@ DZF-ILAS is a ground-up rewrite delivering:
   - **48-Hour In-Progress Stalled Alert:** Sends an in-app system notification to the assignee if a task remains in `In Progress` for more than 2 days (48 hours) without completion.
   - Tracking timestamps on `Task`: `inProgressAt`, `lastTodoRemindedAt`, `lastInProgressRemindedAt`.
 
-### Phase 13: Task Collaboration, Operational Notes & Discussion Threading (New)
+### Phase 13: Task Collaboration, Operational Notes & Discussion Threading
 - **Chronological Discussion Stream:**
   - Tasks support interactive discussion feeds allowing assigners, assignees, and authorized staff to exchange operational notes, progress clarifications, and updates.
   - Notes display author identity (`name`, `username`, `role`), formatted timestamp, and message body.
@@ -293,6 +293,53 @@ DZF-ILAS is a ground-up rewrite delivering:
   - Private task notes are strictly concealed from non-assignee staff members, maintaining end-to-end task confidentiality.
 - **Author Control & Admin Moderation:**
   - Staff can delete their own notes; administrators have authority to delete any comment.
+
+### Phase 14: Real-Time Instant Streaming, Live Discussion Chat & Web Push Notifications (New)
+- **Server-Sent Events (SSE) Live Pipeline:**
+  - Dedicated `/api/stream` SSE broadcast endpoint streaming task mutations, lane progressions, and discussion notes in real time (<100ms) across connected staff sessions.
+  - Replaces polling lag on `/dashboard/tasks` with instant live chat and synchronized Kanban drag-and-drop.
+- **In-App Toast Alerts & Auditory Feedback:**
+  - Floating on-screen toast popup alerts (`Snackbar` with action links) that trigger immediately when a user is assigned a task or mentioned in a note.
+  - Subtle, clean Web Audio tone chime on incoming notifications.
+- **HTML5 Desktop Web Push Notifications:**
+  - Browser Push API integration (`Notification.requestPermission()`) enabling background and minimized-tab desktop notifications for urgent tasks, direct messages, and system alerts.
+
+### Phase 15: Dynamic Shell Metrics, Literacy Class Fast-Track Attendance & Annual Foundation Event Presets (New)
+- **Live Database-Driven Navigation Badges:**
+  - Replace static `1.3k` catalog and `583` patron directory badges in `AppShell` with dynamic database counts computed from MongoDB.
+- **Literacy Class Fast-Track Attendance Studio:**
+  - Dedicated one-click "Literacy Class" check-in mode on `/dashboard/attendance` featuring auto-focus continuous scanning, grade-band defaults (Early Elementary vs. Upper Elementary), and session point auto-allocation.
+- **Annual Foundation Event Presets:**
+  - System-wide registration of the 12 recurring annual foundation events:
+    1. January: *World Education Day*
+    2. February: *Spelling Bee - Elementary*
+    3. March: *Spelling Bee - High School*
+    4. April: *World Reading Book Day (Reading Competition)*
+    5. May: *UN Day of Boy Child*
+    6. June: *Career Week*, *Ijero Tech Day*, *UN Day Against Drug Abuse & Trafficking*
+    7. August–September: *World Literacy Day (Essay Competition)*
+    8. September: *World Day of Charity*
+    9. October: *World Teacher Day*, *International Day of the Girl Child*
+    10. December: *UN Human Rights Day (Focus on Children's Rights)*
+  - Surface these 12 presets as one-click templates across the Operational Calendar, Reading Competition session creator, and Attendance logger.
+
+### Phase 16: TransComm Editorial Studio Modernization & Rich Article Composer (New)
+- **Enriched Editorial Formatting Toolbar:**
+  - Add dedicated formatting tools in `/dashboard/transcomm/new`: H1 (Primary Heading), P (Standard Paragraph), Underline (`<u>`), Text Highlight, and Link formatting.
+- **Smart List Auto-Continuation:**
+  - In bullet lists (`- `) and numbered lists (`1. `, `2. `), pressing `Enter` automatically creates and indents the next item on a new line; pressing `Enter` on an empty list bullet automatically exits list mode.
+- **User-Friendly Split-Pane & Live Preview:**
+  - Synchronized scrolling split-pane with live markdown rendering, full-screen distraction-free editing, and character/word goal meters.
+
+### Phase 17: Administrator Self-Service Governance, Data Backup & Broadcast Center (New)
+- **Foundation Reference Data & Preset Manager:**
+  - Admin UI to view and update registered School Names, Annual Event Presets, and Cohort Class Tracks without touching database scripts or code.
+- **One-Click JSON/CSV Data Backup & Export Center:**
+  - Secure full or collection-level data export (Catalog Monograph Records, Patron Profiles, Attendance Logs, Circulations, and Tasks) for offline archiving and reporting.
+- **System-Wide Broadcast Alerts & Banner Dispatcher:**
+  - Administrative broadcast console enabling leadership to dispatch urgent announcements or marquee banners to all logged-in staff screens.
+- **Data Integrity & Recalculation Toolkit:**
+  - Administrative tools to recalculate student leaderboard points, audit circulation locks, and clean orphaned test data.
 
 ## 4. Data - What are we storing?
 

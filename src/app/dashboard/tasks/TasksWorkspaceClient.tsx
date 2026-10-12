@@ -4,7 +4,7 @@ import * as React from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { ITokenPayload } from '@/lib/auth/jwt';
-import type { ITaskItemDTO } from '@/lib/admin/types';
+import type { ITaskItemDTO, ITaskCommentDTO } from '@/lib/admin/types';
 import { AppShell } from '@/components/layout/AppShell';
 import TaskKanbanBoard, { KanbanStatus } from '@/components/admin/TaskKanbanBoard';
 import TaskFormDialog from '@/components/admin/TaskFormDialog';
@@ -88,9 +88,136 @@ export default function TasksWorkspaceClient({
   }, [selectedEditTask, isCreateOpen, isArchiveOpen, selectedDiscussionTask]);
 
   React.useEffect(() => {
-    const timer = setInterval(fetchRemoteTasks, 8000);
+    const timer = setInterval(fetchRemoteTasks, 15000);
     return () => clearInterval(timer);
   }, [fetchRemoteTasks]);
+
+  // Instant Real-Time live event sync via SSE (Window event dispatched from AppShell)
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleRealtimeEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{
+        type: string;
+        payload: Record<string, unknown> | ITaskItemDTO;
+      }>;
+      const { type, payload } = customEvent.detail || {};
+      if (!type || !payload) return;
+
+      if (type === 'task:created') {
+        const createdTask = payload as unknown as ITaskItemDTO;
+        if (createdTask.status !== 'archived') {
+          setTasks((prev) => {
+            if (prev.some((t) => t.id === createdTask.id)) {
+              return prev.map((t) => (t.id === createdTask.id ? createdTask : t));
+            }
+            return [createdTask, ...prev];
+          });
+        }
+      } else if (type === 'task:updated') {
+        const updatedTask = payload as unknown as ITaskItemDTO;
+        if (updatedTask.status === 'archived') {
+          setTasks((prev) => prev.filter((t) => t.id !== updatedTask.id));
+          fetchArchivedTasks();
+        } else {
+          setTasks((prev) => {
+            if (!prev.some((t) => t.id === updatedTask.id)) {
+              return [updatedTask, ...prev];
+            }
+            return prev.map((t) => (t.id === updatedTask.id ? updatedTask : t));
+          });
+        }
+
+        setSelectedDiscussionTask((current) =>
+          current && current.id === updatedTask.id ? updatedTask : current
+        );
+      } else if (type === 'task:deleted') {
+        const deletedPayload = payload as { taskId?: string };
+        const deletedId = deletedPayload.taskId;
+        if (deletedId) {
+          setTasks((prev) => prev.filter((t) => t.id !== deletedId));
+          setArchivedTasks((prev) => prev.filter((t) => t.id !== deletedId));
+          setSelectedDiscussionTask((current) =>
+            current && current.id === deletedId ? null : current
+          );
+        }
+      } else if (type === 'comment:added') {
+        const commentPayload = payload as unknown as {
+          taskId: string;
+          comment?: ITaskCommentDTO;
+          task?: ITaskItemDTO;
+        };
+        const { taskId, comment, task: updatedTask } = commentPayload;
+        if (taskId) {
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === taskId
+                ? updatedTask || {
+                    ...t,
+                    comments: comment ? [...(t.comments || []), comment] : t.comments,
+                  }
+                : t
+            )
+          );
+
+          setSelectedDiscussionTask((current) => {
+            if (!current || current.id !== taskId) return current;
+            if (updatedTask) return updatedTask;
+            const existingComments = current.comments || [];
+            if (
+              comment &&
+              !existingComments.some(
+                (c: ITaskCommentDTO) => c.id === comment.id
+              )
+            ) {
+              return {
+                ...current,
+                comments: [...existingComments, comment],
+              };
+            }
+            return current;
+          });
+        }
+      } else if (type === 'comment:deleted') {
+        const deletePayload = payload as unknown as {
+          taskId: string;
+          commentId: string;
+          task?: ITaskItemDTO;
+        };
+        const { taskId, commentId, task: updatedTask } = deletePayload;
+        if (taskId) {
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === taskId
+                ? updatedTask || {
+                    ...t,
+                    comments: (t.comments || []).filter(
+                      (c: ITaskCommentDTO) => c.id !== String(commentId)
+                    ),
+                  }
+                : t
+            )
+          );
+
+          setSelectedDiscussionTask((current) => {
+            if (!current || current.id !== taskId) return current;
+            if (updatedTask) return updatedTask;
+            return {
+              ...current,
+              comments: (current.comments || []).filter(
+                (c: ITaskCommentDTO) => c.id !== String(commentId)
+              ),
+            };
+          });
+        }
+      }
+    };
+
+    window.addEventListener('dzf:realtime', handleRealtimeEvent);
+    return () => {
+      window.removeEventListener('dzf:realtime', handleRealtimeEvent);
+    };
+  }, [fetchArchivedTasks]);
 
   const handleUpdateTaskStatus = async (id: string, newStatus: KanbanStatus) => {
     try {

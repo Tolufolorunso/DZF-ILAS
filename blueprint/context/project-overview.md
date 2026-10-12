@@ -1,12 +1,12 @@
 # DZF-ILAS - Project Overview
 
-<!-- blueprint:source-hash 14034d8d65945cd0448ca2c9af0c07951b56f34ed2311f32211ae1e523df0b2a -->
+<!-- blueprint:source-hash 42d5c4d13d700bc703c44f84ea3cbd4c8893af547a6e255c1174aef8dda9791a -->
 
 > Centralized internal staff workspace and REST API backend for the Dzuels Educational Foundation (DZF), managing academic library cataloging, patron identity, circulation, and academy engagement.
 
 ## Problem
 
-The Dzuels Educational Foundation operates an academic library and learning center in Nigeria, managing 2,300+ catalog items, 670+ patrons, active book circulation, student digital literacy cohorts, reading competitions, and values publication. DZF-ILAS (Dzuels Integrated Library & Administrative System) provides a clean, unified Next.js web application and REST API backend. Phases 1-10 delivered cataloging, patron barcode identity, circulation gamification, cohort Google Sheets synchronization, competition scoring, certificate studio, operational calendar ingestion, staff self-registration, a Kanban task workspace, circulation confirmation modals, 5-day loan defaults, student grade promotion, and daily live activity stream with same-day admin undo. Phase 11 delivered staff self-tasks, bidirectional kanban notifications, leadership navigation scoping, and omnipotent circulation/database overrides. Phase 12 introduces task lifecycle archiving with 30-day automated TTL purge, private/public task scoping, and in-app escalation reminders. Phase 13 introduces task messages/notes, chronological discussion streams, and real-time in-app conversation alerts.
+The Dzuels Educational Foundation operates an academic library and learning center in Nigeria, managing 2,300+ catalog items, 670+ patrons, active book circulation, student digital literacy cohorts, reading competitions, and values publication. DZF-ILAS (Dzuels Integrated Library & Administrative System) provides a clean, unified Next.js web application and REST API backend. Phases 1-10 delivered cataloging, patron barcode identity, circulation gamification, cohort Google Sheets synchronization, competition scoring, certificate studio, operational calendar ingestion, staff self-registration, a Kanban task workspace, circulation confirmation modals, 5-day loan defaults, student grade promotion, and daily live activity stream with same-day admin undo. Phase 11 delivered staff self-tasks, bidirectional kanban notifications, leadership navigation scoping, and omnipotent circulation/database overrides. Phase 12 introduces task lifecycle archiving with 30-day automated TTL purge, private/public task scoping, and in-app escalation reminders. Phase 13 introduces task messages/notes, chronological discussion streams, and real-time in-app conversation alerts. Phase 14 introduces real-time Server-Sent Events (SSE), instant discussion chat, toast alerts with audio chime, and HTML5 desktop web push notifications. Phase 15 provides dynamic database shell metrics, 1-click Literacy Class fast-track attendance scanning, and 12 annual foundation event presets. Phase 16 modernizes the TransComm editorial studio with rich toolbar formatting, smart list auto-continuation, and live preview. Phase 17 equips administrators with self-service preset governance, one-click JSON/CSV backups, marquee broadcast alerts, and data recalculation tools.
 
 ## Users & Role Hierarchy
 
@@ -64,6 +64,10 @@ Top-to-bottom institutional hierarchy:
 32. **Self-Tasks & Omnipotent Overrides** - Staff self-task creation, bidirectional Kanban moves/alerts, and Patron 360 database overrides.
 33. **Task Archiving & Escalation Reminders** - 30-day auto-purged task archives, private/public scoping, and hourly/48-hr in-app alerts.
 34. **Task Messages & Discussion Threading** - Chronological message notes and responses on tasks, author badges, and automated in-app notifications.
+35. **Real-Time Streaming & Web Push Notifications** - Server-Sent Events (SSE) live bus (`/api/stream`), instant chat updates, in-app toast chimes, and browser Push API integration.
+36. **Dynamic Shell Metrics & Literacy Attendance** - Live database shell badges, 1-click fast-track Literacy Class attendance mode, and 12 annual foundation event presets.
+37. **TransComm Editorial Studio Modernization** - Enriched formatting toolbar (H1, P, Underline, Highlight), smart auto-continuing lists with Enter key, and split-pane live preview.
+38. **Admin Self-Service & Broadcast Center** - Foundation reference data/preset manager, one-click JSON/CSV data backup/export, system-wide broadcast alerts, and data recalculation toolkit.
 
 ## Data model
 
@@ -175,11 +179,20 @@ Top-to-bottom institutional hierarchy:
 - `_id` (ObjectId)
 - `recipientUsername` (string, required, index)
 - `senderUsername` (string, required)
-- `type` (enum: `'task_assigned' | 'task_updated' | 'task_reminder' | 'calendar_milestone' | 'account_activated' | 'system'`)
+- `type` (enum: `'task_assigned' | 'task_updated' | 'task_reminder' | 'calendar_milestone' | 'account_activated' | 'broadcast' | 'system'`)
 - `title` (string, required)
 - `message` (string, required)
 - `link` (string, optional)
 - `read` (boolean, default: false)
+- `createdAt` / `updatedAt` (Date)
+
+### FoundationPreset (Reference Data & Event Presets)
+- `_id` (ObjectId)
+- `category` (enum: `'annual_event' | 'school' | 'cohort_track'`)
+- `name` (string, required)
+- `targetMonth` (number, optional, 1-12)
+- `description` (string, optional)
+- `metadata` (object, optional)
 - `createdAt` / `updatedAt` (Date)
 
 ## Tech Stack & Architecture
@@ -192,6 +205,8 @@ Top-to-bottom institutional hierarchy:
 - **Google Sheets API v4:** Service account integration for two-way cohort enrollment backups.
 - **JsBarcode:** SVG-based barcode rendering for cards and item spine tags.
 - **Thermal Print Engine:** Sandboxed headless iframe print pipeline targeting Xprinter XP-365B and 60mm × 40mm continuous rolls.
+- **Server-Sent Events (SSE):** Real-time streaming pipeline (`/api/stream`) broadcasting task lifecycle, Kanban column shifts, and discussion notes.
+- **Web Push Notifications & Audio:** HTML5 Browser Push API integration for background/desktop alerts and Web Audio synthetic chimes.
 
 ## Monetization
 
@@ -208,20 +223,20 @@ Not applicable. DZF-ILAS is a 100% internal non-profit educational and library m
   - `/transcomm` & `/transcomm/[slug]` - Public DRNICER leadership knowledge hub (indexed by search engines)
   - `/auth/login` - Staff credential sign-in
   - `/auth/register` - Staff self-registration with birth month/day and pending admin activation
-  - `/dashboard` - Summary counters, circulation stats, gender ratios, upcoming milestones
-  - `/dashboard/tasks` - Dedicated staff task workspace with interactive 3-column Kanban board, archive drawer, and privacy controls
+  - `/dashboard` - Dynamic counters, circulation stats, gender ratios, upcoming milestones
+  - `/dashboard/tasks` - Dedicated staff task workspace with interactive 3-column Kanban board, live instant discussion chat, archive drawer, and privacy controls
   - `/dashboard/catalog` & `/dashboard/catalog/acquire` - Monograph inventory and acquisition studio
   - `/dashboard/patrons` & `/dashboard/patrons/register` - Patron directory, dynamic registration, Xprinter XP-365B bulk printing
   - `/dashboard/circulations` - Barcode loan transactions, checkout, return, holds, overdues, with return/renewal confirmation dialogs
-  - `/dashboard/attendance` - Barcode scanner interface ("Attendant")
+  - `/dashboard/attendance` - Barcode scanner interface ("Attendant") with 1-click Literacy Class fast-track attendance studio
   - `/dashboard/leaderboard` - Activity metrics and patron leaderboard
   - `/dashboard/calendar` - Dedicated staff operational calendar matrix & agenda stream
   - `/dashboard/inventory` - Foundation asset inventory and equipment logs
   - `/dashboard/cohorts` - Digital literacy cohorts, student rosters, Google Sheets sync
   - `/dashboard/competitions` - Live competition judging and broadcast results
   - `/dashboard/certificates` - Vector certificate studio & export pipeline
-  - `/dashboard/transcomm` - Staff editorial management for DRNICER articles
-  - `/dashboard/admin` - Staff accounts, emergency circulation overrides, audit ledger, calendar tools
+  - `/dashboard/transcomm` & `/dashboard/transcomm/new` - Staff editorial management, modernized composer with rich toolbar, smart lists, and live preview
+  - `/dashboard/admin` - Staff accounts, emergency circulation overrides, audit ledger, calendar tools, self-service presets, broadcast banner, and JSON/CSV backup/export
   - `/dashboard/admin/daily-actions` - Staff daily live activity stream & same-day reversible undo console (Admin only)
 
 ## Deployment

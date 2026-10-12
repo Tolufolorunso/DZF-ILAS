@@ -75,5 +75,18 @@ List of planned features for the DZF-ILAS clean rebuild, ordered by architectura
 
 - [x] 34. **Task Messages, Operational Notes & Chronological Discussion Engine** - Implement collaborative message notes and responses on staff tasks in `/dashboard/tasks`: interactive task discussion panel with chronological timeline, author and role badges, real-time message sending/deletion, Kanban card note count pill (`💬`), strict private task scoping, and automated in-app system notifications alerting the assignee or assigner when a note is posted.
 
+## Phase 14: Real-Time Instant Streaming, Live Discussion Chat & Web Push Notifications
 
+- [x] 35. **Real-Time Instant Streaming, Live Discussion Chat & Web Push Notifications** - Implement server-sent events (SSE) real-time pipeline (`/api/stream`) broadcasting task creation, lane movement, note posting, and status updates instantly (<100ms) across staff screens; integrate in-app floating toast alerts with audio chime for incoming messages/assignments; and add browser HTML5 Web Push desktop notifications so staff receive timely alerts even when tabs are minimized or in the background.
 
+## Phase 15: Dynamic Shell Metrics, Literacy Class Fast-Track Attendance & Annual Foundation Event Presets
+
+- [ ] 36. **Dynamic Shell Metrics, Literacy Class Fast-Track Attendance & Annual Foundation Event Presets** - Bind AppShell sidebar badges to dynamic database statistics (replacing hardcoded `1.3k` and `583`); build dedicated 1-click Literacy Class quick-attendance mode on `/dashboard/attendance` with continuous barcode scanner autofocus and grade-band presets; and store the 12 recurring annual foundation events (World Education Day, Spelling Bees, World Reading Book Day, Tech Day, Literacy Day, etc.) as system presets available across Calendar, Competition, and Attendance workflows.
+
+## Phase 16: TransComm Editorial Studio Modernization & Rich Article Composer
+
+- [ ] 37. **TransComm Editorial Studio Modernization & Rich Article Composer** - Modernize `/dashboard/transcomm/new` editorial interface with extended formatting actions (H1, Normal Paragraph, Underline, Highlight, Link); implement smart list auto-continuation (pressing `Enter` generates the next list item `- ` or number automatically, and double-Enter exits list mode); and enrich split-pane live markdown preview with distraction-free writing mode.
+
+## Phase 17: Administrator Self-Service Governance, Data Backup & Broadcast Center
+
+- [ ] 38. **Administrator Self-Service Governance, Data Backup & Broadcast Center** - Implement comprehensive admin governance suite under `/dashboard/admin`: self-service management of School Directory and Foundation Event Presets without code modifications; one-click JSON/CSV data backup and export pipeline for books, patrons, attendance, and circulation records; system-wide broadcast announcement banners and urgent push alerts; and automated data health recalculation tools (leaderboard scores and loan status synchronization).

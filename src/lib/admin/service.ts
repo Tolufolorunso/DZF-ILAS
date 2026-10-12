@@ -30,6 +30,47 @@ import type {
   IEventItemDTO,
   IAuditLogItemDTO,
 } from './types';
+import { realtimeEventBus } from '@/lib/realtime/eventBus';
+import type { NotificationType } from '@/models/Notification';
+
+/**
+ * Creates and immediately dispatches an in-app realtime notification via SSE.
+ */
+export async function createAndDispatchNotification(data: {
+  recipientUsername: string;
+  senderUsername: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  link?: string;
+  read?: boolean;
+}) {
+  const notif = await Notification.create({
+    recipientUsername: data.recipientUsername,
+    senderUsername: data.senderUsername,
+    type: data.type,
+    title: data.title,
+    message: data.message,
+    link: data.link,
+    read: data.read ?? false,
+  });
+  realtimeEventBus.dispatch({
+    type: 'notification:created',
+    payload: {
+      id: String(notif._id),
+      recipientUsername: notif.recipientUsername,
+      senderUsername: notif.senderUsername,
+      type: notif.type,
+      title: notif.title,
+      message: notif.message,
+      link: notif.link,
+      read: notif.read,
+      createdAt: notif.createdAt ? new Date(notif.createdAt).toISOString() : new Date().toISOString(),
+    },
+    recipients: [notif.recipientUsername],
+  });
+  return notif;
+}
 
 /**
  * Creates or retrieves the singleton SystemSetting document.
@@ -920,7 +961,7 @@ export async function createTask(params: {
       activeStaff
         .filter((s) => s.username.toLowerCase() !== params.staffUsername.toLowerCase())
         .map((member) =>
-          Notification.create({
+          createAndDispatchNotification({
             recipientUsername: member.username.toLowerCase(),
             senderUsername: params.staffUsername.toLowerCase(),
             type: 'task_assigned',
@@ -945,7 +986,13 @@ export async function createTask(params: {
       },
     });
 
-    return mapTaskToDTO(task);
+    const taskDTO = mapTaskToDTO(task);
+    realtimeEventBus.dispatch({
+      type: 'task:created',
+      payload: taskDTO,
+    });
+
+    return taskDTO;
   }
 
   // 2. Check if assigning to a role group (e.g. "group:librarian", "group:ict")
@@ -979,7 +1026,7 @@ export async function createTask(params: {
       groupMembers
         .filter((m) => m.username.toLowerCase() !== params.staffUsername.toLowerCase())
         .map((member) =>
-          Notification.create({
+          createAndDispatchNotification({
             recipientUsername: member.username.toLowerCase(),
             senderUsername: params.staffUsername.toLowerCase(),
             type: 'task_assigned',
@@ -1004,7 +1051,14 @@ export async function createTask(params: {
       },
     });
 
-    return mapTaskToDTO(task);
+    const taskDTO = mapTaskToDTO(task);
+    realtimeEventBus.dispatch({
+      type: 'task:created',
+      payload: taskDTO,
+      recipients: groupMembers.map((m) => m.username.toLowerCase()).concat(params.staffUsername.toLowerCase()),
+    });
+
+    return taskDTO;
   }
 
   // 3. Individual task assignment
@@ -1039,7 +1093,7 @@ export async function createTask(params: {
 
   // Dispatch in-app notification to the assignee if not self
   if (!isSelf) {
-    await Notification.create({
+    await createAndDispatchNotification({
       recipientUsername: params.assignedToUsername.toLowerCase(),
       senderUsername: params.staffUsername.toLowerCase(),
       type: 'task_assigned',
@@ -1064,7 +1118,18 @@ export async function createTask(params: {
     },
   });
 
-  return mapTaskToDTO(task);
+  const taskDTO = mapTaskToDTO(task);
+  const recipients = task.isPrivate
+    ? [task.assignedBy?.username, task.assignedTo?.username].filter(Boolean).map((u) => String(u).toLowerCase())
+    : undefined;
+
+  realtimeEventBus.dispatch({
+    type: 'task:created',
+    payload: taskDTO,
+    recipients,
+  });
+
+  return taskDTO;
 }
 
 export async function updateTaskStatus(params: {
@@ -1119,7 +1184,7 @@ export async function updateTaskStatus(params: {
       notifMessage = `@${params.staffUsername} moved task "${task.title}" from ${oldLabel} to In Progress.`;
     }
 
-    await Notification.create({
+    await createAndDispatchNotification({
       recipientUsername: task.assignedBy.username.toLowerCase(),
       senderUsername: params.staffUsername.toLowerCase(),
       type: 'task_updated',
@@ -1143,7 +1208,18 @@ export async function updateTaskStatus(params: {
     },
   });
 
-  return mapTaskToDTO(task);
+  const taskDTO = mapTaskToDTO(task);
+  const recipients = task.isPrivate
+    ? [task.assignedBy?.username, task.assignedTo?.username].filter(Boolean).map((u) => String(u).toLowerCase())
+    : undefined;
+
+  realtimeEventBus.dispatch({
+    type: 'task:updated',
+    payload: taskDTO,
+    recipients,
+  });
+
+  return taskDTO;
 }
 
 export async function updateTaskDetails(params: {
@@ -1189,7 +1265,7 @@ export async function updateTaskDetails(params: {
     };
 
     if (oldAssignee.toLowerCase() !== params.assignedToUsername.toLowerCase()) {
-      await Notification.create({
+      await createAndDispatchNotification({
         recipientUsername: params.assignedToUsername.toLowerCase(),
         senderUsername: params.staffUsername.toLowerCase(),
         type: 'task_assigned',
@@ -1231,7 +1307,7 @@ export async function updateTaskDetails(params: {
       notifMessage = `@${params.staffUsername} moved task "${task.title}" from ${oldLabel} to In Progress.`;
     }
 
-    await Notification.create({
+    await createAndDispatchNotification({
       recipientUsername: task.assignedBy.username.toLowerCase(),
       senderUsername: params.staffUsername.toLowerCase(),
       type: 'task_updated',
@@ -1257,7 +1333,18 @@ export async function updateTaskDetails(params: {
     },
   });
 
-  return mapTaskToDTO(task);
+  const taskDTO = mapTaskToDTO(task);
+  const recipients = task.isPrivate
+    ? [task.assignedBy?.username, task.assignedTo?.username].filter(Boolean).map((u) => String(u).toLowerCase())
+    : undefined;
+
+  realtimeEventBus.dispatch({
+    type: 'task:updated',
+    payload: taskDTO,
+    recipients,
+  });
+
+  return taskDTO;
 }
 
 export async function addTaskComment(params: {
@@ -1317,7 +1404,7 @@ export async function addTaskComment(params: {
   const snippet = trimmedText.length > 80 ? `${trimmedText.substring(0, 77)}...` : trimmedText;
   await Promise.all(
     Array.from(recipients).map((recipientUsername) =>
-      Notification.create({
+      createAndDispatchNotification({
         recipientUsername,
         senderUsername: params.commenter.username.toLowerCase(),
         type: 'task_reminder',
@@ -1341,7 +1428,25 @@ export async function addTaskComment(params: {
     },
   });
 
-  return mapTaskToDTO(task);
+  const taskDTO = mapTaskToDTO(task);
+  const newComment = taskDTO.comments && taskDTO.comments.length > 0
+    ? taskDTO.comments[taskDTO.comments.length - 1]
+    : null;
+  const eventRecipients = isConfidential
+    ? Array.from(recipients).concat(params.commenter.username.toLowerCase())
+    : undefined;
+
+  realtimeEventBus.dispatch({
+    type: 'comment:added',
+    payload: {
+      taskId: String(task._id),
+      comment: newComment,
+      task: taskDTO,
+    },
+    recipients: eventRecipients,
+  });
+
+  return taskDTO;
 }
 
 export async function deleteTaskComment(params: {
@@ -1393,7 +1498,17 @@ export async function deleteTaskComment(params: {
     },
   });
 
-  return mapTaskToDTO(task);
+  const taskDTO = mapTaskToDTO(task);
+  realtimeEventBus.dispatch({
+    type: 'comment:deleted',
+    payload: {
+      taskId: String(task._id),
+      commentId: params.commentId,
+      task: taskDTO,
+    },
+  });
+
+  return taskDTO;
 }
 
 /**
@@ -1727,7 +1842,7 @@ export async function evaluateTaskRemindersAndCleanup(): Promise<{
       if (now - refTime >= ONE_HOUR) {
         const recipient = (t.assignedTo?.username || '').toLowerCase();
         if (recipient && !recipient.startsWith('group:')) {
-          await Notification.create({
+          await createAndDispatchNotification({
             recipientUsername: recipient,
             senderUsername: 'system',
             type: 'task_reminder',
@@ -1762,7 +1877,7 @@ export async function evaluateTaskRemindersAndCleanup(): Promise<{
         if (now - lastAlert >= TWENTY_FOUR_HOURS) {
           const recipient = (t.assignedTo?.username || '').toLowerCase();
           if (recipient && !recipient.startsWith('group:')) {
-            await Notification.create({
+            await createAndDispatchNotification({
               recipientUsername: recipient,
               senderUsername: 'system',
               type: 'task_reminder',

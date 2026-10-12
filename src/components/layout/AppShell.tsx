@@ -17,6 +17,9 @@ import Badge from '@mui/material/Badge';
 import Popover from '@mui/material/Popover';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
+import Switch from '@mui/material/Switch';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import { dzfColors } from '@/theme/colors';
@@ -91,6 +94,68 @@ export interface AppShellProps {
 
 const AppShellContext = React.createContext<boolean>(false);
 
+function playNotificationChime() {
+  try {
+    if (typeof window === 'undefined') return;
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+
+    const ctx = new AudioCtx();
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
+    const now = ctx.currentTime;
+    // Tone 1: 587.33 Hz (D5)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(587.33, now);
+    gain1.gain.setValueAtTime(0.12, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.18);
+
+    // Tone 2: 880 Hz (A5), harmonized chime
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(880, now + 0.08);
+    gain2.gain.setValueAtTime(0.15, now + 0.08);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now + 0.08);
+    osc2.stop(now + 0.32);
+  } catch {
+    // Silently continue if audio context is blocked
+  }
+}
+
+function dispatchDesktopNotification(title: string, body: string, link?: string) {
+  if (typeof window === 'undefined' || !('Notification' in window)) return;
+  if (Notification.permission !== 'granted') return;
+
+  try {
+    const notif = new window.Notification(title, {
+      body,
+      icon: '/favicon.ico',
+    });
+    notif.onclick = () => {
+      window.focus();
+      if (link && typeof window !== 'undefined') {
+        window.location.href = link;
+      }
+    };
+  } catch {
+    // Ignore notification construction errors
+  }
+}
+
 export function AppShell({
   children,
   activeNavId,
@@ -114,6 +179,43 @@ export function AppShell({
   const [notifAnchor, setNotifAnchor] = React.useState<HTMLElement | null>(null);
   const [isUpdatingNotifs, setIsUpdatingNotifs] = React.useState<boolean>(false);
 
+  // In-App Toast & Web Push Alerts State
+  const [toastAlert, setToastAlert] = React.useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    link?: string;
+  } | null>(null);
+  const [desktopAlertsEnabled, setDesktopAlertsEnabled] = React.useState<boolean>(false);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dzf_desktop_alerts');
+      if (saved === 'true' && 'Notification' in window && Notification.permission === 'granted') {
+        setDesktopAlertsEnabled(true);
+      }
+    }
+  }, []);
+
+  const handleToggleDesktopAlerts = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    if (checked) {
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          setDesktopAlertsEnabled(true);
+          localStorage.setItem('dzf_desktop_alerts', 'true');
+        } else {
+          setDesktopAlertsEnabled(false);
+          localStorage.setItem('dzf_desktop_alerts', 'false');
+        }
+      }
+    } else {
+      setDesktopAlertsEnabled(false);
+      localStorage.setItem('dzf_desktop_alerts', 'false');
+    }
+  };
+
   const fetchNotifications = React.useCallback(async () => {
     try {
       const res = await fetch('/api/notifications');
@@ -127,6 +229,101 @@ export function AppShell({
     } catch {
       // non-blocking polling catch
     }
+  }, []);
+
+  // Real-Time Server-Sent Events (SSE) live pipeline with auto-reconnection
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    let eventSource: EventSource | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let isUnmounted = false;
+
+    const connectSSE = () => {
+      if (isUnmounted) return;
+      try {
+        eventSource = new EventSource('/api/stream');
+
+        eventSource.addEventListener('notification:created', (e: MessageEvent) => {
+          try {
+            const parsed = JSON.parse(e.data);
+            const newNotif = parsed.payload;
+            if (newNotif) {
+              setNotifications((prev) => {
+                if (prev.some((n) => n.id === newNotif.id)) return prev;
+                return [newNotif, ...prev];
+              });
+              setUnreadCount((prev) => prev + 1);
+
+              // Floating Toast alert
+              setToastAlert({
+                open: true,
+                title: newNotif.title,
+                message: newNotif.message,
+                link: newNotif.link,
+              });
+
+              // Synthetic audio chime
+              playNotificationChime();
+
+              // HTML5 Desktop Web Push if tab is hidden / minimized
+              if (
+                document.hidden &&
+                typeof window !== 'undefined' &&
+                localStorage.getItem('dzf_desktop_alerts') === 'true'
+              ) {
+                dispatchDesktopNotification(newNotif.title, newNotif.message, newNotif.link);
+              }
+            }
+          } catch (err) {
+            console.warn('[SSE_NOTIF_PARSE_WARN]', err);
+          }
+        });
+
+        // Forward realtime events to window so any workspace client (like Tasks) can react instantly
+        const forwardToWindow = (e: MessageEvent) => {
+          try {
+            const parsed = JSON.parse(e.data);
+            window.dispatchEvent(new CustomEvent('dzf:realtime', { detail: parsed }));
+          } catch {
+            // ignore
+          }
+        };
+
+        eventSource.addEventListener('task:created', forwardToWindow);
+        eventSource.addEventListener('task:updated', forwardToWindow);
+        eventSource.addEventListener('task:deleted', forwardToWindow);
+        eventSource.addEventListener('comment:added', forwardToWindow);
+        eventSource.addEventListener('comment:deleted', forwardToWindow);
+        eventSource.addEventListener('broadcast', forwardToWindow);
+
+        eventSource.onerror = () => {
+          if (eventSource) {
+            eventSource.close();
+            eventSource = null;
+          }
+          if (!isUnmounted) {
+            retryTimer = setTimeout(connectSSE, 5000);
+          }
+        };
+      } catch {
+        if (!isUnmounted) {
+          retryTimer = setTimeout(connectSSE, 5000);
+        }
+      }
+    };
+
+    connectSSE();
+
+    return () => {
+      isUnmounted = true;
+      if (eventSource) {
+        eventSource.close();
+      }
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+      }
+    };
   }, []);
 
   React.useEffect(() => {
@@ -183,7 +380,11 @@ export function AppShell({
     let targetLink = notif.link;
     if (notif.type === 'calendar_milestone') {
       targetLink = '/dashboard/calendar';
-    } else if (notif.type === 'task_assigned' || notif.type === 'task_updated') {
+    } else if (
+      notif.type === 'task_assigned' ||
+      notif.type === 'task_updated' ||
+      notif.type === 'task_reminder'
+    ) {
       targetLink = '/dashboard/tasks';
     } else if (targetLink === '/dashboard/admin' && !isSuperOrAdmin) {
       targetLink = '/dashboard';
@@ -953,7 +1154,95 @@ export function AppShell({
               ))
             )}
           </Box>
+
+          {/* Desktop Push Notifications Footer */}
+          <Box
+            sx={{
+              p: 1.5,
+              px: 2,
+              borderTop: `1px solid ${dzfColors.surfaces.border}`,
+              backgroundColor: dzfColors.surfaces.canvas,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <Box>
+              <Typography variant="caption" sx={{ fontWeight: 700, color: dzfColors.navy[900], display: 'block' }}>
+                Desktop Alerts
+              </Typography>
+              <Typography variant="caption" sx={{ fontSize: '0.6875rem', color: dzfColors.surfaces.textMuted }}>
+                Notify when minimized
+              </Typography>
+            </Box>
+            <Switch
+              size="small"
+              checked={desktopAlertsEnabled}
+              onChange={handleToggleDesktopAlerts}
+              sx={{
+                '& .MuiSwitch-switchBase.Mui-checked': {
+                  color: dzfColors.navy[900],
+                },
+                '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                  backgroundColor: dzfColors.navy[900],
+                },
+              }}
+            />
+          </Box>
         </Popover>
+
+        {/* Floating Toast Notification Alert */}
+        <Snackbar
+          open={Boolean(toastAlert?.open)}
+          autoHideDuration={6000}
+          onClose={() => setToastAlert(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          sx={{ zIndex: (theme) => theme.zIndex.snackbar + 100 }}
+        >
+          <Alert
+            severity="info"
+            onClose={() => setToastAlert(null)}
+            action={
+              toastAlert?.link ? (
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={() => {
+                    const link = toastAlert.link;
+                    setToastAlert(null);
+                    if (link) router.push(link);
+                  }}
+                  sx={{
+                    fontWeight: 800,
+                    textTransform: 'none',
+                    ml: 1,
+                    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                    color: '#ffffff',
+                    '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.25)' },
+                  }}
+                >
+                  View
+                </Button>
+              ) : undefined
+            }
+            sx={{
+              backgroundColor: dzfColors.navy[950],
+              color: '#ffffff',
+              border: `1px solid ${dzfColors.gold[500]}`,
+              boxShadow: '0 8px 24px rgba(11, 29, 46, 0.35)',
+              minWidth: 280,
+              maxWidth: 420,
+              '& .MuiAlert-icon': { color: dzfColors.gold[500] },
+            }}
+          >
+            <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#ffffff', fontSize: '0.8125rem' }}>
+              {toastAlert?.title}
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.85)', fontSize: '0.75rem', mt: 0.25 }}>
+              {toastAlert?.message}
+            </Typography>
+          </Alert>
+        </Snackbar>
       </Box>
     </AppShellContext.Provider>
   );

@@ -6,6 +6,7 @@ export type NotificationType =
   | 'task_reminder'
   | 'calendar_milestone'
   | 'account_pending'
+  | 'broadcast'
   | 'system';
 
 export interface INotification {
@@ -40,7 +41,7 @@ const NotificationSchema = new Schema<INotificationDocument>(
     },
     type: {
       type: String,
-      enum: ['task_assigned', 'task_updated', 'task_reminder', 'calendar_milestone', 'account_pending', 'system'],
+      enum: ['task_assigned', 'task_updated', 'task_reminder', 'calendar_milestone', 'account_pending', 'broadcast', 'system'],
       default: 'system',
       index: true,
     },
