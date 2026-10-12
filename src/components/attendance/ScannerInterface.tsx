@@ -617,13 +617,14 @@ export default function ScannerInterface({
             }
             placeholder={
               isLiteracyMode
-                ? `Ready to scan ${activeGradeBand.name} badges (e.g. 20260584)...`
-                : 'Scan barcode (e.g. 20230001, 20260584)...'
+                ? `Scan or type student badge (e.g. 20260584)...`
+                : 'Scan or type patron barcode (e.g. 20230001, 20260584)...'
             }
             onScan={handleBarcodeScan}
             autoSubmitOnEnter
             keepFocused
             disabled={isProcessing}
+            minLength={8}
             debounceMs={120}
           />
 

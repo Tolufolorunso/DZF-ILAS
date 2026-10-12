@@ -14,6 +14,7 @@ export interface DZFBarcodeInputProps extends Omit<TextFieldProps, 'variant' | '
   label?: string;
   onScan: (barcode: string) => void;
   debounceMs?: number;
+  minLength?: number;
   autoSubmitOnEnter?: boolean;
   keepFocused?: boolean;
   showSubmitButton?: boolean;
@@ -24,6 +25,7 @@ export const DZFBarcodeInput = React.forwardRef<HTMLInputElement, DZFBarcodeInpu
     label = 'Scan Barcode',
     onScan,
     debounceMs = 150,
+    minLength = 8,
     autoSubmitOnEnter = true,
     keepFocused = true,
     showSubmitButton = true,
@@ -37,6 +39,8 @@ export const DZFBarcodeInput = React.forwardRef<HTMLInputElement, DZFBarcodeInpu
   const [lastScanned, setLastScanned] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const timerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const lastKeyTimeRef = React.useRef<number>(0);
+  const isBurstRef = React.useRef<boolean>(false);
 
   React.useImperativeHandle(forwardedRef, () => inputRef.current as HTMLInputElement);
 
@@ -47,6 +51,8 @@ export const DZFBarcodeInput = React.forwardRef<HTMLInputElement, DZFBarcodeInpu
       onScan(trimmed);
       setLastScanned(trimmed);
       setValue('');
+      isBurstRef.current = false;
+      lastKeyTimeRef.current = 0;
       if (keepFocused && inputRef.current) {
         inputRef.current.focus();
       }
@@ -55,6 +61,18 @@ export const DZFBarcodeInput = React.forwardRef<HTMLInputElement, DZFBarcodeInpu
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const now = Date.now();
+    const delta = now - lastKeyTimeRef.current;
+    lastKeyTimeRef.current = now;
+
+    // Hardware barcode scanners emit keystrokes in rapid succession (< 45ms between characters)
+    if (delta < 45) {
+      isBurstRef.current = true;
+    } else if (delta > 90) {
+      // Slower keystroke cadence indicates manual human typing
+      isBurstRef.current = false;
+    }
+
     if (autoSubmitOnEnter && e.key === 'Enter') {
       e.preventDefault();
       if (timerRef.current) {
@@ -68,14 +86,22 @@ export const DZFBarcodeInput = React.forwardRef<HTMLInputElement, DZFBarcodeInpu
     const val = e.target.value;
     setValue(val);
 
-    if (debounceMs > 0 && val.length >= 4) {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-      // If hardware scanner enters 8+ characters in rapid succession, debounce fires
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
+
+    // Do not auto-submit if value is shorter than minLength (e.g. standard 8-digit barcode)
+    if (val.length < minLength) {
+      return;
+    }
+
+    // Fast debounce for hardware scanner bursts; relaxed debounce (600ms) for manual human typing
+    const delay = isBurstRef.current ? Math.min(debounceMs, 100) : Math.max(debounceMs, 600);
+
+    if (delay > 0) {
       timerRef.current = setTimeout(() => {
         triggerScan(val);
-      }, debounceMs);
+      }, delay);
     }
   };
 
