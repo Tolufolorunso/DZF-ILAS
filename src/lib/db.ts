@@ -23,10 +23,18 @@ if (!global.mongooseCache) {
 /**
  * Connect to MongoDB with cached singleton connection pool
  * Prevents multiple connections during Next.js App Router hot reloads
+ * and cleanly recovers dropped connections in serverless environments.
  */
 export async function connectDB(): Promise<Mongoose> {
-  if (cached.conn) {
+  // Check if existing connection is still healthy (readyState === 1: connected)
+  if (cached.conn && mongoose.connection.readyState === 1) {
     return cached.conn;
+  }
+
+  // If connection dropped or is in a non-connected state, clear cached handle
+  if (cached.conn && mongoose.connection.readyState !== 1) {
+    cached.conn = null;
+    cached.promise = null;
   }
 
   if (!cached.promise) {
@@ -35,6 +43,8 @@ export async function connectDB(): Promise<Mongoose> {
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
+      connectTimeoutMS: 10000,
+      heartbeatFrequencyMS: 10000,
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongooseInstance) => {
@@ -46,6 +56,7 @@ export async function connectDB(): Promise<Mongoose> {
     cached.conn = await cached.promise;
   } catch (error) {
     cached.promise = null;
+    cached.conn = null;
     throw error;
   }
 

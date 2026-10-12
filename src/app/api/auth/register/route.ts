@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     const normalizedUsername = String(username || '')
       .toLowerCase()
       .trim();
-    if (!normalizedUsername || !/^[a-z0-9_]{3,25}$/.test(normalizedUsername)) {
+    if (!normalizedUsername || !/^[a-z0-9_]{2,25}$/.test(normalizedUsername)) {
       return NextResponse.json(
         {
           success: false,
