@@ -88,6 +88,17 @@ export interface IRequisitionItemDTO {
   updatedAt: string;
 }
 
+export interface ITaskCommentDTO {
+  id: string;
+  commenter: {
+    name: string;
+    username: string;
+    role?: string;
+  };
+  commentDate: string;
+  commentText: string;
+}
+
 export interface ITaskItemDTO {
   id: string;
   title: string;
@@ -102,6 +113,8 @@ export interface ITaskItemDTO {
   inProgressAt?: string | null;
   status: 'todo' | 'inProgress' | 'completed' | 'archived';
   priority: 'low' | 'medium' | 'high';
+  comments?: ITaskCommentDTO[];
+  commentsCount?: number;
   createdAt: string;
   updatedAt: string;
 }

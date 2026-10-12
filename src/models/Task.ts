@@ -8,8 +8,13 @@ export interface ITaskUserRef {
   username: string;
 }
 
+export interface ITaskCommentUserRef extends ITaskUserRef {
+  role?: string;
+}
+
 export interface ITaskComment {
-  commenter: ITaskUserRef;
+  _id?: mongoose.Types.ObjectId | string;
+  commenter: ITaskCommentUserRef;
   commentDate: Date;
   commentText: string;
 }
@@ -61,10 +66,30 @@ const TaskUserRefSchema = new Schema<ITaskUserRef>(
   { _id: false }
 );
 
+const TaskCommentUserRefSchema = new Schema<ITaskCommentUserRef>(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    username: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    role: {
+      type: String,
+      trim: true,
+    },
+  },
+  { _id: false }
+);
+
 const TaskCommentSchema = new Schema<ITaskComment>(
   {
     commenter: {
-      type: TaskUserRefSchema,
+      type: TaskCommentUserRefSchema,
       required: true,
     },
     commentDate: {

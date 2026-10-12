@@ -1,12 +1,12 @@
 # DZF-ILAS - Project Overview
 
-<!-- blueprint:source-hash 0b65975b7c3c79e9c6f8002295ebcbbf24aa14b5df879d67a0d2bf108cc47b7b -->
+<!-- blueprint:source-hash 14034d8d65945cd0448ca2c9af0c07951b56f34ed2311f32211ae1e523df0b2a -->
 
 > Centralized internal staff workspace and REST API backend for the Dzuels Educational Foundation (DZF), managing academic library cataloging, patron identity, circulation, and academy engagement.
 
 ## Problem
 
-The Dzuels Educational Foundation operates an academic library and learning center in Nigeria, managing 2,300+ catalog items, 670+ patrons, active book circulation, student digital literacy cohorts, reading competitions, and values publication. DZF-ILAS (Dzuels Integrated Library & Administrative System) provides a clean, unified Next.js web application and REST API backend. Phases 1-10 delivered cataloging, patron barcode identity, circulation gamification, cohort Google Sheets synchronization, competition scoring, certificate studio, operational calendar ingestion, staff self-registration, a Kanban task workspace, circulation confirmation modals, 5-day loan defaults, student grade promotion, and daily live activity stream with same-day admin undo. Phase 11 delivered staff self-tasks, bidirectional kanban notifications, leadership navigation scoping, and omnipotent circulation/database overrides. Phase 12 introduces task lifecycle archiving with 30-day automated TTL purge, private/public task scoping, and in-app escalation reminders.
+The Dzuels Educational Foundation operates an academic library and learning center in Nigeria, managing 2,300+ catalog items, 670+ patrons, active book circulation, student digital literacy cohorts, reading competitions, and values publication. DZF-ILAS (Dzuels Integrated Library & Administrative System) provides a clean, unified Next.js web application and REST API backend. Phases 1-10 delivered cataloging, patron barcode identity, circulation gamification, cohort Google Sheets synchronization, competition scoring, certificate studio, operational calendar ingestion, staff self-registration, a Kanban task workspace, circulation confirmation modals, 5-day loan defaults, student grade promotion, and daily live activity stream with same-day admin undo. Phase 11 delivered staff self-tasks, bidirectional kanban notifications, leadership navigation scoping, and omnipotent circulation/database overrides. Phase 12 introduces task lifecycle archiving with 30-day automated TTL purge, private/public task scoping, and in-app escalation reminders. Phase 13 introduces task messages/notes, chronological discussion streams, and real-time in-app conversation alerts.
 
 ## Users & Role Hierarchy
 
@@ -63,6 +63,7 @@ Top-to-bottom institutional hierarchy:
 31. **Live Daily Action Stream & Same-Day Undo** - Live staff audit console at /dashboard/admin/daily-actions with midnight undo cutoff.
 32. **Self-Tasks & Omnipotent Overrides** - Staff self-task creation, bidirectional Kanban moves/alerts, and Patron 360 database overrides.
 33. **Task Archiving & Escalation Reminders** - 30-day auto-purged task archives, private/public scoping, and hourly/48-hr in-app alerts.
+34. **Task Messages & Discussion Threading** - Chronological message notes and responses on tasks, author badges, and automated in-app notifications.
 
 ## Data model
 
@@ -139,7 +140,7 @@ Top-to-bottom institutional hierarchy:
 - `inProgressAt` (Date, optional)
 - `lastTodoRemindedAt` (Date, optional)
 - `lastInProgressRemindedAt` (Date, optional)
-- `comments` (array)
+- `comments: Array<{ commenter: { name: string, username: string }, commentDate: Date, commentText: string }>`
 - `likes` (array)
 - `createdAt` / `updatedAt` (Date)
 

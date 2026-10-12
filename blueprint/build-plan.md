@@ -71,4 +71,9 @@ List of planned features for the DZF-ILAS clean rebuild, ordered by architectura
 
 - [x] 33. **Task Archiving (30-Day Auto-Purge), Private/Public Scoping & In-App Notification Reminders** - Implement task archiving lifecycle (`To Do` -> `In Progress` -> `Completed` -> `Archived`) with automated 30-day deletion via MongoDB TTL index (`archivedAt`), dedicated "Archived Tasks" view with restore capability, private/public task scoping (`isPrivate`) ensuring private tasks are strictly confidential to the assigned owner and assigner, and in-app smart polling notifications dispatching hourly reminder alerts for unstarted `To Do` tasks and 48-hour alerts for stalled `In Progress` tasks.
 
+## Phase 13: Task Collaboration, Operational Notes & Discussion Threading
+
+- [x] 34. **Task Messages, Operational Notes & Chronological Discussion Engine** - Implement collaborative message notes and responses on staff tasks in `/dashboard/tasks`: interactive task discussion panel with chronological timeline, author and role badges, real-time message sending/deletion, Kanban card note count pill (`💬`), strict private task scoping, and automated in-app system notifications alerting the assignee or assigner when a note is posted.
+
+
 

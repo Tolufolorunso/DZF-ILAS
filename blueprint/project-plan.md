@@ -267,7 +267,7 @@ DZF-ILAS is a ground-up rewrite delivering:
   - **Assigner Live Progress Visibility:**
     - Staff who assign a task (and leadership delegators) see real-time status progression, current column position, and update timestamps across the board.
 
-### Phase 12: Task Lifecycle Archiving, Privacy Scoping & In-App Escalation Reminders (New)
+### Phase 12: Task Lifecycle Archiving, Privacy Scoping & In-App Escalation Reminders
 - **Task Archiving Lifecycle & 30-Day Auto-Purge:**
   - Status progression: `To Do` $\rightarrow$ `In Progress` $\rightarrow$ `Completed` $\rightarrow$ `Archived`.
   - Completed cards feature an "Archive Task" action button and quick-action menu item.
@@ -281,6 +281,18 @@ DZF-ILAS is a ground-up rewrite delivering:
   - **Hourly Unstarted Alert:** Sends an in-app system notification every 1 hour to the assignee for tasks that remain in `To Do`.
   - **48-Hour In-Progress Stalled Alert:** Sends an in-app system notification to the assignee if a task remains in `In Progress` for more than 2 days (48 hours) without completion.
   - Tracking timestamps on `Task`: `inProgressAt`, `lastTodoRemindedAt`, `lastInProgressRemindedAt`.
+
+### Phase 13: Task Collaboration, Operational Notes & Discussion Threading (New)
+- **Chronological Discussion Stream:**
+  - Tasks support interactive discussion feeds allowing assigners, assignees, and authorized staff to exchange operational notes, progress clarifications, and updates.
+  - Notes display author identity (`name`, `username`, `role`), formatted timestamp, and message body.
+  - Dedicated Task Notes drawer/modal accessible via a note badge on Kanban cards or the edit interface.
+- **Automated In-App Message Notifications:**
+  - Posting a note generates a `'task_reminder'` in-app notification to the counterparty (assignee if posted by assigner; assigner if posted by assignee).
+- **Privacy Enforcement:**
+  - Private task notes are strictly concealed from non-assignee staff members, maintaining end-to-end task confidentiality.
+- **Author Control & Admin Moderation:**
+  - Staff can delete their own notes; administrators have authority to delete any comment.
 
 ## 4. Data - What are we storing?
 
@@ -297,7 +309,7 @@ All 15 core production entities plus Phase 5 model extensions:
 10. `MonthlyActivity` (PatronId, monthYear, summaryPoints, attendancePoints, competitionPoints, circulationPoints, totalScore, rank)
 11. `TranscommArticle` (Title, slug, content, excerpt, author, DRNICER value category, publishedAt)
 12. `Requisition` (Staff resource requests, department, estimatedCost, approvalStatus)
-13. `Task` (Staff operational tasks: priority, dueDate, assignedBy, assignedTo, targetGroup, status: `todo` | `inProgress` | `completed` | `archived`, isPrivate: boolean, archivedAt?: Date, inProgressAt?: Date, lastTodoRemindedAt?: Date, lastInProgressRemindedAt?: Date, comments, likes)
+13. `Task` (Staff operational tasks: priority, dueDate, assignedBy, assignedTo, targetGroup, status: `todo` | `inProgress` | `completed` | `archived`, isPrivate: boolean, archivedAt?: Date, inProgressAt?: Date, lastTodoRemindedAt?: Date, lastInProgressRemindedAt?: Date, comments: Array<{ commenter: { name: string, username: string }, commentDate: Date, commentText: string }>, likes)
 14. `Event` (Calendar events, library workshops, target audience)
 15. `SystemSetting` & `AuditLog` (Singleton governance settings & tamper-evident audit ledger)
 

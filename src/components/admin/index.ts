@@ -12,3 +12,5 @@ export { default as AuditLogViewer } from './AuditLogViewer';
 export { default as StaffActivationQueue } from './StaffActivationQueue';
 export { default as AcademicPromotionCard } from './AcademicPromotionCard';
 export { default as DailyActionsClient } from './DailyActionsClient';
+export { default as ArchivedTasksModal } from './ArchivedTasksModal';
+export { default as TaskDiscussionDrawer } from './TaskDiscussionDrawer';

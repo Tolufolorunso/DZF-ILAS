@@ -24,6 +24,7 @@ import {
   ChevronRightIcon,
   ChevronLeftIcon,
   ArchiveIcon,
+  MessageSquareIcon,
 } from '@/components';
 import type { ITaskItemDTO } from '@/lib/admin/types';
 
@@ -34,6 +35,7 @@ interface TaskKanbanBoardProps {
   onUpdateStatus: (taskId: string, newStatus: KanbanStatus) => Promise<void>;
   onEditTask?: (task: ITaskItemDTO) => void;
   onDeleteTask?: (taskId: string) => Promise<void>;
+  onOpenDiscussion?: (task: ITaskItemDTO) => void;
   canManage?: boolean;
   currentUsername?: string;
 }
@@ -56,6 +58,7 @@ export default function TaskKanbanBoard({
   onUpdateStatus,
   onEditTask,
   onDeleteTask,
+  onOpenDiscussion,
   canManage = true,
   currentUsername,
 }: TaskKanbanBoardProps) {
@@ -294,26 +297,56 @@ export default function TaskKanbanBoard({
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1, gap: 1 }}>
                             <Typography
                               variant="subtitle2"
+                              onClick={() => onOpenDiscussion?.(t)}
                               sx={{
                                 fontWeight: 700,
                                 color: dzfColors.navy[900],
                                 lineHeight: 1.3,
                                 flex: 1,
+                                cursor: onOpenDiscussion ? 'pointer' : 'inherit',
+                                '&:hover': onOpenDiscussion ? { color: '#0284c7' } : {},
+                                transition: 'color 0.15s ease',
                               }}
                             >
                               {t.title}
                             </Typography>
-                            <DZFBadge
-                              variant={
-                                t.priority === 'high'
-                                  ? 'error'
-                                  : t.priority === 'medium'
-                                  ? 'warning'
-                                  : 'default'
-                              }
-                              size="small"
-                              label={t.priority}
-                            />
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                              {(t.commentsCount || 0) > 0 && (
+                                <Tooltip title={`${t.commentsCount} discussion note${t.commentsCount === 1 ? '' : 's'}`}>
+                                  <Chip
+                                    size="small"
+                                    icon={<MessageSquareIcon size={12} color="#0284c7" />}
+                                    label={t.commentsCount}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onOpenDiscussion?.(t);
+                                    }}
+                                    sx={{
+                                      height: 20,
+                                      fontSize: '0.6875rem',
+                                      fontWeight: 800,
+                                      bgcolor: 'rgba(2, 132, 199, 0.08)',
+                                      color: '#0284c7',
+                                      border: '1px solid rgba(2, 132, 199, 0.2)',
+                                      cursor: 'pointer',
+                                      '&:hover': { bgcolor: 'rgba(2, 132, 199, 0.16)' },
+                                      '& .MuiChip-icon': { ml: 0.5 },
+                                    }}
+                                  />
+                                </Tooltip>
+                              )}
+                              <DZFBadge
+                                variant={
+                                  t.priority === 'high'
+                                    ? 'error'
+                                    : t.priority === 'medium'
+                                    ? 'warning'
+                                    : 'default'
+                                }
+                                size="small"
+                                label={t.priority}
+                              />
+                            </Box>
                           </Box>
 
                           {/* Description */}
@@ -382,7 +415,7 @@ export default function TaskKanbanBoard({
                               borderTop: `1px solid ${dzfColors.surfaces.canvas}`,
                             }}
                           >
-                            <Box sx={{ display: 'flex', gap: 0.5 }}>
+                            <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
                               {/* Move lane quick-menu button */}
                               <Tooltip title="Move to another lane">
                                 <IconButton
@@ -391,6 +424,29 @@ export default function TaskKanbanBoard({
                                   sx={{ color: dzfColors.navy[700], p: 0.5 }}
                                 >
                                   <ChevronRightIcon size={16} />
+                                </IconButton>
+                              </Tooltip>
+
+                              {/* Discussion Drawer trigger button */}
+                              <Tooltip title={`Notes & Discussion (${t.commentsCount || 0})`}>
+                                <IconButton
+                                  size="small"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onOpenDiscussion?.(t);
+                                  }}
+                                  sx={{
+                                    color: (t.commentsCount || 0) > 0 ? '#0284c7' : dzfColors.surfaces.textMuted,
+                                    bgcolor: (t.commentsCount || 0) > 0 ? 'rgba(2, 132, 199, 0.08)' : 'transparent',
+                                    p: 0.5,
+                                    borderRadius: 1.5,
+                                    '&:hover': {
+                                      bgcolor: 'rgba(2, 132, 199, 0.15)',
+                                      color: '#0369a1',
+                                    },
+                                  }}
+                                >
+                                  <MessageSquareIcon size={16} />
                                 </IconButton>
                               </Tooltip>
 

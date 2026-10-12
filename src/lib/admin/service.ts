@@ -857,6 +857,19 @@ function mapTaskToDTO(
     inProgressAt: t.inProgressAt ? new Date(t.inProgressAt).toISOString() : null,
     status: (t.status as 'todo' | 'inProgress' | 'completed' | 'archived') || 'todo',
     priority: (t.priority as 'low' | 'medium' | 'high') || 'medium',
+    comments: Array.isArray(t.comments)
+      ? t.comments.map((c) => ({
+          id: String(c._id || ''),
+          commenter: {
+            name: c.commenter?.name || 'Staff',
+            username: c.commenter?.username || 'staff',
+            role: c.commenter?.role,
+          },
+          commentDate: c.commentDate ? new Date(c.commentDate).toISOString() : new Date().toISOString(),
+          commentText: c.commentText || '',
+        }))
+      : [],
+    commentsCount: Array.isArray(t.comments) ? t.comments.length : 0,
     createdAt: t.createdAt ? new Date(t.createdAt).toISOString() : new Date().toISOString(),
     updatedAt: t.updatedAt ? new Date(t.updatedAt).toISOString() : new Date().toISOString(),
   };
@@ -1247,6 +1260,141 @@ export async function updateTaskDetails(params: {
   return mapTaskToDTO(task);
 }
 
+export async function addTaskComment(params: {
+  taskId: string;
+  commenter: { username: string; name: string; role?: string };
+  text: string;
+}): Promise<ITaskItemDTO> {
+  await connectDB();
+  const task = await Task.findById(params.taskId);
+  if (!task) {
+    throw new Error('Task not found');
+  }
+
+  const trimmedText = params.text.trim();
+  if (!trimmedText) {
+    throw new Error('Comment text cannot be empty');
+  }
+
+  const { isLeadershipRole } = await import('@/lib/auth/rbac');
+  const isLeadership = isLeadershipRole(params.commenter.role || 'staff');
+  const assignedBy = (task.assignedBy?.username || '').toLowerCase();
+  const assignedTo = (task.assignedTo?.username || '').toLowerCase();
+  const currentUsername = params.commenter.username.toLowerCase();
+  const isAuthor = assignedBy === currentUsername;
+  const isAssignee = assignedTo === currentUsername;
+  const isSelfTask = task.isSelfAssigned || (assignedBy && assignedTo && assignedBy === assignedTo);
+  const isConfidential = task.isPrivate || isSelfTask;
+
+  if (isConfidential && !isAuthor && !isAssignee && !isLeadership) {
+    throw new Error('Unauthorized. This is a private confidential task.');
+  }
+
+  task.comments = task.comments || [];
+  task.comments.push({
+    commenter: {
+      name: params.commenter.name,
+      username: params.commenter.username,
+      role: params.commenter.role,
+    },
+    commentDate: new Date(),
+    commentText: trimmedText,
+  });
+
+  await task.save();
+
+  // In-app notifications
+  const recipients = new Set<string>();
+  if (isAssignee && assignedBy && assignedBy !== currentUsername) {
+    recipients.add(assignedBy);
+  } else if (isAuthor && assignedTo && assignedTo !== 'group:all' && assignedTo !== currentUsername) {
+    recipients.add(assignedTo);
+  } else {
+    if (assignedBy && assignedBy !== currentUsername) recipients.add(assignedBy);
+    if (assignedTo && assignedTo !== 'group:all' && assignedTo !== currentUsername) recipients.add(assignedTo);
+  }
+
+  const snippet = trimmedText.length > 80 ? `${trimmedText.substring(0, 77)}...` : trimmedText;
+  await Promise.all(
+    Array.from(recipients).map((recipientUsername) =>
+      Notification.create({
+        recipientUsername,
+        senderUsername: params.commenter.username.toLowerCase(),
+        type: 'task_reminder',
+        title: `New Note on Task: ${task.title}`,
+        message: `@${params.commenter.username}: "${snippet}"`,
+        link: '/dashboard/tasks',
+        read: false,
+      })
+    )
+  );
+
+  await logAuditEvent({
+    action: 'TASK_NOTE_ADDED',
+    performedBy: params.commenter.username,
+    performedByRole: params.commenter.role || 'staff',
+    targetEntity: 'Task',
+    targetId: String(task._id),
+    details: {
+      title: task.title,
+      commentSnippet: snippet,
+    },
+  });
+
+  return mapTaskToDTO(task);
+}
+
+export async function deleteTaskComment(params: {
+  taskId: string;
+  commentId: string;
+  currentUsername: string;
+  currentUserRole: string;
+}): Promise<ITaskItemDTO> {
+  await connectDB();
+  const task = await Task.findById(params.taskId);
+  if (!task) {
+    throw new Error('Task not found');
+  }
+
+  task.comments = task.comments || [];
+  const commentIndex = task.comments.findIndex(
+    (c) => String(c._id || '') === params.commentId
+  );
+
+  if (commentIndex === -1) {
+    throw new Error('Comment not found');
+  }
+
+  const comment = task.comments[commentIndex];
+  const { isLeadershipRole } = await import('@/lib/auth/rbac');
+  const isLeadership = isLeadershipRole(params.currentUserRole);
+  const isAuthor =
+    (comment.commenter?.username || '').toLowerCase() ===
+    params.currentUsername.toLowerCase();
+
+  if (!isAuthor && !isLeadership) {
+    throw new Error(
+      'Unauthorized. You can only delete your own notes unless you have administrator privileges.'
+    );
+  }
+
+  task.comments.splice(commentIndex, 1);
+  await task.save();
+
+  await logAuditEvent({
+    action: 'TASK_NOTE_DELETED',
+    performedBy: params.currentUsername,
+    performedByRole: params.currentUserRole,
+    targetEntity: 'Task',
+    targetId: String(task._id),
+    details: {
+      title: task.title,
+      commentId: params.commentId,
+    },
+  });
+
+  return mapTaskToDTO(task);
+}
 
 /**
  * Foundation Events management.

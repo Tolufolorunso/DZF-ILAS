@@ -10,6 +10,7 @@ import TaskKanbanBoard, { KanbanStatus } from '@/components/admin/TaskKanbanBoar
 import TaskFormDialog from '@/components/admin/TaskFormDialog';
 import TaskEditDialog, { TaskUpdatePayload } from '@/components/admin/TaskEditDialog';
 import ArchivedTasksModal from '@/components/admin/ArchivedTasksModal';
+import TaskDiscussionDrawer from '@/components/admin/TaskDiscussionDrawer';
 import { DZFButton, ArchiveIcon } from '@/components';
 import { dzfColors } from '@/theme/colors';
 import Chip from '@mui/material/Chip';
@@ -29,6 +30,7 @@ export default function TasksWorkspaceClient({
   const [isArchiveOpen, setIsArchiveOpen] = React.useState(false);
   const [loadingArchived, setLoadingArchived] = React.useState(false);
   const [selectedEditTask, setSelectedEditTask] = React.useState<ITaskItemDTO | null>(null);
+  const [selectedDiscussionTask, setSelectedDiscussionTask] = React.useState<ITaskItemDTO | null>(null);
 
   // Fetch archived tasks
   const fetchArchivedTasks = React.useCallback(async () => {
@@ -66,12 +68,24 @@ export default function TasksWorkspaceClient({
             const hasChanged = JSON.stringify(prev) !== JSON.stringify(data.tasks);
             return hasChanged ? data.tasks : prev;
           });
+
+          if (selectedDiscussionTask) {
+            const updatedCurrent = data.tasks.find(
+              (t: ITaskItemDTO) => t.id === selectedDiscussionTask.id
+            );
+            if (
+              updatedCurrent &&
+              JSON.stringify(updatedCurrent) !== JSON.stringify(selectedDiscussionTask)
+            ) {
+              setSelectedDiscussionTask(updatedCurrent);
+            }
+          }
         }
       }
     } catch (err) {
       console.warn('Real-time task sync warning:', err);
     }
-  }, [selectedEditTask, isCreateOpen, isArchiveOpen]);
+  }, [selectedEditTask, isCreateOpen, isArchiveOpen, selectedDiscussionTask]);
 
   React.useEffect(() => {
     const timer = setInterval(fetchRemoteTasks, 8000);
@@ -178,6 +192,36 @@ export default function TasksWorkspaceClient({
     setSelectedEditTask(null);
   };
 
+  const handleAddComment = async (taskId: string, text: string) => {
+    const res = await fetch(`/api/admin/tasks/${taskId}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Failed to post note');
+    }
+    if (data.task) {
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? data.task : t)));
+      setSelectedDiscussionTask(data.task);
+    }
+  };
+
+  const handleDeleteComment = async (taskId: string, commentId: string) => {
+    const res = await fetch(`/api/admin/tasks/${taskId}/comments/${commentId}`, {
+      method: 'DELETE',
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Failed to delete note');
+    }
+    if (data.task) {
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? data.task : t)));
+      setSelectedDiscussionTask(data.task);
+    }
+  };
+
   const canManage =
     user.role === 'admin' ||
     user.role === 'ima' ||
@@ -261,6 +305,7 @@ export default function TasksWorkspaceClient({
           onUpdateStatus={handleUpdateTaskStatus}
           onEditTask={(task) => setSelectedEditTask(task)}
           onDeleteTask={handleDeleteTask}
+          onOpenDiscussion={(task) => setSelectedDiscussionTask(task)}
           canManage={canManage}
           currentUsername={user.username}
         />
@@ -292,6 +337,17 @@ export default function TasksWorkspaceClient({
           onDeleteTask={handleDeleteTask}
           currentUsername={user.username}
           canManage={canManage}
+        />
+
+        {/* Task Discussion & Operational Notes Drawer */}
+        <TaskDiscussionDrawer
+          open={Boolean(selectedDiscussionTask)}
+          task={selectedDiscussionTask}
+          onClose={() => setSelectedDiscussionTask(null)}
+          currentUsername={user.username}
+          currentUserRole={user.role}
+          onAddComment={handleAddComment}
+          onDeleteComment={handleDeleteComment}
         />
       </Box>
     </AppShell>
