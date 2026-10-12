@@ -160,6 +160,20 @@ export function ArticleReaderClient({
       return str
         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
         .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/<ins>(.*?)<\/ins>/gi, '<ins style="text-decoration: underline;">$1</ins>')
+        .replace(/<u>(.*?)<\/u>/gi, '<ins style="text-decoration: underline;">$1</ins>')
+        .replace(
+          /<mark>(.*?)<\/mark>/gi,
+          '<mark style="background-color: #fef08a; color: #1e293b; padding: 2px 6px; border-radius: 4px; font-weight: 500;">$1</mark>'
+        )
+        .replace(
+          /==(.*?)==/g,
+          '<mark style="background-color: #fef08a; color: #1e293b; padding: 2px 6px; border-radius: 4px; font-weight: 500;">$1</mark>'
+        )
+        .replace(
+          /\[([^\]]+)\]\(((?:https?:\/\/|\/)[^\s)]+)\)/g,
+          '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: #800020; text-decoration: underline; font-weight: 600;">$1</a>'
+        )
         .replace(
           /`(.*?)`/g,
           '<code style="background: rgba(0,0,0,0.06); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.9em;">$1</code>'

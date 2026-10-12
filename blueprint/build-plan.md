@@ -85,7 +85,7 @@ List of planned features for the DZF-ILAS clean rebuild, ordered by architectura
 
 ## Phase 16: TransComm Editorial Studio Modernization & Rich Article Composer
 
-- [ ] 37. **TransComm Editorial Studio Modernization & Rich Article Composer** - Modernize `/dashboard/transcomm/new` editorial interface with extended formatting actions (H1, Normal Paragraph, Underline, Highlight, Link); implement smart list auto-continuation (pressing `Enter` generates the next list item `- ` or number automatically, and double-Enter exits list mode); and enrich split-pane live markdown preview with distraction-free writing mode.
+- [x] 37. **TransComm Editorial Studio Modernization & Rich Article Composer** - Modernize `/dashboard/transcomm/new` editorial interface with extended formatting actions (H1, Normal Paragraph, Underline, Highlight, Link); implement smart list auto-continuation (pressing `Enter` generates the next list item `- ` or number automatically, and double-Enter exits list mode); and enrich split-pane live markdown preview with distraction-free writing mode.
 
 ## Phase 17: Administrator Self-Service Governance, Data Backup & Broadcast Center
 
