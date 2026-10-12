@@ -14,6 +14,16 @@ export interface ISystemStats {
   upcomingEvents: number;
 }
 
+export interface IBroadcastBannerDTO {
+  message: string;
+  severity: 'info' | 'warning' | 'error' | 'success';
+  isActive: boolean;
+  link?: string;
+  pushToDesktop?: boolean;
+  updatedAt?: string | null;
+  updatedBy?: string;
+}
+
 export interface ISystemSettingsDTO {
   emergencyCirculationLock: boolean;
   circulationLockReason: string;
@@ -23,6 +33,7 @@ export interface ISystemSettingsDTO {
   allowMultipleLoansOverride: boolean;
   maintenanceMode: boolean;
   announcementBanner: string;
+  broadcastBanner?: IBroadcastBannerDTO;
   lastPromotionYear?: number;
   lastPromotionDate?: string | null;
   updatedAt: string;

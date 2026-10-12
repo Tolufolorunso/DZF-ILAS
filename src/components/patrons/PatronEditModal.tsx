@@ -24,7 +24,7 @@ import {
   CheckIcon,
 } from '@/components';
 import { IPatron, PatronType, Gender } from '@/models/Patron';
-import { IJERO_SCHOOL_OPTIONS, getSchoolAddress, isPredefinedSchool } from '@/lib/patron/schools';
+import { IJERO_SCHOOL_OPTIONS, getSchoolAddress, isPredefinedSchool, fetchDynamicSchoolOptions, SchoolOption } from '@/lib/patron/schools';
 import PatronPhotoCapture, { PhotoCaptureResult } from './PatronPhotoCapture';
 
 interface PatronEditModalProps {
@@ -61,6 +61,15 @@ function PatronEditForm({
   const [patronType, setPatronType] = React.useState<PatronType>(patron.patronType || 'student');
   const [active, setActive] = React.useState(patron.active !== false);
   const [photoData, setPhotoData] = React.useState<PhotoCaptureResult | null>(null);
+
+  // Dynamic school options
+  const [schoolOptions, setSchoolOptions] = React.useState<SchoolOption[]>(IJERO_SCHOOL_OPTIONS);
+
+  React.useEffect(() => {
+    fetchDynamicSchoolOptions().then((opts) => {
+      if (opts && opts.length > 0) setSchoolOptions(opts);
+    });
+  }, []);
 
   // Student details
   const initialSchool = patron.studentSchoolInfo?.schoolName || '';
@@ -395,13 +404,13 @@ function PatronEditForm({
                           setSchoolName(customSchoolName);
                         } else {
                           setSchoolName(val);
-                          const addr = getSchoolAddress(val);
+                          const addr = getSchoolAddress(val, schoolOptions);
                           if (addr) setSchoolAddress(addr);
                         }
                       }}
                       fullWidth
                     >
-                      {IJERO_SCHOOL_OPTIONS.map((opt) => (
+                      {schoolOptions.map((opt) => (
                         <MenuItem key={opt.label} value={opt.value}>
                           {opt.label}
                         </MenuItem>

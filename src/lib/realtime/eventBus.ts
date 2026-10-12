@@ -83,6 +83,17 @@ class RealtimeEventBus {
   getActiveSubscriberCount(): number {
     return this.subscribers.size;
   }
+
+  /**
+   * Convenience alias to broadcast an event to all connected sessions.
+   */
+  broadcast<T = unknown>(event: { type: RealtimeEventType; data?: T; payload?: T; timestamp?: string }) {
+    this.dispatch({
+      type: event.type,
+      payload: event.data !== undefined ? event.data : event.payload,
+      timestamp: event.timestamp,
+    });
+  }
 }
 
 // Preserve single bus across module hot-reloading
@@ -91,3 +102,5 @@ const globalScope = globalThis as unknown as { [key: symbol]: RealtimeEventBus }
 
 export const realtimeEventBus: RealtimeEventBus =
   globalScope[globalBusKey] || (globalScope[globalBusKey] = new RealtimeEventBus());
+
+export const eventBus = realtimeEventBus;

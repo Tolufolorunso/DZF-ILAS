@@ -45,6 +45,7 @@ import {
   OperationalCalendar,
   StaffActivationQueue,
   AcademicPromotionCard,
+  AdminGovernanceStudio,
 } from '@/components/admin';
 import type { KanbanStatus } from '@/components/admin/TaskKanbanBoard';
 import type { TaskUpdatePayload } from '@/components/admin/TaskEditDialog';
@@ -422,6 +423,7 @@ export default function AdminControlCenterClient({
             <Tab label="Foundation Calendar Events" />
             <Tab label="System Audit Ledger" />
             <Tab label="Staff Accounts & Activation" />
+            <Tab label="Governance, Backups & Broadcast" />
           </Tabs>
         </Box>
 
@@ -791,6 +793,13 @@ export default function AdminControlCenterClient({
               currentUsername={user.username}
               canManage={user.role === 'admin' || user.role === 'ima' || user.role === 'country_manager'}
             />
+          </Box>
+        )}
+
+        {/* TAB 7: Governance, Backups & Broadcast */}
+        {tabIndex === 7 && (
+          <Box>
+            <AdminGovernanceStudio />
           </Box>
         )}
 

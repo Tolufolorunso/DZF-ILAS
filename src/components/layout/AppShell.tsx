@@ -82,6 +82,15 @@ export interface NotificationItem {
   createdAt: string;
 }
 
+export interface IBroadcastBannerData {
+  message: string;
+  severity: 'info' | 'warning' | 'error' | 'success';
+  isActive: boolean;
+  link?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
 export interface AppShellProps {
   children: React.ReactNode;
   activeNavId?: string;
@@ -198,6 +207,10 @@ export function AppShell({
   const [desktopAlertsEnabled, setDesktopAlertsEnabled] = React.useState<boolean>(false);
   const [navStats, setNavStats] = React.useState<{ books?: number; patrons?: number }>({});
 
+  // System Broadcast Announcement State
+  const [broadcastBanner, setBroadcastBanner] = React.useState<IBroadcastBannerData | null>(null);
+  const [isBroadcastDismissed, setIsBroadcastDismissed] = React.useState<boolean>(false);
+
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('dzf_desktop_alerts');
@@ -240,6 +253,32 @@ export function AppShell({
       // non-blocking polling catch
     }
   }, []);
+
+  const fetchBroadcast = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/broadcast');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.broadcastBanner && data.broadcastBanner.isActive) {
+          setBroadcastBanner(data.broadcastBanner);
+          const key = `dzf_dismissed_broadcast_${data.broadcastBanner.updatedAt || data.broadcastBanner.message}`;
+          if (typeof window !== 'undefined' && sessionStorage.getItem(key) === 'true') {
+            setIsBroadcastDismissed(true);
+          } else {
+            setIsBroadcastDismissed(false);
+          }
+        } else {
+          setBroadcastBanner(null);
+        }
+      }
+    } catch {
+      // non-blocking
+    }
+  }, []);
+
+  React.useEffect(() => {
+    fetchBroadcast();
+  }, [fetchBroadcast]);
 
   // Real-Time Server-Sent Events (SSE) live pipeline with auto-reconnection
   React.useEffect(() => {
@@ -305,7 +344,36 @@ export function AppShell({
         eventSource.addEventListener('task:deleted', forwardToWindow);
         eventSource.addEventListener('comment:added', forwardToWindow);
         eventSource.addEventListener('comment:deleted', forwardToWindow);
-        eventSource.addEventListener('broadcast', forwardToWindow);
+        eventSource.addEventListener('broadcast', (e: MessageEvent) => {
+          forwardToWindow(e);
+          try {
+            const parsed = JSON.parse(e.data);
+            const payload = parsed.data || parsed.payload || parsed;
+            if (payload && payload.message) {
+              setBroadcastBanner({
+                message: payload.message,
+                severity: payload.severity || 'info',
+                isActive: true,
+                link: payload.link,
+                updatedAt: payload.timestamp || new Date().toISOString(),
+              });
+              setIsBroadcastDismissed(false);
+              playNotificationChime();
+              if (
+                typeof window !== 'undefined' &&
+                localStorage.getItem('dzf_desktop_alerts') === 'true'
+              ) {
+                dispatchDesktopNotification(
+                  payload.title || 'Institutional Announcement',
+                  payload.message,
+                  payload.link
+                );
+              }
+            }
+          } catch {
+            // ignore
+          }
+        });
 
         eventSource.onerror = () => {
           if (eventSource) {
@@ -1004,6 +1072,99 @@ export function AppShell({
         >
           {/* Spacer for fixed AppBar */}
           <Toolbar sx={{ minHeight: '64px' }} />
+
+          {/* System Broadcast Announcement Banner */}
+          {broadcastBanner && broadcastBanner.isActive && !isBroadcastDismissed && (
+            <Box
+              sx={{
+                backgroundColor:
+                  broadcastBanner.severity === 'error'
+                    ? '#dc2626'
+                    : broadcastBanner.severity === 'warning'
+                      ? '#d97706'
+                      : broadcastBanner.severity === 'success'
+                        ? '#16a34a'
+                        : dzfColors.navy[900],
+                color: '#ffffff',
+                px: { xs: 2, sm: 3, md: 4 },
+                py: 1.25,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 2,
+                borderBottom: '1px solid rgba(255, 255, 255, 0.2)',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                <Chip
+                  label={broadcastBanner.severity.toUpperCase()}
+                  size="small"
+                  sx={{
+                    height: 20,
+                    fontSize: '0.625rem',
+                    fontWeight: 800,
+                    letterSpacing: '0.05em',
+                    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+                    color: '#ffffff',
+                    borderRadius: '4px',
+                    flexShrink: 0,
+                  }}
+                />
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 600,
+                    fontSize: '0.875rem',
+                    color: '#ffffff',
+                    whiteSpace: 'normal',
+                    lineHeight: 1.3,
+                  }}
+                >
+                  {broadcastBanner.message}
+                </Typography>
+                {broadcastBanner.link && (
+                  <Button
+                    size="small"
+                    onClick={() => router.push(broadcastBanner.link!)}
+                    sx={{
+                      color: '#ffffff',
+                      textDecoration: 'underline',
+                      fontWeight: 700,
+                      fontSize: '0.8125rem',
+                      p: 0,
+                      minWidth: 0,
+                      textTransform: 'none',
+                      flexShrink: 0,
+                      '&:hover': { backgroundColor: 'transparent', textDecoration: 'underline' },
+                    }}
+                  >
+                    Learn more &rarr;
+                  </Button>
+                )}
+              </Box>
+              <IconButton
+                size="small"
+                onClick={() => {
+                  setIsBroadcastDismissed(true);
+                  if (typeof window !== 'undefined') {
+                    const key = `dzf_dismissed_broadcast_${broadcastBanner.updatedAt || broadcastBanner.message}`;
+                    sessionStorage.setItem(key, 'true');
+                  }
+                }}
+                title="Dismiss announcement"
+                sx={{
+                  color: 'rgba(255, 255, 255, 0.85)',
+                  p: 0.5,
+                  '&:hover': { color: '#ffffff', backgroundColor: 'rgba(255, 255, 255, 0.15)' },
+                }}
+              >
+                <Box component="span" sx={{ fontSize: '1.25rem', lineHeight: 1, fontWeight: 700 }}>
+                  &times;
+                </Box>
+              </IconButton>
+            </Box>
+          )}
 
           {/* Content canvas with professional symmetric margins and padding */}
           <Box

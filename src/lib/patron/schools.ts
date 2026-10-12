@@ -124,11 +124,40 @@ export const IJERO_SCHOOL_OPTIONS: SchoolOption[] = [
 ];
 
 /**
+ * Asynchronously fetch active school presets from the database, falling back to static options.
+ */
+export async function fetchDynamicSchoolOptions(): Promise<SchoolOption[]> {
+  if (typeof window === 'undefined') {
+    return IJERO_SCHOOL_OPTIONS;
+  }
+  try {
+    const res = await fetch('/api/foundation-presets?category=school');
+    if (!res.ok) return IJERO_SCHOOL_OPTIONS;
+    const data = await res.json();
+    if (data.success && Array.isArray(data.presets) && data.presets.length > 0) {
+      const dynamicList: SchoolOption[] = [
+        { value: '', label: 'Select School', address: '' },
+        ...data.presets.map((p: { name: string; metadata?: { address?: string } }) => ({
+          label: p.name,
+          value: p.name,
+          address: (p.metadata && p.metadata.address) || '',
+        })),
+        { value: 'others', label: 'others', address: '' },
+      ];
+      return dynamicList;
+    }
+  } catch (err) {
+    console.warn('[SCHOOLS_DYNAMIC_FETCH_WARN] Fallback to static list:', err);
+  }
+  return IJERO_SCHOOL_OPTIONS;
+}
+
+/**
  * Retrieve the known address for a predefined school.
  */
-export function getSchoolAddress(schoolName: string): string {
+export function getSchoolAddress(schoolName: string, list: SchoolOption[] = IJERO_SCHOOL_OPTIONS): string {
   if (!schoolName) return '';
-  const match = IJERO_SCHOOL_OPTIONS.find(
+  const match = list.find(
     (s) => s.value.toLowerCase() === schoolName.trim().toLowerCase()
   );
   return match?.address || '';
@@ -137,9 +166,10 @@ export function getSchoolAddress(schoolName: string): string {
 /**
  * Check if a school name belongs to the predefined directory.
  */
-export function isPredefinedSchool(schoolName: string): boolean {
+export function isPredefinedSchool(schoolName: string, list: SchoolOption[] = IJERO_SCHOOL_OPTIONS): boolean {
   if (!schoolName) return false;
-  return IJERO_SCHOOL_OPTIONS.some(
+  return list.some(
     (s) => s.value && s.value !== 'others' && s.value.toLowerCase() === schoolName.trim().toLowerCase()
   );
 }
+

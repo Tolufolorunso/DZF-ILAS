@@ -14,3 +14,4 @@ export { default as AcademicPromotionCard } from './AcademicPromotionCard';
 export { default as DailyActionsClient } from './DailyActionsClient';
 export { default as ArchivedTasksModal } from './ArchivedTasksModal';
 export { default as TaskDiscussionDrawer } from './TaskDiscussionDrawer';
+export { default as AdminGovernanceStudio } from './AdminGovernanceStudio';

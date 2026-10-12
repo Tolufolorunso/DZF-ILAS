@@ -1,5 +1,15 @@
 import mongoose, { Document, Model, Schema } from 'mongoose';
 
+export interface IBroadcastBanner {
+  message: string;
+  severity: 'info' | 'warning' | 'error' | 'success';
+  isActive: boolean;
+  link?: string;
+  pushToDesktop?: boolean;
+  updatedAt?: Date;
+  updatedBy?: string;
+}
+
 export interface ISystemSetting {
   _id: string; // Singleton key 'default'
   emergencyCirculationLock: boolean;
@@ -10,6 +20,7 @@ export interface ISystemSetting {
   allowMultipleLoansOverride: boolean;
   maintenanceMode: boolean;
   announcementBanner?: string;
+  broadcastBanner?: IBroadcastBanner;
   lastPromotionYear?: number;
   lastPromotionDate?: Date;
   updatedBy?: string;
@@ -27,6 +38,7 @@ export interface ISystemSettingDocument extends Document<string> {
   allowMultipleLoansOverride: boolean;
   maintenanceMode: boolean;
   announcementBanner?: string;
+  broadcastBanner?: IBroadcastBanner;
   lastPromotionYear?: number;
   lastPromotionDate?: Date;
   updatedBy?: string;
@@ -73,6 +85,19 @@ const SystemSettingSchema = new Schema<ISystemSettingDocument>(
       type: String,
       default: '',
       trim: true,
+    },
+    broadcastBanner: {
+      message: { type: String, default: '', trim: true },
+      severity: {
+        type: String,
+        enum: ['info', 'warning', 'error', 'success'],
+        default: 'info',
+      },
+      isActive: { type: Boolean, default: false },
+      link: { type: String, default: '', trim: true },
+      pushToDesktop: { type: Boolean, default: false },
+      updatedAt: { type: Date },
+      updatedBy: { type: String, default: 'admin' },
     },
     lastPromotionYear: {
       type: Number,

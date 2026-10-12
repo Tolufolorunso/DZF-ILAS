@@ -25,7 +25,7 @@ import { ITokenPayload } from '@/lib/auth/jwt';
 import PatronPhotoCapture, { PhotoCaptureResult } from '@/components/patrons/PatronPhotoCapture';
 import ThermalPrintDialog from '@/components/patrons/ThermalPrintDialog';
 import { ThermalLabelData } from '@/components/patrons/ThermalBarcodeLabel';
-import { IJERO_SCHOOL_OPTIONS, getSchoolAddress } from '@/lib/patron/schools';
+import { IJERO_SCHOOL_OPTIONS, getSchoolAddress, fetchDynamicSchoolOptions, SchoolOption } from '@/lib/patron/schools';
 
 interface PatronRegisterClientProps {
   user?: ITokenPayload | null;
@@ -38,6 +38,15 @@ export default function PatronRegisterClient({
 
   // Next allocated barcode
   const [allocatedBarcode, setAllocatedBarcode] = React.useState<string>(initialNextBarcode);
+
+  // Dynamic school directory
+  const [schoolOptions, setSchoolOptions] = React.useState<SchoolOption[]>(IJERO_SCHOOL_OPTIONS);
+
+  React.useEffect(() => {
+    fetchDynamicSchoolOptions().then((opts) => {
+      if (opts && opts.length > 0) setSchoolOptions(opts);
+    });
+  }, []);
 
   // Form states
   const [firstname, setFirstname] = React.useState('');
@@ -532,13 +541,13 @@ export default function PatronRegisterClient({
                           setSchoolName(customSchoolName);
                         } else {
                           setSchoolName(val);
-                          const addr = getSchoolAddress(val);
+                          const addr = getSchoolAddress(val, schoolOptions);
                           if (addr) setSchoolAddress(addr);
                         }
                       }}
                       fullWidth
                     >
-                      {IJERO_SCHOOL_OPTIONS.map((opt) => (
+                      {schoolOptions.map((opt) => (
                         <MenuItem key={opt.label} value={opt.value}>
                           {opt.label}
                         </MenuItem>

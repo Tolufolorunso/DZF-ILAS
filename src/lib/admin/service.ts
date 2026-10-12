@@ -100,6 +100,19 @@ export async function getSystemSettings(): Promise<ISystemSettingsDTO> {
     allowMultipleLoansOverride: setting.allowMultipleLoansOverride || false,
     maintenanceMode: setting.maintenanceMode || false,
     announcementBanner: setting.announcementBanner || '',
+    broadcastBanner: setting.broadcastBanner
+      ? {
+          message: setting.broadcastBanner.message || '',
+          severity: (setting.broadcastBanner.severity as 'info' | 'warning' | 'error' | 'success') || 'info',
+          isActive: Boolean(setting.broadcastBanner.isActive),
+          link: setting.broadcastBanner.link || '',
+          pushToDesktop: Boolean(setting.broadcastBanner.pushToDesktop),
+          updatedAt: setting.broadcastBanner.updatedAt
+            ? setting.broadcastBanner.updatedAt.toISOString()
+            : null,
+          updatedBy: setting.broadcastBanner.updatedBy || 'admin',
+        }
+      : undefined,
     lastPromotionYear: setting.lastPromotionYear,
     lastPromotionDate: setting.lastPromotionDate ? setting.lastPromotionDate.toISOString() : null,
     updatedAt: setting.updatedAt.toISOString(),
