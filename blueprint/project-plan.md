@@ -368,6 +368,12 @@ DZF-ILAS is a ground-up rewrite delivering:
     - **Patron Demographic Distribution:** Borrowing volume segmented by patron type (Students, Teachers, Staff, Guests) and student grade levels (Primary 1–6, JSS 1–3, SS 1–3).
     - **Dewey Decimal Subject Category Spread:** Circulation breakdown across Dewey classification classes (e.g. 500 Sciences, 800 Literature, 300 Social Sciences, 600 Technology).
     - **Gamification Return Performance:** Proportion of returns qualifying for +3 points (on-time), +1 point (1–2 days grace), or 0 points (overdue).
+  - **Official Circulation Analytics Report Export Pipeline (PDF & PNG with Admin Signature):**
+    - One-click export modal supporting both **Print-Ready A4 PDF** and **High-Resolution PNG** image formats.
+    - Official Dzuels Educational Foundation executive letterhead, emblem, and motto.
+    - Core metrics snapshot: Time Horizon, Total Loans Issued, Returns Processed, Timely Return Rate, Delinquency Rate, and Average Loan Duration.
+    - Chronological activity trend distribution table and Top Borrowed Monographs leaderboard.
+    - Official Executive Sign-off block: stylized vector ink signature, administrative verification seal (`DZUELS EDUCATIONAL FOUNDATION • LIBRARY ADMINISTRATION • VERIFIED & SIGNED`), admin name & title, generation timestamp, and official serial code (`DZF-RPT-CIRC-YYYY-XXXX`).
 - **Flexible Circulation Analytics REST API (`GET /api/circulations/analytics`):**
   - REST endpoint accepting query parameters: `unit` (`weeks` | `months`), `amount` (numeric, e.g. 1–99), or optional `startDate` / `endDate`.
   - Optimized MongoDB aggregation pipelines querying `Library`, `Cataloging`, and `Patron` collections leveraging indexed date filters (`issueDate`, `returnDate`).

@@ -1,6 +1,6 @@
 # DZF-ILAS - Project Overview
 
-<!-- blueprint:source-hash 643897421b17519df270893c4d8a15c1e15ed7c6f5bacfa57542da72fe8dc871 -->
+<!-- blueprint:source-hash de568491c7d305307ea5946aae6300904dfa9765862cb3c163bf005556b611eb -->
 
 > Centralized internal staff workspace and REST API backend for the Dzuels Educational Foundation (DZF), managing academic library cataloging, patron identity, circulation, and academy engagement.
 
@@ -73,6 +73,7 @@ Top-to-bottom institutional hierarchy:
 39. **Strict Task Creator Governance & Scoped Workflows** - Creator-only archive and delete enforcement with zero exceptions across UI and API, assignee restricted to active lane transitions, and 30-day automated TTL purge.
 40. **Vercel Production Deployment Readiness & Performance Hardening** - Vercel configuration (`vercel.json`), serverless database pooling safeguards, index coverage audit, clean build verification, and UI error boundary protection.
 41. **Circulation Borrowing Statistics Studio & Flexible Period Analytics** - 5th tab on /dashboard/circulations with unconstrained time horizon (weeks/months, 1–9+ count, custom dates), comprehensive loan KPIs, volume trends, top books, patron demographics, Dewey classes, and REST API.
+42. **Circulation Analytics Report Export Pipeline** - Downloadable borrowing statistics reports in print-ready A4 PDF and crisp PNG image formats with official DZF header, KPI summaries, trend tables, top books, executive verification seal, and administrative vector ink signature.
 
 ## Data model
 

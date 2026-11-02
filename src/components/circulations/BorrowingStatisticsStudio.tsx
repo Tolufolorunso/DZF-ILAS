@@ -35,6 +35,7 @@ import {
   ActivityIcon,
   UsersIcon,
 } from '@/components';
+import { CirculationExportModal } from './CirculationExportModal';
 
 export interface CirculationAnalyticsData {
   timeHorizon: {
@@ -94,6 +95,7 @@ export function BorrowingStatisticsStudio() {
   const [unit, setUnit] = React.useState<'weeks' | 'months'>('months');
   const [amount, setAmount] = React.useState<number>(1);
   const [granularity, setGranularity] = React.useState<'auto' | 'month' | 'week' | 'day'>('auto');
+  const [exportModalOpen, setExportModalOpen] = React.useState<boolean>(false);
   const [loading, setLoading] = React.useState<boolean>(true);
   const [error, setError] = React.useState<string | null>(null);
   const [data, setData] = React.useState<CirculationAnalyticsData | null>(null);
@@ -337,6 +339,17 @@ export function BorrowingStatisticsStudio() {
                 sx={{ minWidth: 38, px: 1 }}
               >
                 Refresh
+              </DZFButton>
+
+              <DZFButton
+                variant="primary"
+                size="small"
+                onClick={() => setExportModalOpen(true)}
+                disabled={!data || loading}
+                startIcon={<AwardIcon size={16} />}
+                sx={{ minWidth: 125, fontWeight: 700 }}
+              >
+                Export Report
               </DZFButton>
             </Box>
           </Box>
@@ -901,6 +914,15 @@ export function BorrowingStatisticsStudio() {
             </Grid>
           </Card>
         </>
+      )}
+
+      {/* Official Circulation Report Export Modal */}
+      {data && (
+        <CirculationExportModal
+          open={exportModalOpen}
+          onClose={() => setExportModalOpen(false)}
+          data={data}
+        />
       )}
     </Box>
   );
