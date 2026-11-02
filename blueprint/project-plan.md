@@ -353,6 +353,26 @@ DZF-ILAS is a ground-up rewrite delivering:
   - **Index Verification & Query Performance:** Audit and verify compound indexes across core collections (`Task`, `Patron`, `Cataloging`, `Library`, `Attendance`) and ensure high-frequency queries execute efficiently without database lag.
   - **Build & Runtime Hardening:** Validate that `next build` passes cleanly with zero type errors, lint warnings, or hydration mismatches; introduce graceful client error boundary fallbacks across workspace modules to prevent blank-screen crashes in production.
 
+### Phase 19: Circulation Analytics Studio, Multi-Period Borrowing Trends & Book Statistics Engine (New)
+
+- **Borrowing Statistics Workspace Tab (`/dashboard/circulations`):**
+  - Add a dedicated 5th tab ("Borrowing Statistics") to `/dashboard/circulations` alongside *Desk Terminal*, *Active Loans*, *Circulation History & Logs*, and *Holds Queue*.
+  - **Unconstrained Flexible Time-Horizon Selector:**
+    - Unit selector: **Weeks** or **Months** (with custom date range fallback).
+    - Arbitrary duration count selector / input: 1, 2, 3, 4, 5, 6, 7, 8, 9, 12, etc., without rigid limits.
+    - Quick-access presets (e.g. 1 Week, 2 Weeks, 1 Month, 3 Months, 6 Months, All-Time) paired with numeric and unit controls for custom timeframes.
+  - **Comprehensive Borrowing Statistics & Intelligence:**
+    - **KPI Summary Cards:** Total Loans Issued, Total Returns Processed, Timely Return Rate (% on-time), Active Overdue Rate, and Average Loan Duration.
+    - **Borrowing Volume Trends:** Adaptive chronological trend stream (bucketed daily, weekly, or monthly according to the selected duration).
+    - **Top Borrowed Books (Leaderboard):** Most popular monographs with Title, Author, Dewey Decimal classification, borrow count within selected window, and current available shelf copies.
+    - **Patron Demographic Distribution:** Borrowing volume segmented by patron type (Students, Teachers, Staff, Guests) and student grade levels (Primary 1–6, JSS 1–3, SS 1–3).
+    - **Dewey Decimal Subject Category Spread:** Circulation breakdown across Dewey classification classes (e.g. 500 Sciences, 800 Literature, 300 Social Sciences, 600 Technology).
+    - **Gamification Return Performance:** Proportion of returns qualifying for +3 points (on-time), +1 point (1–2 days grace), or 0 points (overdue).
+- **Flexible Circulation Analytics REST API (`GET /api/circulations/analytics`):**
+  - REST endpoint accepting query parameters: `unit` (`weeks` | `months`), `amount` (numeric, e.g. 1–99), or optional `startDate` / `endDate`.
+  - Optimized MongoDB aggregation pipelines querying `Library`, `Cataloging`, and `Patron` collections leveraging indexed date filters (`issueDate`, `returnDate`).
+  - Dual-mode authentication protection (web cookie session and Android Bearer token).
+
 ## 4. Data - What are we storing?
 
 All 15 core production entities plus Phase 5 model extensions:

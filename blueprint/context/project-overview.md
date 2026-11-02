@@ -1,12 +1,12 @@
 # DZF-ILAS - Project Overview
 
-<!-- blueprint:source-hash 48448e12e8c9a9235c000e3740acf2072e71ef950f4fa8650ab80814921792e0 -->
+<!-- blueprint:source-hash 643897421b17519df270893c4d8a15c1e15ed7c6f5bacfa57542da72fe8dc871 -->
 
 > Centralized internal staff workspace and REST API backend for the Dzuels Educational Foundation (DZF), managing academic library cataloging, patron identity, circulation, and academy engagement.
 
 ## Problem
 
-The Dzuels Educational Foundation operates an academic library and learning center in Nigeria, managing 2,300+ catalog items, 670+ patrons, active book circulation, student digital literacy cohorts, reading competitions, and values publication. DZF-ILAS provides a unified Next.js web application and REST API backend. Phases 1–17 delivered cataloging, patron barcode identity, circulation gamification, Google Sheets sync, competition scoring, certificate studio, calendar ingestion, staff self-registration, Kanban workspace, circulation safety dialogs, 5-day loans, student promotion, daily audit stream with same-day undo, self-tasks, 30-day task archiving, SSE live streaming, Web Push, dynamic shell metrics, modernized TransComm editor, and admin governance center. Phase 18 hardens task creator governance (zero exceptions on archive/delete), restricts assignees strictly to active lane moves (`To Do`, `In Progress`, `Completed`), and prepares full Vercel serverless deployment readiness, database pooling resilience, and rock-solid production performance.
+The Dzuels Educational Foundation operates an academic library and learning center in Nigeria, managing 2,300+ catalog items, 670+ patrons, active book circulation, student digital literacy cohorts, reading competitions, and values publication. DZF-ILAS provides a unified Next.js web application and REST API backend. Phases 1–17 delivered cataloging, patron barcode identity, circulation gamification, Google Sheets sync, competition scoring, certificate studio, calendar ingestion, staff self-registration, Kanban workspace, circulation safety dialogs, 5-day loans, student promotion, daily audit stream with same-day undo, self-tasks, 30-day task archiving, SSE live streaming, Web Push, dynamic shell metrics, modernized TransComm editor, and admin governance center. Phase 18 hardens task creator governance (zero exceptions on archive/delete), restricts assignees strictly to active lane moves (`To Do`, `In Progress`, `Completed`), and prepares full Vercel serverless deployment readiness, database pooling resilience, and rock-solid production performance. Phase 19 delivers the Circulation Borrowing Statistics Studio and flexible-horizon analytics engine, introducing a 5th tab on `/dashboard/circulations` for multi-period borrowing intelligence (unconstrained weeks/months and numeric horizons).
 
 ## Users & Role Hierarchy
 
@@ -72,6 +72,7 @@ Top-to-bottom institutional hierarchy:
 38. **Admin Self-Service & Broadcast Center** - Foundation reference data/preset manager, one-click JSON/CSV data backup/export, system-wide broadcast alerts, and data recalculation toolkit.
 39. **Strict Task Creator Governance & Scoped Workflows** - Creator-only archive and delete enforcement with zero exceptions across UI and API, assignee restricted to active lane transitions, and 30-day automated TTL purge.
 40. **Vercel Production Deployment Readiness & Performance Hardening** - Vercel configuration (`vercel.json`), serverless database pooling safeguards, index coverage audit, clean build verification, and UI error boundary protection.
+41. **Circulation Borrowing Statistics Studio & Flexible Period Analytics** - 5th tab on /dashboard/circulations with unconstrained time horizon (weeks/months, 1–9+ count, custom dates), comprehensive loan KPIs, volume trends, top books, patron demographics, Dewey classes, and REST API.
 
 ## Data model
 
@@ -231,7 +232,7 @@ Not applicable. DZF-ILAS is a 100% internal non-profit educational and library m
   - `/dashboard/tasks` - Dedicated staff task workspace with interactive 3-column Kanban board, live instant discussion chat, archive drawer, and creator-only archive/delete controls
   - `/dashboard/catalog` & `/dashboard/catalog/acquire` - Monograph inventory and acquisition studio
   - `/dashboard/patrons` & `/dashboard/patrons/register` - Patron directory, dynamic registration, Xprinter XP-365B bulk printing
-  - `/dashboard/circulations` - Barcode loan transactions, checkout, return, holds, overdues, with return/renewal confirmation dialogs
+  - `/dashboard/circulations` - Barcode loan transactions, checkout, return, holds, overdues, return/renewal confirmation dialogs, and flexible-period borrowing statistics studio (5th tab)
   - `/dashboard/attendance` - Barcode scanner interface ("Attendant") with 1-click Literacy Class fast-track attendance studio
   - `/dashboard/leaderboard` - Activity metrics and patron leaderboard
   - `/dashboard/calendar` - Dedicated staff operational calendar matrix & agenda stream

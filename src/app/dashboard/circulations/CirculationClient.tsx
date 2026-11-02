@@ -18,6 +18,7 @@ import {
   BookIcon,
   BarcodeIcon,
   UsersIcon,
+  ActivityIcon,
 } from '@/components';
 import { ITokenPayload } from '@/lib/auth/jwt';
 import {
@@ -25,6 +26,7 @@ import {
   ActiveLoansTable,
   CirculationHistoryTable,
   HoldsQueueTable,
+  BorrowingStatisticsStudio,
 } from '@/components/circulations';
 
 interface CirculationStats {
@@ -129,6 +131,8 @@ export default function CirculationClient({
           <Tabs
             value={tab}
             onChange={(_, newVal) => setTab(newVal)}
+            variant="scrollable"
+            scrollButtons="auto"
             sx={{
               minHeight: 46,
               '& .MuiTab-root': {
@@ -164,6 +168,11 @@ export default function CirculationClient({
             <Tab
               label="Holds Queue"
               icon={<UsersIcon size={18} />}
+              iconPosition="start"
+            />
+            <Tab
+              label="Borrowing Statistics"
+              icon={<ActivityIcon size={18} />}
               iconPosition="start"
             />
           </Tabs>
@@ -209,6 +218,12 @@ export default function CirculationClient({
                 Monitor and manage patron reservation requests for popular or currently checked-out monographs.
               </Typography>
               <HoldsQueueTable onDataChanged={fetchStats} />
+            </Box>
+          )}
+
+          {tab === 4 && (
+            <Box>
+              <BorrowingStatisticsStudio />
             </Box>
           )}
         </Box>

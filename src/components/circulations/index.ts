@@ -4,4 +4,4 @@ export { CirculationHistoryTable } from './CirculationHistoryTable';
 export { HoldsQueueTable } from './HoldsQueueTable';
 export { ReturnConfirmModal } from './ReturnConfirmModal';
 export { RenewalModal } from './RenewalModal';
-
+export { BorrowingStatisticsStudio } from './BorrowingStatisticsStudio';
