@@ -41,7 +41,28 @@ function formatDateLabel(date: Date, interval: 'day' | 'week' | 'month'): string
   const start = new Date(date);
   const end = new Date(date);
   end.setDate(end.getDate() + 6);
-  return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+}
+
+interface UnifiedLoanRecord {
+  id: string;
+  bookId?: string;
+  bookBarcode: string;
+  bookTitle: string;
+  author: string;
+  classification: string;
+  copiesAvailable: number;
+  copiesTotal: number;
+  patronId?: string;
+  patronBarcode: string;
+  patronName: string;
+  patronType: string;
+  classGrade?: string;
+  issueDate?: Date;
+  dueDate?: Date;
+  returnDate?: Date;
+  status: string;
+  pointsAwarded?: number;
 }
 
 export async function GET(req: NextRequest) {
@@ -59,6 +80,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const unitParam = searchParams.get('unit') || 'months';
     const amountParam = parseInt(searchParams.get('amount') || '1', 10);
+    const granularityParam = searchParams.get('granularity') as 'month' | 'week' | 'day' | null;
     const startDateParam = searchParams.get('startDate');
     const endDateParam = searchParams.get('endDate');
 
@@ -79,33 +101,202 @@ export async function GET(req: NextRequest) {
       fromDate = new Date(toDate.getTime() - amount * 7 * 24 * 60 * 60 * 1000);
     } else {
       // months default
-      fromDate = new Date(toDate);
-      fromDate.setMonth(fromDate.getMonth() - amount);
+      fromDate = new Date(toDate.getFullYear(), toDate.getMonth() - amount, toDate.getDate(), toDate.getHours(), toDate.getMinutes(), toDate.getSeconds());
     }
 
-    const diffDays = Math.max(1, Math.round((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)));
+    // Determine interval (granularity)
+    let interval: 'day' | 'week' | 'month';
+    if (granularityParam === 'month' || granularityParam === 'week' || granularityParam === 'day') {
+      interval = granularityParam;
+    } else if (unitParam === 'weeks') {
+      interval = amount === 1 ? 'day' : 'week';
+    } else if (unitParam === 'months') {
+      interval = 'month';
+    } else {
+      // all
+      interval = 'month';
+    }
 
-    // 1. Fetch loans issued in period
-    const issuedLoans = await Library.find({
-      issueDate: { $gte: fromDate, $lte: toDate },
+    // 1. Fetch loans from Library collection in period
+    const libraryLoans = await Library.find({
+      $or: [
+        { issueDate: { $gte: fromDate, $lte: toDate } },
+        { returnDate: { $gte: fromDate, $lte: toDate } },
+      ],
     })
       .populate<{ bookId: ICatalogingDocument }>('bookId')
       .populate<{ patronId: IPatronDocument }>('patronId')
       .lean();
 
-    // 2. Fetch returns processed in period
-    const returnsInPeriod = await Library.find({
-      returnDate: { $gte: fromDate, $lte: toDate },
+    // Map existing Library records into unified structure
+    const unifiedLoansMap = new Map<string, UnifiedLoanRecord>();
+
+    for (const l of libraryLoans) {
+      const bookDoc = l.bookId as ICatalogingDocument | undefined;
+      const patronDoc = l.patronId as IPatronDocument | undefined;
+
+      let title = l.bookTitle || 'Untitled Book';
+      let author = 'Unknown Author';
+      let classification = 'Unclassified';
+      let copiesAvailable = 0;
+      let copiesTotal = 1;
+
+      if (bookDoc) {
+        if (typeof bookDoc.title === 'string') title = bookDoc.title;
+        else if (bookDoc.title?.mainTitle) title = bookDoc.title.mainTitle;
+
+        if (typeof bookDoc.author === 'string') author = bookDoc.author;
+        else if (bookDoc.author?.mainAuthor) author = bookDoc.author.mainAuthor;
+
+        if (bookDoc.classification) classification = bookDoc.classification;
+        copiesAvailable = bookDoc.copiesAvailable ?? 0;
+        copiesTotal = bookDoc.copiesTotal ?? 1;
+      }
+
+      const pType = patronDoc?.patronType || 'student';
+      const pName = patronDoc ? `${patronDoc.firstname} ${patronDoc.surname}` : 'Patron';
+      const classGrade = patronDoc?.studentSchoolInfo?.currentClass;
+
+      const recordKey = `${l.bookBarcode || 'book'}_${l.issueDate ? new Date(l.issueDate).getTime() : l._id}`;
+
+      unifiedLoansMap.set(recordKey, {
+        id: l._id.toString(),
+        bookId: bookDoc?._id?.toString(),
+        bookBarcode: l.bookBarcode || bookDoc?.barcode || '',
+        bookTitle: title,
+        author,
+        classification,
+        copiesAvailable,
+        copiesTotal,
+        patronId: patronDoc?._id?.toString(),
+        patronBarcode: l.patronBarcode || patronDoc?.barcode || '',
+        patronName: pName,
+        patronType: pType,
+        classGrade,
+        issueDate: l.issueDate ? new Date(l.issueDate) : undefined,
+        dueDate: l.dueDate ? new Date(l.dueDate) : undefined,
+        returnDate: l.returnDate ? new Date(l.returnDate) : undefined,
+        status: l.status || (l.returnDate ? 'returned' : 'borrowed'),
+        pointsAwarded: l.pointsAwarded,
+      });
+    }
+
+    // 2. Fetch historical loans from Cataloging.patronsCheckedOutHistory
+    const catalogingsWithHistory = await Cataloging.find({
+      $or: [
+        { 'patronsCheckedOutHistory.checkedOutAt': { $gte: fromDate, $lte: toDate } },
+        { 'patronsCheckedOutHistory.returnedAt': { $gte: fromDate, $lte: toDate } },
+      ],
     }).lean();
 
-    // 3. Active overdues across the library system right now
+    // Collect patron barcodes/IDs needing lookup
+    const missingPatronBarcodes = new Set<string>();
+    for (const b of catalogingsWithHistory) {
+      for (const h of b.patronsCheckedOutHistory || []) {
+        if (h.barcode) missingPatronBarcodes.add(h.barcode);
+      }
+    }
+
+    const patronLookupMap = new Map<string, IPatronDocument>();
+    if (missingPatronBarcodes.size > 0) {
+      const foundPatrons = await Patron.find({ barcode: { $in: Array.from(missingPatronBarcodes) } }).lean();
+      for (const p of foundPatrons) {
+        if (p.barcode) patronLookupMap.set(p.barcode, p as unknown as IPatronDocument);
+      }
+    }
+
+    // Merge Cataloging historical checkouts
+    for (const b of catalogingsWithHistory) {
+      let title = 'Untitled Book';
+      if (typeof b.title === 'string') title = b.title;
+      else if (b.title?.mainTitle) title = b.title.mainTitle;
+
+      let author = 'Unknown Author';
+      if (typeof b.author === 'string') author = b.author;
+      else if (b.author?.mainAuthor) author = b.author.mainAuthor;
+
+      const classification = b.classification || 'Unclassified';
+      const copiesAvailable = b.copiesAvailable ?? 0;
+      const copiesTotal = b.copiesTotal ?? 1;
+
+      for (const h of b.patronsCheckedOutHistory || []) {
+        const issueDate = h.checkedOutAt ? new Date(h.checkedOutAt) : undefined;
+        const returnDate = h.returnedAt ? new Date(h.returnedAt) : undefined;
+        const dueDate = h.dueDate ? new Date(h.dueDate) : undefined;
+
+        // Check if inside date window
+        const issueInRange = issueDate && issueDate >= fromDate && issueDate <= toDate;
+        const returnInRange = returnDate && returnDate >= fromDate && returnDate <= toDate;
+        if (!issueInRange && !returnInRange) continue;
+
+        // Check for deduplication with Library records
+        const approxTime = issueDate ? issueDate.getTime() : 0;
+        let isDuplicate = false;
+        for (const existing of unifiedLoansMap.values()) {
+          if (
+            existing.bookBarcode === b.barcode &&
+            existing.issueDate &&
+            Math.abs(existing.issueDate.getTime() - approxTime) < 60000
+          ) {
+            isDuplicate = true;
+            // Update returnDate or metadata if Library record lacked it
+            if (!existing.returnDate && returnDate) {
+              existing.returnDate = returnDate;
+              existing.status = 'returned';
+            }
+            break;
+          }
+        }
+
+        if (!isDuplicate) {
+          const matchedPatron = h.barcode ? patronLookupMap.get(h.barcode) : undefined;
+          const pType = matchedPatron?.patronType || 'student';
+          const pName = h.fullname || (matchedPatron ? `${matchedPatron.firstname} ${matchedPatron.surname}` : 'Patron');
+          const classGrade = matchedPatron?.studentSchoolInfo?.currentClass;
+
+          const recordKey = `cat_${b.barcode}_${approxTime}_${h.barcode || ''}`;
+          unifiedLoansMap.set(recordKey, {
+            id: recordKey,
+            bookId: b._id.toString(),
+            bookBarcode: b.barcode,
+            bookTitle: title,
+            author,
+            classification,
+            copiesAvailable,
+            copiesTotal,
+            patronId: h.checkedOutBy ? h.checkedOutBy.toString() : undefined,
+            patronBarcode: h.barcode || '',
+            patronName: pName,
+            patronType: pType,
+            classGrade,
+            issueDate,
+            dueDate,
+            returnDate,
+            status: returnDate ? 'returned' : 'borrowed',
+            pointsAwarded: returnDate && dueDate && returnDate <= dueDate ? 3 : 0,
+          });
+        }
+      }
+    }
+
+    const allUnifiedLoans = Array.from(unifiedLoansMap.values());
+
+    // Filter checkouts in period and returns in period
+    const checkoutsInPeriod = allUnifiedLoans.filter(
+      (l) => l.issueDate && l.issueDate >= fromDate && l.issueDate <= toDate
+    );
+    const returnsInPeriod = allUnifiedLoans.filter(
+      (l) => l.returnDate && l.returnDate >= fromDate && l.returnDate <= toDate
+    );
+
+    // Active overdues across the library system right now
     const activeOverdues = await Library.countDocuments({
       status: { $in: ['borrowed', 'overdue'] },
       dueDate: { $lt: now },
     });
 
-    // 4. Summaries
-    const totalCheckouts = issuedLoans.length;
+    // 4. Summary Calculations
+    const totalCheckouts = checkoutsInPeriod.length;
     const totalReturns = returnsInPeriod.length;
 
     let onTimeReturns = 0;
@@ -119,8 +310,8 @@ export async function GET(req: NextRequest) {
 
     for (const ret of returnsInPeriod) {
       if (ret.returnDate && ret.dueDate) {
-        const retTime = new Date(ret.returnDate).getTime();
-        const dueTime = new Date(ret.dueDate).getTime();
+        const retTime = ret.returnDate.getTime();
+        const dueTime = ret.dueDate.getTime();
         if (retTime <= dueTime) {
           onTimeReturns++;
         } else {
@@ -129,14 +320,14 @@ export async function GET(req: NextRequest) {
       }
 
       if (ret.returnDate && ret.issueDate) {
-        const durationDays = (new Date(ret.returnDate).getTime() - new Date(ret.issueDate).getTime()) / (1000 * 60 * 60 * 24);
+        const durationDays = (ret.returnDate.getTime() - ret.issueDate.getTime()) / (1000 * 60 * 60 * 24);
         if (durationDays >= 0) {
           totalLoanDaysSum += durationDays;
           validDurationCount++;
         }
       }
 
-      const pts = ret.pointsAwarded ?? 0;
+      const pts = ret.pointsAwarded ?? (ret.returnDate && ret.dueDate && ret.returnDate <= ret.dueDate ? 3 : 0);
       if (pts >= 3) onTime3Pts++;
       else if (pts === 1) grace1Pt++;
       else overdue0Pts++;
@@ -146,120 +337,112 @@ export async function GET(req: NextRequest) {
     const delinquencyRate = totalCheckouts > 0 ? Math.round((activeOverdues / totalCheckouts) * 1000) / 10 : 0;
     const averageLoanDays = validDurationCount > 0 ? Math.round((totalLoanDaysSum / validDurationCount) * 10) / 10 : 5;
 
-    // 5. Volume Trends Breakdown
-    let interval: 'day' | 'week' | 'month' = 'month';
-    if (diffDays <= 14) {
-      interval = 'day';
-    } else if (diffDays <= 70) {
-      interval = 'week';
-    } else {
-      interval = 'month';
+    // 5. Volume Trends Breakdown - Continuous Seeding
+    let trendStart = fromDate;
+    if (unitParam === 'all') {
+      let earliest = toDate;
+      for (const loan of allUnifiedLoans) {
+        if (loan.issueDate && loan.issueDate < earliest) earliest = loan.issueDate;
+        if (loan.returnDate && loan.returnDate < earliest) earliest = loan.returnDate;
+      }
+      trendStart = new Date(earliest.getFullYear(), earliest.getMonth(), 1);
     }
 
-    const trendMap = new Map<string, { label: string; checkouts: number; returns: number; timestamp: number }>();
+    interface TrendBucket {
+      dateKey: string;
+      label: string;
+      start: Date;
+      end: Date;
+      checkouts: number;
+      returns: number;
+      timestamp: number;
+    }
 
-    // Seed empty buckets across the horizon so the trend curve has continuous points
-    const cursor = new Date(fromDate);
+    const bucketList: TrendBucket[] = [];
+
     if (interval === 'day') {
+      const cursor = new Date(trendStart);
       while (cursor <= toDate) {
-        const key = cursor.toISOString().slice(0, 10);
-        trendMap.set(key, {
-          label: formatDateLabel(cursor, 'day'),
+        const start = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), 0, 0, 0, 0);
+        const end = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate(), 23, 59, 59, 999);
+        bucketList.push({
+          dateKey: start.toISOString().slice(0, 10),
+          label: formatDateLabel(start, 'day'),
+          start,
+          end,
           checkouts: 0,
           returns: 0,
-          timestamp: cursor.getTime(),
+          timestamp: start.getTime(),
         });
         cursor.setDate(cursor.getDate() + 1);
       }
     } else if (interval === 'week') {
+      const cursor = new Date(trendStart);
       while (cursor <= toDate) {
-        const key = cursor.toISOString().slice(0, 10);
-        trendMap.set(key, {
-          label: formatDateLabel(cursor, 'week'),
+        const start = new Date(cursor);
+        const end = new Date(cursor);
+        end.setDate(end.getDate() + 7);
+        bucketList.push({
+          dateKey: start.toISOString().slice(0, 10),
+          label: formatDateLabel(start, 'week'),
+          start,
+          end,
           checkouts: 0,
           returns: 0,
-          timestamp: cursor.getTime(),
+          timestamp: start.getTime(),
         });
         cursor.setDate(cursor.getDate() + 7);
       }
     } else {
-      // month
-      cursor.setDate(1);
+      // interval === 'month'
+      const cursor = new Date(trendStart.getFullYear(), trendStart.getMonth(), 1);
       while (cursor <= toDate) {
-        const key = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
-        trendMap.set(key, {
-          label: formatDateLabel(cursor, 'month'),
+        const start = new Date(cursor.getFullYear(), cursor.getMonth(), 1, 0, 0, 0, 0);
+        const end = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0, 23, 59, 59, 999);
+        bucketList.push({
+          dateKey: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`,
+          label: formatDateLabel(start, 'month'),
+          start,
+          end,
           checkouts: 0,
           returns: 0,
-          timestamp: cursor.getTime(),
+          timestamp: start.getTime(),
         });
         cursor.setMonth(cursor.getMonth() + 1);
       }
     }
 
-    // Populate checkouts into buckets
-    for (const loan of issuedLoans) {
+    // Match checkouts into continuous buckets
+    for (const loan of checkoutsInPeriod) {
       if (!loan.issueDate) continue;
-      const d = new Date(loan.issueDate);
-      let key: string;
-      if (interval === 'day') {
-        key = d.toISOString().slice(0, 10);
-      } else if (interval === 'month') {
-        key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      } else {
-        // Find closest week bucket
-        const diffFromStart = Math.floor((d.getTime() - fromDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
-        const weekDate = new Date(fromDate.getTime() + diffFromStart * 7 * 24 * 60 * 60 * 1000);
-        key = weekDate.toISOString().slice(0, 10);
-      }
-
-      if (trendMap.has(key)) {
-        trendMap.get(key)!.checkouts++;
-      } else {
-        trendMap.set(key, {
-          label: formatDateLabel(d, interval),
-          checkouts: 1,
-          returns: 0,
-          timestamp: d.getTime(),
-        });
+      const d = loan.issueDate;
+      for (let i = 0; i < bucketList.length; i++) {
+        const b = bucketList[i];
+        const isLast = i === bucketList.length - 1;
+        const inRange = isLast ? (d >= b.start && d <= b.end) : (d >= b.start && d < b.end);
+        if (inRange) {
+          b.checkouts++;
+          break;
+        }
       }
     }
 
-    // Populate returns into buckets
+    // Match returns into continuous buckets
     for (const ret of returnsInPeriod) {
       if (!ret.returnDate) continue;
-      const d = new Date(ret.returnDate);
-      let key: string;
-      if (interval === 'day') {
-        key = d.toISOString().slice(0, 10);
-      } else if (interval === 'month') {
-        key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      } else {
-        const diffFromStart = Math.floor((d.getTime() - fromDate.getTime()) / (7 * 24 * 60 * 60 * 1000));
-        const weekDate = new Date(fromDate.getTime() + diffFromStart * 7 * 24 * 60 * 60 * 1000);
-        key = weekDate.toISOString().slice(0, 10);
-      }
-
-      if (trendMap.has(key)) {
-        trendMap.get(key)!.returns++;
-      } else {
-        trendMap.set(key, {
-          label: formatDateLabel(d, interval),
-          checkouts: 0,
-          returns: 1,
-          timestamp: d.getTime(),
-        });
+      const d = ret.returnDate;
+      for (let i = 0; i < bucketList.length; i++) {
+        const b = bucketList[i];
+        const isLast = i === bucketList.length - 1;
+        const inRange = isLast ? (d >= b.start && d <= b.end) : (d >= b.start && d < b.end);
+        if (inRange) {
+          b.returns++;
+          break;
+        }
       }
     }
 
-    const trends = Array.from(trendMap.entries())
-      .map(([dateKey, val]) => ({
-        dateKey,
-        label: val.label,
-        checkouts: val.checkouts,
-        returns: val.returns,
-        timestamp: val.timestamp,
-      }))
+    const trends = bucketList
       .sort((a, b) => a.timestamp - b.timestamp)
       .map(({ dateKey, label, checkouts, returns }) => ({
         dateKey,
@@ -282,46 +465,18 @@ export async function GET(req: NextRequest) {
 
     const bookAggMap = new Map<string, BookStatsAgg>();
 
-    for (const loan of issuedLoans) {
-      const bookDoc = loan.bookId as ICatalogingDocument | undefined;
-      const bookKey = bookDoc?._id?.toString() || loan.bookBarcode || 'unknown-book';
-
+    for (const loan of checkoutsInPeriod) {
+      const bookKey = loan.bookId || loan.bookBarcode || loan.bookTitle;
       if (!bookAggMap.has(bookKey)) {
-        let title = loan.bookTitle || 'Untitled Book';
-        let author = 'Unknown Author';
-        let classification = 'Unclassified';
-        let copiesAvailable = 0;
-        let copiesTotal = 1;
-
-        if (bookDoc) {
-          if (typeof bookDoc.title === 'string') {
-            title = bookDoc.title;
-          } else if (bookDoc.title && typeof bookDoc.title === 'object' && bookDoc.title.mainTitle) {
-            title = bookDoc.title.mainTitle;
-          }
-
-          if (bookDoc.author) {
-            if (typeof bookDoc.author === 'string') {
-              author = bookDoc.author;
-            } else if (bookDoc.author.mainAuthor) {
-              author = bookDoc.author.mainAuthor;
-            }
-          }
-
-          if (bookDoc.classification) classification = bookDoc.classification;
-          copiesAvailable = bookDoc.copiesAvailable ?? 0;
-          copiesTotal = bookDoc.copiesTotal ?? 1;
-        }
-
         bookAggMap.set(bookKey, {
-          bookId: bookDoc?._id?.toString() || '',
-          title,
-          author,
-          barcode: loan.bookBarcode || bookDoc?.barcode || '',
-          classification,
+          bookId: loan.bookId || '',
+          title: loan.bookTitle,
+          author: loan.author,
+          barcode: loan.bookBarcode,
+          classification: loan.classification,
           checkoutCount: 1,
-          copiesAvailable,
-          copiesTotal,
+          copiesAvailable: loan.copiesAvailable,
+          copiesTotal: loan.copiesTotal,
         });
       } else {
         bookAggMap.get(bookKey)!.checkoutCount++;
@@ -342,17 +497,16 @@ export async function GET(req: NextRequest) {
 
     const gradeCountMap: Record<string, number> = {};
 
-    for (const loan of issuedLoans) {
-      const patronDoc = loan.patronId as IPatronDocument | undefined;
-      const pType = patronDoc?.patronType || 'student';
+    for (const loan of checkoutsInPeriod) {
+      const pType = loan.patronType || 'student';
       if (typeCountMap[pType] !== undefined) {
         typeCountMap[pType]++;
       } else {
         typeCountMap.student++;
       }
 
-      if (pType === 'student' && patronDoc?.studentSchoolInfo?.currentClass) {
-        const grade = patronDoc.studentSchoolInfo.currentClass.trim();
+      if (pType === 'student' && loan.classGrade) {
+        const grade = loan.classGrade.trim();
         gradeCountMap[grade] = (gradeCountMap[grade] || 0) + 1;
       }
     }
@@ -379,11 +533,8 @@ export async function GET(req: NextRequest) {
     // 8. Dewey Decimal Distribution
     const deweyCountMap: Record<string, { label: string; count: number }> = {};
 
-    for (const loan of issuedLoans) {
-      const bookDoc = loan.bookId as ICatalogingDocument | undefined;
-      const cls = bookDoc?.classification;
-      const bucket = getDeweyClassBucket(cls);
-
+    for (const loan of checkoutsInPeriod) {
+      const bucket = getDeweyClassBucket(loan.classification);
       if (!deweyCountMap[bucket.code]) {
         deweyCountMap[bucket.code] = { label: bucket.label, count: 1 };
       } else {
@@ -407,6 +558,7 @@ export async function GET(req: NextRequest) {
           timeHorizon: {
             unit: unitParam,
             amount,
+            granularity: interval,
             fromDate: fromDate.toISOString(),
             toDate: toDate.toISOString(),
           },
@@ -444,4 +596,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-

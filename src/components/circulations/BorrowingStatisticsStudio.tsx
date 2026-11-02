@@ -40,6 +40,7 @@ export interface CirculationAnalyticsData {
   timeHorizon: {
     unit: 'weeks' | 'months' | 'all';
     amount: number;
+    granularity?: 'month' | 'week' | 'day';
     fromDate: string;
     toDate: string;
   };
@@ -92,6 +93,7 @@ export function BorrowingStatisticsStudio() {
   const [preset, setPreset] = React.useState<PresetKey>('1m');
   const [unit, setUnit] = React.useState<'weeks' | 'months'>('months');
   const [amount, setAmount] = React.useState<number>(1);
+  const [granularity, setGranularity] = React.useState<'auto' | 'month' | 'week' | 'day'>('auto');
   const [loading, setLoading] = React.useState<boolean>(true);
   const [error, setError] = React.useState<string | null>(null);
   const [data, setData] = React.useState<CirculationAnalyticsData | null>(null);
@@ -105,6 +107,9 @@ export function BorrowingStatisticsStudio() {
         queryUrl += '?unit=all&amount=1';
       } else {
         queryUrl += `?unit=${unit}&amount=${amount}`;
+      }
+      if (granularity !== 'auto') {
+        queryUrl += `&granularity=${granularity}`;
       }
 
       const res = await fetch(queryUrl);
@@ -120,7 +125,7 @@ export function BorrowingStatisticsStudio() {
     } finally {
       setLoading(false);
     }
-  }, [preset, unit, amount]);
+  }, [preset, unit, amount, granularity]);
 
   React.useEffect(() => {
     fetchAnalytics();
@@ -128,6 +133,7 @@ export function BorrowingStatisticsStudio() {
 
   const handleSelectPreset = (key: PresetKey) => {
     setPreset(key);
+    setGranularity('auto');
     if (key === '1w') {
       setUnit('weeks');
       setAmount(1);
@@ -165,6 +171,27 @@ export function BorrowingStatisticsStudio() {
       ...data.trends.map((t) => Math.max(t.checkouts, t.returns))
     );
   }, [data?.trends]);
+
+  const activeGranularity = data?.timeHorizon?.granularity || (granularity !== 'auto' ? granularity : (unit === 'months' || preset === 'all' ? 'month' : 'week'));
+
+  const granularityOptions = React.useMemo<{ key: 'month' | 'week' | 'day'; label: string }[]>(() => {
+    if (preset === 'all' || unit === 'months' || (unit === 'weeks' && amount >= 4)) {
+      return [
+        { key: 'month', label: 'By Month' },
+        { key: 'week', label: 'By Week' },
+      ];
+    }
+    if (unit === 'weeks' && amount > 1) {
+      return [
+        { key: 'week', label: 'By Week' },
+        { key: 'day', label: 'By Day' },
+      ];
+    }
+    return [
+      { key: 'day', label: 'By Day' },
+      { key: 'week', label: 'By Week' },
+    ];
+  }, [preset, unit, amount]);
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -261,6 +288,7 @@ export function BorrowingStatisticsStudio() {
                   if (Number.isFinite(val) && val > 0) {
                     setAmount(val);
                     setPreset('custom');
+                    setGranularity('auto');
                   }
                 }}
                 slotProps={{
@@ -284,6 +312,7 @@ export function BorrowingStatisticsStudio() {
                 onChange={(e) => {
                   setUnit(e.target.value as 'weeks' | 'months');
                   setPreset('custom');
+                  setGranularity('auto');
                 }}
                 sx={{
                   minWidth: 95,
@@ -413,27 +442,83 @@ export function BorrowingStatisticsStudio() {
                 boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: { xs: 'column', md: 'row' },
+                  alignItems: { xs: 'flex-start', md: 'center' },
+                  justifyContent: 'space-between',
+                  gap: 1.5,
+                  mb: 2,
+                }}
+              >
                 <Box>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: dzfColors.navy[900] }}>
-                    Circulation Activity Trend
-                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800, color: dzfColors.navy[900] }}>
+                      Circulation Activity Trend
+                    </Typography>
+                    <DZFBadge
+                      variant="info"
+                      size="small"
+                      label={`${data.trends.length} ${activeGranularity === 'day' ? 'Days' : activeGranularity === 'week' ? 'Weeks' : 'Months'}`}
+                    />
+                  </Box>
                   <Typography variant="caption" sx={{ color: dzfColors.surfaces.textMuted }}>
-                    Chronological progression of loans issued vs. returns completed over time
+                    Chronological distribution of loans issued vs. returns completed across all constituent {activeGranularity}s
                   </Typography>
                 </Box>
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                  <Box sx={{ display: 'flex', gap: 0.8, alignItems: 'center' }}>
-                    <Box sx={{ width: 12, height: 12, borderRadius: 0.5, backgroundColor: dzfColors.navy[700] }} />
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: dzfColors.surfaces.textSecondary }}>
-                      Checkouts
-                    </Typography>
+
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    gap: 2,
+                  }}
+                >
+                  {/* Granularity Switcher Chips */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6, backgroundColor: '#f1f4f8', p: 0.4, borderRadius: 1.8 }}>
+                    {granularityOptions.map((opt) => {
+                      const isSelected = activeGranularity === opt.key;
+                      return (
+                        <Chip
+                          key={opt.key}
+                          label={opt.label}
+                          size="small"
+                          clickable
+                          onClick={() => setGranularity(opt.key)}
+                          sx={{
+                            fontWeight: 700,
+                            fontSize: '0.75rem',
+                            cursor: 'pointer',
+                            borderRadius: 1.4,
+                            height: 24,
+                            backgroundColor: isSelected ? dzfColors.navy[900] : 'transparent',
+                            color: isSelected ? '#ffffff' : dzfColors.navy[700],
+                            boxShadow: isSelected ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
+                            '&:hover': {
+                              backgroundColor: isSelected ? dzfColors.navy[700] : '#e2e7ef',
+                            },
+                          }}
+                        />
+                      );
+                    })}
                   </Box>
-                  <Box sx={{ display: 'flex', gap: 0.8, alignItems: 'center' }}>
-                    <Box sx={{ width: 12, height: 12, borderRadius: 0.5, backgroundColor: dzfColors.status.success.button }} />
-                    <Typography variant="caption" sx={{ fontWeight: 700, color: dzfColors.surfaces.textSecondary }}>
-                      Returns
-                    </Typography>
+
+                  {/* Legend */}
+                  <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', gap: 0.6, alignItems: 'center' }}>
+                      <Box sx={{ width: 10, height: 10, borderRadius: 0.5, backgroundColor: dzfColors.navy[700] }} />
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: dzfColors.surfaces.textSecondary }}>
+                        Checkouts
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 0.6, alignItems: 'center' }}>
+                      <Box sx={{ width: 10, height: 10, borderRadius: 0.5, backgroundColor: dzfColors.status.success.button }} />
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: dzfColors.surfaces.textSecondary }}>
+                        Returns
+                      </Typography>
+                    </Box>
                   </Box>
                 </Box>
               </Box>
