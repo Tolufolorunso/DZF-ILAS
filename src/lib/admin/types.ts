@@ -36,6 +36,9 @@ export interface ISystemSettingsDTO {
   broadcastBanner?: IBroadcastBannerDTO;
   lastPromotionYear?: number;
   lastPromotionDate?: string | null;
+  externalAttendanceApiKey?: string;
+  externalAttendanceAttributedStaff?: string;
+  externalAttendanceKeyGeneratedAt?: string | null;
   updatedAt: string;
 }
 

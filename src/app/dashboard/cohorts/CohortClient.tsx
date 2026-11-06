@@ -34,7 +34,11 @@ import {
   RefreshIcon,
   CheckIcon,
   LayersIcon,
+  BarcodeIcon,
+  KeyIcon,
 } from '@/components/ui/DZFIcons';
+import { CohortAttendanceStudioModal } from '@/components/cohorts/CohortAttendanceStudioModal';
+import { CohortApiKeyInfoModal } from '@/components/cohorts/CohortApiKeyInfoModal';
 
 export interface PatronSearchResult {
   _id: string;
@@ -90,6 +94,8 @@ export default function CohortClient({
   const [enrollModalOpen, setEnrollModalOpen] = React.useState<boolean>(false);
   const [createCohortModalOpen, setCreateCohortModalOpen] = React.useState<boolean>(false);
   const [attendanceModalOpen, setAttendanceModalOpen] = React.useState<boolean>(false);
+  const [attendanceStudioOpen, setAttendanceStudioOpen] = React.useState<boolean>(false);
+  const [apiKeyInfoOpen, setApiKeyInfoOpen] = React.useState<boolean>(false);
   const [selectedStudentForAttendance, setSelectedStudentForAttendance] = React.useState<EnrichedStudent | null>(null);
 
   // Enroll form state
@@ -276,6 +282,48 @@ export default function CohortClient({
       }
     } catch (err) {
       console.error('Failed to update student removal:', err);
+    }
+  };
+
+  // Toggle individual week attendance from the breakdown modal
+  const handleToggleIndividualWeekAttendance = async (
+    week: number,
+    currentDate?: string,
+    currentAttended = false
+  ) => {
+    if (!selectedStudentForAttendance) return;
+    try {
+      const res = await fetch(`/api/cohorts/${encodeURIComponent(selectedCohortType)}/attendance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          barcode: selectedStudentForAttendance.barcode,
+          week,
+          date: currentDate || new Date().toISOString().slice(0, 10),
+          attended: !currentAttended,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSelectedStudentForAttendance((prev) => {
+          if (!prev) return null;
+          const newAtt = (prev.attendance || []).map((a) =>
+            a.week === week ? { ...a, attended: !currentAttended, markedBy: data.markedBy } : a
+          );
+          const attendedCount = newAtt.filter((a) => a.attended).length;
+          const totalPossible = Math.max(1, newAtt.length);
+          return {
+            ...prev,
+            attendance: newAtt,
+            attendanceCount: attendedCount,
+            attendancePercentage: Math.round((attendedCount / totalPossible) * 100),
+          };
+        });
+        fetchStudents(selectedCohortType, searchQuery, statusFilter, page);
+        refreshCohorts();
+      }
+    } catch (err) {
+      console.error('Failed to toggle individual week attendance:', err);
     }
   };
 
@@ -768,6 +816,44 @@ export default function CohortClient({
                 ))}
               </Box>
 
+              {/* Mark Attendance Action */}
+              {isAdminOrLead && (
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={() => setAttendanceStudioOpen(true)}
+                  startIcon={<BarcodeIcon size={16} />}
+                  sx={{
+                    backgroundColor: '#17324d',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    '&:hover': { backgroundColor: '#0b1d2e' },
+                  }}
+                >
+                  Mark Attendance
+                </Button>
+              )}
+
+              {/* API Key Integration Button */}
+              {isAdminOrLead && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => setApiKeyInfoOpen(true)}
+                  startIcon={<KeyIcon size={15} />}
+                  sx={{
+                    borderColor: 'rgba(23, 50, 77, 0.4)',
+                    color: '#17324d',
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    '&:hover': { borderColor: '#17324d', backgroundColor: 'rgba(23, 50, 77, 0.04)' },
+                  }}
+                >
+                  External API Key
+                </Button>
+              )}
+
               {/* Enroll Student Action */}
               {isAdminOrLead && (
                 <Button
@@ -1205,6 +1291,7 @@ export default function CohortClient({
                     <TableRow>
                       <TableCell sx={{ fontWeight: 700 }}>Week</TableCell>
                       <TableCell sx={{ fontWeight: 700 }}>Session Date</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>Attributed To</TableCell>
                       <TableCell sx={{ fontWeight: 700 }} align="right">Attended</TableCell>
                     </TableRow>
                   </TableHead>
@@ -1215,8 +1302,34 @@ export default function CohortClient({
                         <TableCell>
                           {att.date ? new Date(att.date).toLocaleDateString() : '—'}
                         </TableCell>
+                        <TableCell sx={{ fontSize: '0.78rem', color: '#64748b' }}>
+                          {att.markedBy || 'Staff'}
+                        </TableCell>
                         <TableCell align="right">
-                          {att.attended ? (
+                          {isAdminOrLead ? (
+                            <Tooltip title="Click to toggle Present / Absent">
+                              <Chip
+                                size="small"
+                                clickable
+                                onClick={() =>
+                                  handleToggleIndividualWeekAttendance(
+                                    att.week || i + 1,
+                                    att.date,
+                                    att.attended
+                                  )
+                                }
+                                label={att.attended ? 'Present' : 'Absent'}
+                                sx={{
+                                  backgroundColor: att.attended
+                                    ? 'rgba(22, 163, 74, 0.15)'
+                                    : 'rgba(220, 38, 38, 0.15)',
+                                  color: att.attended ? '#15803d' : '#b91c1c',
+                                  fontWeight: 700,
+                                  cursor: 'pointer',
+                                }}
+                              />
+                            </Tooltip>
+                          ) : att.attended ? (
                             <Chip size="small" label="Present" sx={{ backgroundColor: 'rgba(22, 163, 74, 0.15)', color: '#15803d', fontWeight: 700 }} />
                           ) : (
                             <Chip size="small" label="Absent" sx={{ backgroundColor: 'rgba(220, 38, 38, 0.15)', color: '#b91c1c' }} />
@@ -1229,7 +1342,7 @@ export default function CohortClient({
               </Box>
             ) : (
               <Typography variant="body2" sx={{ color: '#64748b', fontStyle: 'italic', py: 2 }}>
-                No attendance sessions recorded yet for this student. Use the library barcode scanner at /attendance to log daily sessions.
+                No attendance sessions recorded yet for this student. Use Mark Attendance to record sessions.
               </Typography>
             )}
           </DialogContent>
@@ -1237,6 +1350,27 @@ export default function CohortClient({
             <Button onClick={() => setAttendanceModalOpen(false)}>Close</Button>
           </DialogActions>
         </Dialog>
+
+        {/* Modal: Cohort Attendance Studio & Scanner */}
+        <CohortAttendanceStudioModal
+          open={attendanceStudioOpen}
+          onClose={() => setAttendanceStudioOpen(false)}
+          cohortType={selectedCohortType}
+          cohortDisplayName={selectedCohort?.displayName || selectedCohortType}
+          students={students}
+          onAttendanceRecorded={() => {
+            fetchStudents(selectedCohortType, searchQuery, statusFilter, page);
+            refreshCohorts();
+          }}
+        />
+
+        {/* Modal: External API Key Info & Code Snippets */}
+        <CohortApiKeyInfoModal
+          open={apiKeyInfoOpen}
+          onClose={() => setApiKeyInfoOpen(false)}
+          cohortType={selectedCohortType}
+          isAdmin={user.role === 'admin'}
+        />
       </Box>
     </AppShell>
   );

@@ -23,6 +23,9 @@ export interface ISystemSetting {
   broadcastBanner?: IBroadcastBanner;
   lastPromotionYear?: number;
   lastPromotionDate?: Date;
+  externalAttendanceApiKey?: string;
+  externalAttendanceAttributedStaff?: string;
+  externalAttendanceKeyGeneratedAt?: Date;
   updatedBy?: string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -41,6 +44,9 @@ export interface ISystemSettingDocument extends Document<string> {
   broadcastBanner?: IBroadcastBanner;
   lastPromotionYear?: number;
   lastPromotionDate?: Date;
+  externalAttendanceApiKey?: string;
+  externalAttendanceAttributedStaff?: string;
+  externalAttendanceKeyGeneratedAt?: Date;
   updatedBy?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -103,6 +109,19 @@ const SystemSettingSchema = new Schema<ISystemSettingDocument>(
       type: Number,
     },
     lastPromotionDate: {
+      type: Date,
+    },
+    externalAttendanceApiKey: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    externalAttendanceAttributedStaff: {
+      type: String,
+      trim: true,
+      default: 'Academy Instructor',
+    },
+    externalAttendanceKeyGeneratedAt: {
       type: Date,
     },
     updatedBy: {

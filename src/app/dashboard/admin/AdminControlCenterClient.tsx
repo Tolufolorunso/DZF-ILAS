@@ -46,6 +46,7 @@ import {
   StaffActivationQueue,
   AcademicPromotionCard,
   AdminGovernanceStudio,
+  AttendanceApiKeyGovernanceCard,
 } from '@/components/admin';
 import type { KanbanStatus } from '@/components/admin/TaskKanbanBoard';
 import type { TaskUpdatePayload } from '@/components/admin/TaskEditDialog';
@@ -606,6 +607,15 @@ export default function AdminControlCenterClient({
 
             {/* Patron Override Card */}
             <PatronOverrideCard />
+
+            {/* External Attendance API Key Governance Card */}
+            <AttendanceApiKeyGovernanceCard
+              settings={settings}
+              onSettingsUpdated={(newSettings) =>
+                setSettings((prev) => ({ ...prev, ...newSettings }))
+              }
+              onNotification={setNotification}
+            />
           </Box>
         )}
 

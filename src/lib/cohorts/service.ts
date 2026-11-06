@@ -45,6 +45,7 @@ export interface EnrichedStudent {
     date?: string;
     week?: number;
     attended: boolean;
+    markedBy?: string;
   }>;
   createdAt: string;
   updatedAt: string;
@@ -352,6 +353,7 @@ export async function getCohortStudents(
         date: att.date ? new Date(att.date).toISOString() : undefined,
         week: att.week,
         attended: att.attended,
+        markedBy: att.markedBy,
       })),
       createdAt: st.createdAt ? new Date(st.createdAt).toISOString() : new Date().toISOString(),
       updatedAt: st.updatedAt ? new Date(st.updatedAt).toISOString() : new Date().toISOString(),
@@ -423,6 +425,7 @@ export async function enrollStudent(
         date: att.date?.toISOString(),
         week: att.week,
         attended: att.attended,
+        markedBy: att.markedBy,
       })),
       createdAt: existing.createdAt.toISOString(),
       updatedAt: existing.updatedAt.toISOString(),
@@ -530,6 +533,7 @@ export async function updateStudentStatus(
       date: att.date ? new Date(att.date).toISOString() : undefined,
       week: att.week,
       attended: att.attended,
+      markedBy: att.markedBy,
     })),
     createdAt: student.createdAt.toISOString(),
     updatedAt: student.updatedAt.toISOString(),
@@ -566,4 +570,218 @@ export async function getCohortStudentsForSync(cohortType: string): Promise<ICoh
   await connectDB();
   return Cohort.find({ cohortType: cohortType.trim().toLowerCase() })
     .sort({ isRemoved: 1, receivedCertificate: -1, surname: 1, firstname: 1 });
+}
+
+export interface MarkCohortAttendanceParams {
+  cohortType: string;
+  date?: string | Date;
+  week?: number;
+  records: Array<{
+    barcode: string;
+    attended?: boolean;
+    week?: number;
+  }>;
+  markedBy: string;
+}
+
+export interface MarkCohortAttendanceResult {
+  cohortType: string;
+  date: string;
+  week: number;
+  totalSubmitted: number;
+  markedCount: number;
+  unmatchedCount: number;
+  marked: Array<{
+    barcode: string;
+    name: string;
+    week: number;
+    attended: boolean;
+    markedBy: string;
+  }>;
+  unmatched: Array<{
+    barcode: string;
+    reason: string;
+  }>;
+}
+
+/**
+ * Marks attendance for one or more students in a cohort batch for a given date/week.
+ * Guaranteed zero patron gamification/leaderboard points awarded.
+ */
+export async function markCohortAttendanceBatch(
+  params: MarkCohortAttendanceParams
+): Promise<MarkCohortAttendanceResult> {
+  await connectDB();
+
+  const normalizedType = params.cohortType.trim().toLowerCase();
+  const sessionDate = params.date ? new Date(params.date) : new Date();
+  const dateKey = sessionDate.toISOString().slice(0, 10);
+
+  // If week is not explicitly provided, find max week currently recorded in cohort or default to 1
+  let sessionWeek = params.week;
+  if (!sessionWeek || sessionWeek < 1) {
+    const studentsWithAttendance = await Cohort.find(
+      { cohortType: normalizedType },
+      { attendance: 1 }
+    ).lean();
+    let maxWeek = 1;
+    studentsWithAttendance.forEach((st) => {
+      (st.attendance || []).forEach((att) => {
+        if (att.week && att.week > maxWeek) {
+          maxWeek = att.week;
+        }
+      });
+    });
+    sessionWeek = maxWeek;
+  }
+
+  const marked: MarkCohortAttendanceResult['marked'] = [];
+  const unmatched: MarkCohortAttendanceResult['unmatched'] = [];
+
+  for (const item of params.records) {
+    const cleanBarcode = String(item.barcode || '').trim();
+    if (!cleanBarcode) continue;
+
+    const student = await Cohort.findOne({
+      cohortType: normalizedType,
+      barcode: cleanBarcode,
+      isRemoved: false,
+    });
+
+    if (!student) {
+      unmatched.push({
+        barcode: cleanBarcode,
+        reason: 'Student not found or removed from this cohort',
+      });
+      continue;
+    }
+
+    const itemWeek = item.week || sessionWeek;
+    const isAttended = item.attended !== undefined ? Boolean(item.attended) : true;
+
+    // Check if an attendance record exists for this week or exact date
+    const existingIndex = (student.attendance || []).findIndex((att) => {
+      if (itemWeek && att.week === itemWeek) return true;
+      if (att.date && new Date(att.date).toISOString().slice(0, 10) === dateKey) return true;
+      return false;
+    });
+
+    if (existingIndex >= 0) {
+      student.attendance[existingIndex].attended = isAttended;
+      student.attendance[existingIndex].date = sessionDate;
+      student.attendance[existingIndex].week = itemWeek;
+      student.attendance[existingIndex].markedBy = params.markedBy;
+    } else {
+      student.attendance.push({
+        date: sessionDate,
+        week: itemWeek,
+        attended: isAttended,
+        markedBy: params.markedBy,
+      });
+    }
+
+    // Sort student attendance by week ascending
+    student.attendance.sort((a, b) => (a.week || 0) - (b.week || 0));
+    await student.save();
+
+    marked.push({
+      barcode: student.barcode,
+      name: `${student.firstname} ${student.surname}`,
+      week: itemWeek,
+      attended: isAttended,
+      markedBy: params.markedBy,
+    });
+  }
+
+  return {
+    cohortType: normalizedType,
+    date: sessionDate.toISOString(),
+    week: sessionWeek,
+    totalSubmitted: params.records.length,
+    markedCount: marked.length,
+    unmatchedCount: unmatched.length,
+    marked,
+    unmatched,
+  };
+}
+
+/**
+ * Retrieves the session attendance status for all active students in a cohort on a given date or week.
+ */
+export async function getCohortSessionAttendance(
+  cohortType: string,
+  date?: string | Date,
+  week?: number
+): Promise<{
+  cohortType: string;
+  date?: string;
+  week?: number;
+  totalStudents: number;
+  presentCount: number;
+  absentCount: number;
+  attendanceRate: number;
+  students: Array<{
+    barcode: string;
+    firstname: string;
+    surname: string;
+    schoolClass: string;
+    attended: boolean;
+    markedBy?: string;
+    week?: number;
+    date?: string;
+  }>;
+}> {
+  await connectDB();
+
+  const normalizedType = cohortType.trim().toLowerCase();
+  const students = await Cohort.find({
+    cohortType: normalizedType,
+    isRemoved: false,
+  }).sort({ surname: 1, firstname: 1 });
+
+  const dateKey = date ? new Date(date).toISOString().slice(0, 10) : undefined;
+
+  let presentCount = 0;
+  const studentRows = students.map((st) => {
+    let matchedAtt = undefined;
+    if (week !== undefined && week > 0) {
+      matchedAtt = (st.attendance || []).find((a) => a.week === week);
+    } else if (dateKey) {
+      matchedAtt = (st.attendance || []).find(
+        (a) => a.date && new Date(a.date).toISOString().slice(0, 10) === dateKey
+      );
+    } else {
+      // Default to latest recorded attendance entry
+      matchedAtt = (st.attendance || [])[st.attendance.length - 1];
+    }
+
+    const isAttended = Boolean(matchedAtt && matchedAtt.attended);
+    if (isAttended) presentCount++;
+
+    return {
+      barcode: st.barcode,
+      firstname: st.firstname,
+      surname: st.surname,
+      schoolClass: st.schoolClass || '',
+      attended: isAttended,
+      markedBy: matchedAtt?.markedBy || '',
+      week: matchedAtt?.week,
+      date: matchedAtt?.date ? new Date(matchedAtt.date).toISOString() : undefined,
+    };
+  });
+
+  const total = studentRows.length;
+  const absentCount = total - presentCount;
+  const attendanceRate = total > 0 ? Math.round((presentCount / total) * 100) : 0;
+
+  return {
+    cohortType: normalizedType,
+    date: date ? new Date(date).toISOString() : undefined,
+    week,
+    totalStudents: total,
+    presentCount,
+    absentCount,
+    attendanceRate,
+    students: studentRows,
+  };
 }

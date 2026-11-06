@@ -15,3 +15,4 @@ export { default as DailyActionsClient } from './DailyActionsClient';
 export { default as ArchivedTasksModal } from './ArchivedTasksModal';
 export { default as TaskDiscussionDrawer } from './TaskDiscussionDrawer';
 export { default as AdminGovernanceStudio } from './AdminGovernanceStudio';
+export { default as AttendanceApiKeyGovernanceCard } from './AttendanceApiKeyGovernanceCard';

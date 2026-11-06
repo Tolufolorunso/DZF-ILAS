@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import mongoose from 'mongoose';
 import { connectDB } from '@/lib/db';
 import { recordDailyAction } from '@/lib/audit/dailyActionService';
@@ -115,6 +116,11 @@ export async function getSystemSettings(): Promise<ISystemSettingsDTO> {
       : undefined,
     lastPromotionYear: setting.lastPromotionYear,
     lastPromotionDate: setting.lastPromotionDate ? setting.lastPromotionDate.toISOString() : null,
+    externalAttendanceApiKey: setting.externalAttendanceApiKey || '',
+    externalAttendanceAttributedStaff: setting.externalAttendanceAttributedStaff || 'Academy Instructor',
+    externalAttendanceKeyGeneratedAt: setting.externalAttendanceKeyGeneratedAt
+      ? setting.externalAttendanceKeyGeneratedAt.toISOString()
+      : null,
     updatedAt: setting.updatedAt.toISOString(),
   };
 }
@@ -193,7 +199,116 @@ export async function toggleCirculationLock(params: {
     announcementBanner: setting.announcementBanner || '',
     lastPromotionYear: setting.lastPromotionYear,
     lastPromotionDate: setting.lastPromotionDate ? setting.lastPromotionDate.toISOString() : null,
+    externalAttendanceApiKey: setting.externalAttendanceApiKey || '',
+    externalAttendanceAttributedStaff: setting.externalAttendanceAttributedStaff || 'Academy Instructor',
+    externalAttendanceKeyGeneratedAt: setting.externalAttendanceKeyGeneratedAt
+      ? setting.externalAttendanceKeyGeneratedAt.toISOString()
+      : null,
     updatedAt: setting.updatedAt.toISOString(),
+  };
+}
+
+/**
+ * Generates or rotates the secret External Attendance API Key.
+ */
+export async function generateAttendanceApiKey(params: {
+  performedBy: string;
+  performedByRole: string;
+  attributedStaff?: string;
+  ipAddress?: string;
+}): Promise<{
+  apiKey: string;
+  attributedStaff: string;
+  generatedAt: string;
+}> {
+  await connectDB();
+  const rawKey = `dzf_live_${crypto.randomBytes(24).toString('hex')}`;
+  const now = new Date();
+
+  let setting = await SystemSetting.findById('default');
+  if (!setting) {
+    setting = new SystemSetting({ _id: 'default' });
+  }
+
+  setting.externalAttendanceApiKey = rawKey;
+  if (params.attributedStaff && params.attributedStaff.trim()) {
+    setting.externalAttendanceAttributedStaff = params.attributedStaff.trim();
+  } else if (!setting.externalAttendanceAttributedStaff) {
+    setting.externalAttendanceAttributedStaff = 'Academy Instructor';
+  }
+  setting.externalAttendanceKeyGeneratedAt = now;
+  setting.updatedBy = params.performedBy;
+  await setting.save();
+
+  await logAuditEvent({
+    action: 'GENERATE_EXTERNAL_ATTENDANCE_API_KEY',
+    performedBy: params.performedBy,
+    performedByRole: params.performedByRole,
+    targetEntity: 'SystemSetting',
+    targetId: 'default',
+    ipAddress: params.ipAddress,
+    details: {
+      keyPrefix: rawKey.substring(0, 14) + '...',
+      attributedStaff: setting.externalAttendanceAttributedStaff,
+    },
+  });
+
+  await recordDailyAction({
+    actionType: 'cohort_action',
+    actionTitle: `Generated new External Attendance API Key for "${setting.externalAttendanceAttributedStaff}"`,
+    performedBy: params.performedBy,
+    performedByName: params.performedBy,
+    performedByRole: params.performedByRole,
+    targetEntity: 'SystemSetting',
+    targetId: 'default',
+    reversiblePayload: {},
+    isReversible: false,
+  });
+
+  return {
+    apiKey: setting.externalAttendanceApiKey,
+    attributedStaff: setting.externalAttendanceAttributedStaff || 'Academy Instructor',
+    generatedAt: now.toISOString(),
+  };
+}
+
+/**
+ * Updates the attributed staff name for the External Attendance API Key.
+ */
+export async function updateAttendanceApiConfig(params: {
+  performedBy: string;
+  performedByRole: string;
+  attributedStaff: string;
+  ipAddress?: string;
+}): Promise<{
+  attributedStaff: string;
+}> {
+  await connectDB();
+  const cleanStaff = params.attributedStaff?.trim() || 'Academy Instructor';
+
+  let setting = await SystemSetting.findById('default');
+  if (!setting) {
+    setting = new SystemSetting({ _id: 'default' });
+  }
+
+  setting.externalAttendanceAttributedStaff = cleanStaff;
+  setting.updatedBy = params.performedBy;
+  await setting.save();
+
+  await logAuditEvent({
+    action: 'UPDATE_EXTERNAL_ATTENDANCE_CONFIG',
+    performedBy: params.performedBy,
+    performedByRole: params.performedByRole,
+    targetEntity: 'SystemSetting',
+    targetId: 'default',
+    ipAddress: params.ipAddress,
+    details: {
+      attributedStaff: cleanStaff,
+    },
+  });
+
+  return {
+    attributedStaff: cleanStaff,
   };
 }
 

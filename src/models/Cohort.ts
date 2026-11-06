@@ -4,6 +4,7 @@ export interface ICohortAttendanceRecord {
   date?: Date;
   week?: number;
   attended: boolean;
+  markedBy?: string;
 }
 
 export interface ICohort {
@@ -30,6 +31,7 @@ const CohortAttendanceSchema = new Schema<ICohortAttendanceRecord>(
     date: { type: Date },
     week: { type: Number },
     attended: { type: Boolean, default: false },
+    markedBy: { type: String, trim: true, default: '' },
   },
   { _id: false }
 );

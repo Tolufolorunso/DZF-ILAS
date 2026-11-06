@@ -379,6 +379,22 @@ DZF-ILAS is a ground-up rewrite delivering:
   - Optimized MongoDB aggregation pipelines querying `Library`, `Cataloging`, and `Patron` collections leveraging indexed date filters (`issueDate`, `returnDate`).
   - Dual-mode authentication protection (web cookie session and Android Bearer token).
 
+### Phase 20: Cohort Attendance Engine, External Verification API & Laptop Pairing System (New)
+
+- **Active Cohort Attendance Marking Engine (`/dashboard/cohorts`):**
+  - **Single & Bulk Attendance:** Instructor check-in interface on the Student Roster supporting both 1-click individual student toggles and bulk barcode scanner entry for a specified date and week.
+  - **Certificate Readiness Tracking:** Cohort attendance is strictly dedicated to training milestones and certificate qualification (`receivedCertificate`); it awards 0 leaderboard or patron gamification points.
+- **External Cohort Attendance REST API (`POST /api/cohorts/[cohortType]/attendance`):**
+  - **Multi-Platform Integration:** Dual-mode payload supporting single check-in (`{ "barcode": "20260012", "date": "..." }`) and bulk check-in (`{ "barcodes": ["20260012", "20260015", ...], "date": "..." }`).
+  - **Key Verification & Staff Attribution:** Authenticated via secret API Key header (`X-DZF-API-Key: <key>` or `Authorization: Bearer <key>`). The system validates enrollment and attributes attendance to the configured staff identity (`markedBy: "API: <staff_name>"`).
+- **External API Key Governance (`/dashboard/admin`):**
+  - Centralized generation, copying, and regeneration of the secret External Attendance API Key stored in `SystemSetting`.
+  - Configurable attributed staff name (e.g. *"Academy Instructor"* or custom name).
+- **Student Roster Laptop Pairing & Allocation Engine (`/dashboard/cohorts`):**
+  - **15 Physical Laptops:** Laptops numbered `1` through `15`.
+  - **Strict Pair Capacity (Max 2 Students):** Enforces a hard limit of at most 2 students assigned to any single laptop (`0/2 Available`, `1/2 Paired`, `2/2 Full`).
+  - **Student Roster Column:** A dedicated *"Assigned Laptop"* column displaying laptop badge (`💻 Laptop 3`), occupancy status, partner student name, and inline assignment/reassignment dropdown selector.
+
 ## 4. Data - What are we storing?
 
 All 15 core production entities plus Phase 5 model extensions:
@@ -389,14 +405,14 @@ All 15 core production entities plus Phase 5 model extensions:
 5. `Inventory` (Physical condition records, copy acquisition records, barcode labels)
 6. `BookSummary` (PatronId, bookId, summaryText, keyLearnings, status, pointsAwarded)
 7. `Attendance` (PatronId, patronBarcode, date, sessionType, cohortId, scanTimestamp)
-8. `Cohort` & `CohortGroup` (Batch code, program title, startDate, endDate, student roster, active state)
+8. `Cohort` & `CohortGroup` (Batch code, program title, startDate, endDate, student roster, assignedLaptop (1-15), active state)
 9. `Competition` (Title, date, grade categories, rounds, criteria weights, patron scores, rankings)
 10. `MonthlyActivity` (PatronId, monthYear, summaryPoints, attendancePoints, competitionPoints, circulationPoints, totalScore, rank)
 11. `TranscommArticle` (Title, slug, content, excerpt, author, DRNICER value category, publishedAt)
 12. `Requisition` (Staff resource requests, department, estimatedCost, approvalStatus)
 13. `Task` (Staff operational tasks: priority, dueDate, assignedBy, assignedTo, targetGroup, status: `todo` | `inProgress` | `completed` | `archived`, isPrivate: boolean, archivedAt?: Date, inProgressAt?: Date, lastTodoRemindedAt?: Date, lastInProgressRemindedAt?: Date, comments: Array<{ commenter: { name: string, username: string }, commentDate: Date, commentText: string }>, likes)
 14. `Event` (Calendar events, library workshops, target audience)
-15. `SystemSetting` & `AuditLog` (Singleton governance settings & tamper-evident audit ledger)
+15. `SystemSetting` & `AuditLog` (Singleton governance settings including externalAttendanceApiKey, attributedStaffName, & tamper-evident audit ledger)
 
 ## 5. Tech Stack & Architecture
 

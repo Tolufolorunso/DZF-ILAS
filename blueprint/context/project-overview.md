@@ -1,12 +1,12 @@
 # DZF-ILAS - Project Overview
 
-<!-- blueprint:source-hash de568491c7d305307ea5946aae6300904dfa9765862cb3c163bf005556b611eb -->
+<!-- blueprint:source-hash f633fa4f267bf970e668eac27bca202e62ced2bbc1860326a2c88c569340c282 -->
 
 > Centralized internal staff workspace and REST API backend for the Dzuels Educational Foundation (DZF), managing academic library cataloging, patron identity, circulation, and academy engagement.
 
 ## Problem
 
-The Dzuels Educational Foundation operates an academic library and learning center in Nigeria, managing 2,300+ catalog items, 670+ patrons, active book circulation, student digital literacy cohorts, reading competitions, and values publication. DZF-ILAS provides a unified Next.js web application and REST API backend. Phases 1–17 delivered cataloging, patron barcode identity, circulation gamification, Google Sheets sync, competition scoring, certificate studio, calendar ingestion, staff self-registration, Kanban workspace, circulation safety dialogs, 5-day loans, student promotion, daily audit stream with same-day undo, self-tasks, 30-day task archiving, SSE live streaming, Web Push, dynamic shell metrics, modernized TransComm editor, and admin governance center. Phase 18 hardens task creator governance (zero exceptions on archive/delete), restricts assignees strictly to active lane moves (`To Do`, `In Progress`, `Completed`), and prepares full Vercel serverless deployment readiness, database pooling resilience, and rock-solid production performance. Phase 19 delivers the Circulation Borrowing Statistics Studio and flexible-horizon analytics engine, introducing a 5th tab on `/dashboard/circulations` for multi-period borrowing intelligence (unconstrained weeks/months and numeric horizons).
+The Dzuels Educational Foundation operates an academic library and digital academy in Nigeria (2,300+ monographs, 670+ patrons, active loans, student literacy cohorts, and reading competitions). DZF-ILAS provides a unified Next.js web application and REST API backend. Phases 1–19 delivered cataloging, patron identity, circulation gamification, Google Sheets sync, competition scoring, certificate studio, calendar ingestion, staff self-registration, Kanban board, 5-day loans, annual student promotion, live daily action audit stream, 30-day task archiving, SSE streaming, Web Push, admin governance, and the Borrowing Statistics Studio with signed PDF/PNG exports. Phase 20 implements active cohort attendance marking, external REST API with secret key authentication, and student roster laptop allocation (1–15 laptops, max 2 students per laptop).
 
 ## Users & Role Hierarchy
 
@@ -74,6 +74,8 @@ Top-to-bottom institutional hierarchy:
 40. **Vercel Production Deployment Readiness & Performance Hardening** - Vercel configuration (`vercel.json`), serverless database pooling safeguards, index coverage audit, clean build verification, and UI error boundary protection.
 41. **Circulation Borrowing Statistics Studio & Flexible Period Analytics** - 5th tab on /dashboard/circulations with unconstrained time horizon (weeks/months, 1–9+ count, custom dates), comprehensive loan KPIs, volume trends, top books, patron demographics, Dewey classes, and REST API.
 42. **Circulation Analytics Report Export Pipeline** - Downloadable borrowing statistics reports in print-ready A4 PDF and crisp PNG image formats with official DZF header, KPI summaries, trend tables, top books, executive verification seal, and administrative vector ink signature.
+43. **Cohort Attendance Engine & External API** - Interactive in-app attendance marking on /dashboard/cohorts and secure external attendance API authenticated via secret API Key header with staff attribution.
+44. **Student Roster Laptop Allocation Engine** - 15-laptop allocation in /dashboard/cohorts with strict 2-student pair capacity limit and real-time occupancy indicators.
 
 ## Data model
 
