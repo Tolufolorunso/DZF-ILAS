@@ -33,6 +33,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       receivedCertificate: body.receivedCertificate,
       isRemoved: body.isRemoved,
       schoolClass: body.schoolClass,
+      assignedLaptop: body.assignedLaptop,
     });
 
     if (!student) {
@@ -40,6 +41,27 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
         { success: false, error: `Student with barcode "${barcode}" not found in cohort "${cohortType}".` },
         { status: 404 }
       );
+    }
+
+    if (body.assignedLaptop !== undefined) {
+      const { recordDailyAction } = await import('@/lib/audit/dailyActionService');
+      await recordDailyAction({
+        actionType: 'cohort_action',
+        actionTitle: body.assignedLaptop
+          ? `Allocated Laptop ${body.assignedLaptop} to student ${student.firstname} ${student.surname}`
+          : `Unassigned laptop from student ${student.firstname} ${student.surname}`,
+        performedBy: user.username,
+        performedByName: user.name || user.username,
+        performedByRole: user.role,
+        targetEntity: 'Cohort',
+        targetId: barcode,
+        reversiblePayload: {
+          cohortType,
+          barcode,
+          assignedLaptop: student.assignedLaptop,
+        },
+        isReversible: false,
+      }).catch((err) => console.warn('[LAPTOP_DAILY_ACTION_WARN]', err));
     }
 
     return NextResponse.json({

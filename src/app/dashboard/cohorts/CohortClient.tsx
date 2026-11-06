@@ -23,8 +23,11 @@ import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import LinearProgress from '@mui/material/LinearProgress';
 import Tooltip from '@mui/material/Tooltip';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
+import FormControl from '@mui/material/FormControl';
 import { ITokenPayload } from '@/lib/auth/jwt';
-import { CohortGroupWithStats, EnrichedStudent } from '@/lib/cohorts/service';
+import { CohortGroupWithStats, EnrichedStudent, LaptopAllocationSummary } from '@/lib/cohorts/service';
 import { GoogleSheetsConnectionStatus, GoogleSheetsSyncResult } from '@/lib/cohorts/googleSheets';
 import { AppShell } from '@/components/layout/AppShell';
 import { DZFStatCard } from '@/components/ui/DZFStatCard';
@@ -36,6 +39,7 @@ import {
   LayersIcon,
   BarcodeIcon,
   KeyIcon,
+  LaptopIcon,
 } from '@/components/ui/DZFIcons';
 import { CohortAttendanceStudioModal } from '@/components/cohorts/CohortAttendanceStudioModal';
 import { CohortApiKeyInfoModal } from '@/components/cohorts/CohortApiKeyInfoModal';
@@ -58,6 +62,7 @@ interface CohortClientProps {
   initialSelectedCohortType: string;
   initialStudents: {
     students: EnrichedStudent[];
+    laptopAllocations?: LaptopAllocationSummary[];
     total: number;
     page: number;
     limit: number;
@@ -76,6 +81,12 @@ export default function CohortClient({
   const [cohorts, setCohorts] = React.useState<CohortGroupWithStats[]>(initialCohorts);
   const [selectedCohortType, setSelectedCohortType] = React.useState<string>(initialSelectedCohortType);
   const [students, setStudents] = React.useState<EnrichedStudent[]>(initialStudents.students);
+  const [laptopAllocations, setLaptopAllocations] = React.useState<LaptopAllocationSummary[]>(
+    initialStudents.laptopAllocations || []
+  );
+  const [updatingLaptopBarcode, setUpdatingLaptopBarcode] = React.useState<string | null>(null);
+  const [laptopError, setLaptopError] = React.useState<string | null>(null);
+  const [laptopSuccessMessage, setLaptopSuccessMessage] = React.useState<string | null>(null);
   const [totalStudents, setTotalStudents] = React.useState<number>(initialStudents.total);
   const [page, setPage] = React.useState<number>(initialStudents.page);
   const [totalPages, setTotalPages] = React.useState<number>(initialStudents.totalPages);
@@ -134,6 +145,9 @@ export default function CohortClient({
         const data = await res.json();
         if (data.success) {
           setStudents(data.students);
+          if (data.laptopAllocations) {
+            setLaptopAllocations(data.laptopAllocations);
+          }
           setTotalStudents(data.total);
           setPage(data.page);
           setTotalPages(data.totalPages);
@@ -282,6 +296,42 @@ export default function CohortClient({
       }
     } catch (err) {
       console.error('Failed to update student removal:', err);
+    }
+  };
+
+  // Assign or unassign laptop allocation for a student
+  const handleAssignLaptop = async (student: EnrichedStudent, newLaptopValue: number | null) => {
+    setUpdatingLaptopBarcode(student.barcode);
+    setLaptopError(null);
+    setLaptopSuccessMessage(null);
+    try {
+      const res = await fetch(
+        `/api/cohorts/${encodeURIComponent(selectedCohortType)}/students/${encodeURIComponent(student.barcode)}`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ assignedLaptop: newLaptopValue }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setLaptopError(data.error || 'Failed to update laptop allocation.');
+        return;
+      }
+
+      setLaptopSuccessMessage(
+        newLaptopValue
+          ? `Allocated Laptop ${newLaptopValue} to ${student.firstname} ${student.surname}.`
+          : `Unassigned laptop from ${student.firstname} ${student.surname}.`
+      );
+
+      await fetchStudents(selectedCohortType, searchQuery, statusFilter, page);
+      refreshCohorts();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setLaptopError(`Allocation error: ${msg}`);
+    } finally {
+      setUpdatingLaptopBarcode(null);
     }
   };
 
@@ -875,6 +925,195 @@ export default function CohortClient({
             </Box>
           </Box>
 
+          {/* Hardware Fleet Overview: 15 Laptops */}
+          {(() => {
+            const map = new Map<number, LaptopAllocationSummary>();
+            (laptopAllocations || []).forEach((item) => map.set(item.laptopNumber, item));
+            const displayAllocations: LaptopAllocationSummary[] = [];
+            for (let i = 1; i <= 15; i++) {
+              displayAllocations.push(
+                map.get(i) || {
+                  laptopNumber: i,
+                  occupancy: 0,
+                  isAvailable: true,
+                  assignedStudents: [],
+                }
+              );
+            }
+            const inUseCount = displayAllocations.filter((l) => l.occupancy > 0).length;
+            const fullCount = displayAllocations.filter((l) => l.occupancy === 2).length;
+            const singleCount = displayAllocations.filter((l) => l.occupancy === 1).length;
+            const availableCount = 15 - inUseCount;
+            const seatedLearners = displayAllocations.reduce((sum, l) => sum + l.occupancy, 0);
+
+            return (
+              <Paper
+                elevation={0}
+                sx={{
+                  mb: 3,
+                  p: 2,
+                  borderRadius: 2.5,
+                  background: 'linear-gradient(135deg, rgba(23, 50, 77, 0.03) 0%, rgba(214, 167, 43, 0.06) 100%)',
+                  border: '1px solid rgba(23, 50, 77, 0.12)',
+                }}
+              >
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: { xs: 'column', md: 'row' },
+                    alignItems: { xs: 'flex-start', md: 'center' },
+                    justifyContent: 'space-between',
+                    gap: 2,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Box
+                      sx={{
+                        p: 1.25,
+                        borderRadius: 2,
+                        backgroundColor: '#17324d',
+                        color: '#ffffff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <LaptopIcon size={22} color="#ffffff" />
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#17324d', lineHeight: 1.2 }}>
+                        Laptop Fleet Allocation & Pairing (15 Physical Units)
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: '#64748b', fontSize: '0.825rem' }}>
+                        Pair programming stations (strict max 2 learners per laptop). Total cohort station capacity: 30 seats.
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <Chip
+                      icon={<LaptopIcon size={14} color="#17324d" />}
+                      label={`${inUseCount} / 15 In Use`}
+                      sx={{
+                        fontWeight: 700,
+                        backgroundColor: inUseCount > 0 ? 'rgba(23, 50, 77, 0.1)' : 'rgba(100, 116, 139, 0.1)',
+                        color: '#17324d',
+                      }}
+                    />
+                    <Chip
+                      label={`${fullCount} Paired (2/2)`}
+                      sx={{
+                        fontWeight: 700,
+                        backgroundColor: fullCount > 0 ? 'rgba(22, 163, 74, 0.15)' : 'rgba(100, 116, 139, 0.08)',
+                        color: fullCount > 0 ? '#15803d' : '#64748b',
+                      }}
+                    />
+                    <Chip
+                      label={`${singleCount} Single (1/2)`}
+                      sx={{
+                        fontWeight: 700,
+                        backgroundColor: singleCount > 0 ? 'rgba(217, 119, 6, 0.15)' : 'rgba(100, 116, 139, 0.08)',
+                        color: singleCount > 0 ? '#b45309' : '#64748b',
+                      }}
+                    />
+                    <Chip
+                      label={`${availableCount} Available (0/2)`}
+                      sx={{
+                        fontWeight: 700,
+                        backgroundColor: availableCount > 0 ? 'rgba(37, 99, 235, 0.12)' : 'rgba(220, 38, 38, 0.12)',
+                        color: availableCount > 0 ? '#1d4ed8' : '#b91c1c',
+                      }}
+                    />
+                    <Chip
+                      label={`${seatedLearners} / ${students.length} Learners Seated`}
+                      sx={{
+                        fontWeight: 700,
+                        backgroundColor: '#8b5e0b',
+                        color: '#ffffff',
+                      }}
+                    />
+                  </Box>
+                </Box>
+
+                {/* Quick Visual Grid of 15 Laptops */}
+                <Box
+                  sx={{
+                    mt: 2,
+                    display: 'grid',
+                    gridTemplateColumns: { xs: 'repeat(5, 1fr)', sm: 'repeat(8, 1fr)', md: 'repeat(15, 1fr)' },
+                    gap: 0.75,
+                  }}
+                >
+                  {displayAllocations.map((alloc) => {
+                    const isFull = alloc.occupancy === 2;
+                    const isPartial = alloc.occupancy === 1;
+
+                    const bgColor = isFull
+                      ? 'rgba(22, 163, 74, 0.18)'
+                      : isPartial
+                      ? 'rgba(217, 119, 6, 0.18)'
+                      : 'rgba(255, 255, 255, 0.85)';
+                    const borderColor = isFull
+                      ? '#16a34a'
+                      : isPartial
+                      ? '#d97706'
+                      : 'rgba(23, 50, 77, 0.15)';
+                    const textColor = isFull
+                      ? '#15803d'
+                      : isPartial
+                      ? '#b45309'
+                      : '#64748b';
+
+                    const tooltipText = isFull
+                      ? `Laptop ${alloc.laptopNumber}: 2/2 Full (${alloc.assignedStudents.map((s) => `${s.firstname} ${s.surname}`).join(' & ')})`
+                      : isPartial
+                      ? `Laptop ${alloc.laptopNumber}: 1/2 Available (${alloc.assignedStudents[0]?.firstname} ${alloc.assignedStudents[0]?.surname} seated)`
+                      : `Laptop ${alloc.laptopNumber}: 0/2 Available (2 open slots)`;
+
+                    return (
+                      <Tooltip key={alloc.laptopNumber} title={tooltipText} arrow>
+                        <Box
+                          sx={{
+                            p: 0.75,
+                            borderRadius: 1.5,
+                            backgroundColor: bgColor,
+                            border: `1px solid ${borderColor}`,
+                            textAlign: 'center',
+                            cursor: 'default',
+                            transition: 'all 0.15s ease',
+                            '&:hover': {
+                              transform: 'translateY(-1px)',
+                              boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+                            },
+                          }}
+                        >
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: '#17324d', display: 'block', fontSize: '0.7rem' }}>
+                            #{alloc.laptopNumber}
+                          </Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 700, color: textColor, fontSize: '0.65rem' }}>
+                            {alloc.occupancy}/2
+                          </Typography>
+                        </Box>
+                      </Tooltip>
+                    );
+                  })}
+                </Box>
+              </Paper>
+            );
+          })()}
+
+          {/* Laptop Feedback Alerts */}
+          {laptopError && (
+            <Alert severity="error" onClose={() => setLaptopError(null)} sx={{ mb: 2, borderRadius: 2 }}>
+              {laptopError}
+            </Alert>
+          )}
+          {laptopSuccessMessage && (
+            <Alert severity="success" onClose={() => setLaptopSuccessMessage(null)} sx={{ mb: 2, borderRadius: 2 }}>
+              {laptopSuccessMessage}
+            </Alert>
+          )}
+
           {/* Roster Table */}
           {loadingStudents ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -903,6 +1142,7 @@ export default function CohortClient({
                     <TableCell sx={{ fontWeight: 700, color: '#17324d' }}>Barcode</TableCell>
                     <TableCell sx={{ fontWeight: 700, color: '#17324d' }}>Student Name</TableCell>
                     <TableCell sx={{ fontWeight: 700, color: '#17324d' }}>Class</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: '#17324d', minWidth: 210 }}>Assigned Laptop</TableCell>
                     <TableCell sx={{ fontWeight: 700, color: '#17324d' }}>Attendance Rate</TableCell>
                     <TableCell sx={{ fontWeight: 700, color: '#17324d' }}>Certification</TableCell>
                     <TableCell sx={{ fontWeight: 700, color: '#17324d' }}>Status</TableCell>
@@ -959,6 +1199,157 @@ export default function CohortClient({
                           <Typography variant="body2" sx={{ color: '#475569' }}>
                             {student.schoolClass || '—'}
                           </Typography>
+                        </TableCell>
+
+                        {/* Assigned Laptop & Pairing */}
+                        <TableCell sx={{ minWidth: 210 }}>
+                          {isRemoved ? (
+                            <Typography variant="caption" sx={{ color: '#94a3b8', fontStyle: 'italic' }}>
+                              Inactive student
+                            </Typography>
+                          ) : (
+                            <Box>
+                              {/* Current Allocation Badges */}
+                              {student.assignedLaptop ? (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap', mb: isAdminOrLead ? 0.75 : 0 }}>
+                                  <Chip
+                                    size="small"
+                                    icon={<LaptopIcon size={14} color="#17324d" />}
+                                    label={`Laptop ${student.assignedLaptop}`}
+                                    sx={{
+                                      fontWeight: 800,
+                                      fontSize: '0.75rem',
+                                      backgroundColor: 'rgba(23, 50, 77, 0.1)',
+                                      color: '#17324d',
+                                    }}
+                                  />
+                                  <Chip
+                                    size="small"
+                                    label={student.laptopOccupancy === 2 ? '2/2 Paired' : '1/2 Available'}
+                                    sx={{
+                                      fontWeight: 700,
+                                      fontSize: '0.65rem',
+                                      height: 20,
+                                      backgroundColor:
+                                        student.laptopOccupancy === 2 ? 'rgba(22, 163, 74, 0.15)' : 'rgba(217, 119, 6, 0.15)',
+                                      color: student.laptopOccupancy === 2 ? '#15803d' : '#b45309',
+                                      border: `1px solid ${student.laptopOccupancy === 2 ? 'rgba(22, 163, 74, 0.3)' : 'rgba(217, 119, 6, 0.3)'}`,
+                                    }}
+                                  />
+                                </Box>
+                              ) : (
+                                <Box sx={{ mb: isAdminOrLead ? 0.75 : 0 }}>
+                                  <Chip
+                                    size="small"
+                                    label="Unassigned"
+                                    sx={{
+                                      fontSize: '0.7rem',
+                                      backgroundColor: 'rgba(100, 116, 139, 0.1)',
+                                      color: '#64748b',
+                                    }}
+                                  />
+                                </Box>
+                              )}
+
+                              {/* Paired Partner Display */}
+                              {student.assignedLaptop && (
+                                <Box sx={{ mb: isAdminOrLead ? 0.75 : 0 }}>
+                                  {student.pairedStudentName ? (
+                                    <Tooltip title={`Pair programming partner: ${student.pairedStudentName}`}>
+                                      <Typography
+                                        variant="caption"
+                                        sx={{
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: 0.5,
+                                          color: '#1e293b',
+                                          fontWeight: 600,
+                                          fontSize: '0.72rem',
+                                        }}
+                                      >
+                                        <span>🤝</span> {student.pairedStudentName}
+                                      </Typography>
+                                    </Tooltip>
+                                  ) : (
+                                    <Typography variant="caption" sx={{ color: '#64748b', fontStyle: 'italic', fontSize: '0.7rem' }}>
+                                      Solo seat (1 open slot)
+                                    </Typography>
+                                  )}
+                                </Box>
+                              )}
+
+                              {/* Inline Allocation Dropdown Selector */}
+                              {isAdminOrLead && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <FormControl size="small" sx={{ minWidth: 155 }}>
+                                    <Select
+                                      value={student.assignedLaptop ?? 0}
+                                      onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        handleAssignLaptop(student, val === 0 ? null : val);
+                                      }}
+                                      disabled={updatingLaptopBarcode === student.barcode}
+                                      sx={{
+                                        fontSize: '0.75rem',
+                                        height: 28,
+                                        backgroundColor: '#ffffff',
+                                        '& .MuiSelect-select': {
+                                          py: 0.5,
+                                          px: 1,
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                        },
+                                      }}
+                                    >
+                                      <MenuItem value={0} sx={{ fontSize: '0.75rem' }}>
+                                        <em>— None (Unassigned) —</em>
+                                      </MenuItem>
+                                      {Array.from({ length: 15 }, (_, i) => i + 1).map((laptopNum) => {
+                                        const alloc = laptopAllocations.find((a) => a.laptopNumber === laptopNum);
+                                        const occ = alloc ? alloc.occupancy : 0;
+                                        const isCurrent = student.assignedLaptop === laptopNum;
+                                        const isDisabled = occ >= 2 && !isCurrent;
+
+                                        let label = `Laptop ${laptopNum} (0/2)`;
+                                        if (occ === 1) {
+                                          if (isCurrent) {
+                                            label = `Laptop ${laptopNum} (1/2 - Current)`;
+                                          } else {
+                                            const otherName = alloc?.assignedStudents[0]?.firstname || 'Partner';
+                                            label = `Laptop ${laptopNum} (1/2 with ${otherName})`;
+                                          }
+                                        } else if (occ >= 2) {
+                                          if (isCurrent) {
+                                            label = `Laptop ${laptopNum} (2/2 - Paired)`;
+                                          } else {
+                                            label = `Laptop ${laptopNum} (2/2 Full)`;
+                                          }
+                                        }
+
+                                        return (
+                                          <MenuItem
+                                            key={laptopNum}
+                                            value={laptopNum}
+                                            disabled={isDisabled}
+                                            sx={{
+                                              fontSize: '0.75rem',
+                                              fontWeight: isCurrent ? 700 : 400,
+                                              color: isDisabled ? '#94a3b8' : isCurrent ? '#8b5e0b' : '#17324d',
+                                            }}
+                                          >
+                                            {label}
+                                          </MenuItem>
+                                        );
+                                      })}
+                                    </Select>
+                                  </FormControl>
+                                  {updatingLaptopBarcode === student.barcode && (
+                                    <CircularProgress size={14} sx={{ color: '#8b5e0b' }} />
+                                  )}
+                                </Box>
+                              )}
+                            </Box>
+                          )}
                         </TableCell>
 
                         {/* Attendance */}

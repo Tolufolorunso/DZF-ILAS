@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSessionUser } from '@/lib/auth/session';
-import { getAllCohortGroups, getCohortStudents, EnrichedStudent } from '@/lib/cohorts/service';
+import { getAllCohortGroups, getCohortStudents, EnrichedStudent, LaptopAllocationSummary } from '@/lib/cohorts/service';
 import { checkGoogleSheetsConnection } from '@/lib/cohorts/googleSheets';
 import CohortClient from './CohortClient';
 
@@ -24,12 +24,14 @@ export default async function CohortsPage() {
 
   let initialStudents: {
     students: EnrichedStudent[];
+    laptopAllocations?: LaptopAllocationSummary[];
     total: number;
     page: number;
     limit: number;
     totalPages: number;
   } = {
     students: [],
+    laptopAllocations: [],
     total: 0,
     page: 1,
     limit: 50,

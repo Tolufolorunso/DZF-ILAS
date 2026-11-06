@@ -19,6 +19,7 @@ export interface ICohort {
   isRemoved: boolean;
   cohortType: string;
   removedAt?: Date;
+  assignedLaptop?: number | null;
   attendance: ICohortAttendanceRecord[];
   createdAt: Date;
   updatedAt: Date;
@@ -86,6 +87,13 @@ const CohortSchema = new Schema<ICohortDocument>(
     removedAt: {
       type: Date,
     },
+    assignedLaptop: {
+      type: Number,
+      min: [1, 'Laptop number must be at least 1'],
+      max: [15, 'Laptop number cannot exceed 15'],
+      default: null,
+      index: true,
+    },
     attendance: {
       type: [CohortAttendanceSchema],
       default: [],
@@ -99,6 +107,7 @@ const CohortSchema = new Schema<ICohortDocument>(
 // Compound indexes for cohort roster queries and unique membership per cohort
 CohortSchema.index({ cohortType: 1, active: 1 });
 CohortSchema.index({ cohortType: 1, isRemoved: 1 });
+CohortSchema.index({ cohortType: 1, assignedLaptop: 1, active: 1 });
 CohortSchema.index({ barcode: 1, active: 1 });
 CohortSchema.index({ barcode: 1, cohortType: 1 }, { unique: true });
 

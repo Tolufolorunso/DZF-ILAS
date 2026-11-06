@@ -38,6 +38,9 @@ export interface EnrichedStudent {
   active: boolean;
   isRemoved: boolean;
   removedAt?: string | null;
+  assignedLaptop?: number | null;
+  pairedStudentName?: string | null;
+  laptopOccupancy: number; // 0 (unassigned), 1 (1 seat occupied), 2 (full)
   attendanceCount: number;
   totalPossibleWeeks: number;
   attendancePercentage: number;
@@ -49,6 +52,17 @@ export interface EnrichedStudent {
   }>;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface LaptopAllocationSummary {
+  laptopNumber: number; // 1 to 15
+  occupancy: number; // 0, 1, or 2
+  isAvailable: boolean; // true if occupancy < 2
+  assignedStudents: Array<{
+    barcode: string;
+    firstname: string;
+    surname: string;
+  }>;
 }
 
 /**
@@ -280,7 +294,14 @@ export async function getCohortStudents(
     page?: number;
     limit?: number;
   }
-): Promise<{ students: EnrichedStudent[]; total: number; page: number; limit: number; totalPages: number }> {
+): Promise<{
+  students: EnrichedStudent[];
+  laptopAllocations: LaptopAllocationSummary[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}> {
   await connectDB();
 
   const normalizedType = cohortType.trim().toLowerCase();
@@ -327,12 +348,60 @@ export async function getCohortStudents(
     }
   });
 
+  // Group all active cohort students by laptop number (1..15) for pairing and occupancy
+  const activeCohortStudents = await Cohort.find(
+    { cohortType: normalizedType, isRemoved: false },
+    { barcode: 1, firstname: 1, surname: 1, assignedLaptop: 1 }
+  ).lean();
+
+  const laptopStudentsMap = new Map<number, Array<{ barcode: string; firstname: string; surname: string }>>();
+  for (let i = 1; i <= 15; i++) {
+    laptopStudentsMap.set(i, []);
+  }
+
+  for (const s of activeCohortStudents) {
+    if (s.assignedLaptop && s.assignedLaptop >= 1 && s.assignedLaptop <= 15) {
+      laptopStudentsMap.get(s.assignedLaptop)?.push({
+        barcode: s.barcode,
+        firstname: s.firstname,
+        surname: s.surname,
+      });
+    }
+  }
+
+  const laptopAllocations: LaptopAllocationSummary[] = [];
+  for (let i = 1; i <= 15; i++) {
+    const assigned = laptopStudentsMap.get(i) || [];
+    laptopAllocations.push({
+      laptopNumber: i,
+      occupancy: assigned.length,
+      isAvailable: assigned.length < 2,
+      assignedStudents: assigned,
+    });
+  }
+
   const students: EnrichedStudent[] = rawStudents.map((st) => {
     const attendance = st.attendance || [];
     const attendedWeeks = attendance.filter((a) => a.attended).length;
     const totalPossibleWeeks = Math.max(attendance.length, maxWeeks);
     const attendancePercentage =
       totalPossibleWeeks > 0 ? Math.round((attendedWeeks / totalPossibleWeeks) * 100) : 0;
+
+    const studentLaptop =
+      st.assignedLaptop && st.assignedLaptop >= 1 && st.assignedLaptop <= 15
+        ? st.assignedLaptop
+        : null;
+    let pairedStudentName: string | null = null;
+    let laptopOccupancy = 0;
+
+    if (studentLaptop) {
+      const sharing = laptopStudentsMap.get(studentLaptop) || [];
+      laptopOccupancy = sharing.length;
+      const partner = sharing.find((ps) => ps.barcode !== st.barcode);
+      if (partner) {
+        pairedStudentName = `${partner.firstname} ${partner.surname}`;
+      }
+    }
 
     return {
       _id: String(st._id),
@@ -346,6 +415,9 @@ export async function getCohortStudents(
       active: st.active !== false,
       isRemoved: st.isRemoved || false,
       removedAt: st.removedAt ? new Date(st.removedAt).toISOString() : null,
+      assignedLaptop: studentLaptop,
+      pairedStudentName,
+      laptopOccupancy,
       attendanceCount: attendedWeeks,
       totalPossibleWeeks,
       attendancePercentage: Math.min(100, Math.max(0, attendancePercentage)),
@@ -362,6 +434,7 @@ export async function getCohortStudents(
 
   return {
     students,
+    laptopAllocations,
     total,
     page,
     limit,
@@ -418,6 +491,9 @@ export async function enrollStudent(
       active: existing.active,
       isRemoved: existing.isRemoved,
       removedAt: null,
+      assignedLaptop: existing.assignedLaptop || null,
+      pairedStudentName: null,
+      laptopOccupancy: 0,
       attendanceCount: existing.attendance?.filter((a) => a.attended).length || 0,
       totalPossibleWeeks: existing.attendance?.length || 0,
       attendancePercentage: 0,
@@ -458,6 +534,9 @@ export async function enrollStudent(
     active: newStudent.active,
     isRemoved: newStudent.isRemoved,
     removedAt: null,
+    assignedLaptop: null,
+    pairedStudentName: null,
+    laptopOccupancy: 0,
     attendanceCount: 0,
     totalPossibleWeeks: 0,
     attendancePercentage: 0,
@@ -477,6 +556,7 @@ export async function updateStudentStatus(
     receivedCertificate?: boolean;
     isRemoved?: boolean;
     schoolClass?: string;
+    assignedLaptop?: number | null;
   }
 ): Promise<EnrichedStudent | null> {
   await connectDB();
@@ -497,6 +577,7 @@ export async function updateStudentStatus(
     if (updates.isRemoved) {
       student.active = false;
       student.removedAt = new Date();
+      student.assignedLaptop = null; // Free up laptop if removed
     } else {
       student.active = true;
       student.removedAt = undefined;
@@ -507,12 +588,62 @@ export async function updateStudentStatus(
     student.schoolClass = updates.schoolClass.trim();
   }
 
+  if (updates.assignedLaptop !== undefined) {
+    if (updates.assignedLaptop === null || updates.assignedLaptop === 0) {
+      student.assignedLaptop = null;
+    } else {
+      const laptopNum = Math.floor(Number(updates.assignedLaptop));
+      if (isNaN(laptopNum) || laptopNum < 1 || laptopNum > 15) {
+        throw new Error('Laptop number must be an integer between 1 and 15.');
+      }
+
+      // Enforce strict 2-student capacity constraint per laptop
+      const existingOccupants = await Cohort.find({
+        cohortType: normalizedType,
+        assignedLaptop: laptopNum,
+        barcode: { $ne: student.barcode },
+        isRemoved: false,
+      }, { firstname: 1, surname: 1 }).lean();
+
+      if (existingOccupants.length >= 2) {
+        const names = existingOccupants.map((s) => `${s.firstname} ${s.surname}`).join(', ');
+        throw new Error(`Laptop ${laptopNum} is already at maximum capacity (2 students: ${names}). Please select an available laptop.`);
+      }
+
+      student.assignedLaptop = laptopNum;
+    }
+  }
+
   await student.save();
 
   const attendance = student.attendance || [];
   const attendedWeeks = attendance.filter((a) => a.attended).length;
   const totalPossibleWeeks = Math.max(1, attendance.length);
   const attendancePercentage = Math.round((attendedWeeks / totalPossibleWeeks) * 100);
+
+  // Resolve partner pairing and occupancy
+  let pairedStudentName: string | null = null;
+  let laptopOccupancy = 0;
+  const finalLaptop =
+    student.assignedLaptop && student.assignedLaptop >= 1 && student.assignedLaptop <= 15
+      ? student.assignedLaptop
+      : null;
+
+  if (finalLaptop && !student.isRemoved) {
+    const peers = await Cohort.find(
+      {
+        cohortType: normalizedType,
+        assignedLaptop: finalLaptop,
+        isRemoved: false,
+      },
+      { barcode: 1, firstname: 1, surname: 1 }
+    ).lean();
+    laptopOccupancy = peers.length;
+    const partner = peers.find((p) => p.barcode !== student.barcode);
+    if (partner) {
+      pairedStudentName = `${partner.firstname} ${partner.surname}`;
+    }
+  }
 
   return {
     _id: String(student._id),
@@ -526,6 +657,9 @@ export async function updateStudentStatus(
     active: student.active,
     isRemoved: student.isRemoved,
     removedAt: student.removedAt ? student.removedAt.toISOString() : null,
+    assignedLaptop: finalLaptop,
+    pairedStudentName,
+    laptopOccupancy,
     attendanceCount: attendedWeeks,
     totalPossibleWeeks,
     attendancePercentage,
